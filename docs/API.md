@@ -376,6 +376,11 @@ Update crash group status.
 { "status": "resolved" }
 ```
 
+### DELETE /crash-groups/{id}
+Delete a crash group and all associated crashes.
+
+**Response:** `204 No Content`
+
 ### POST /crashes/{id}/retrace
 Re-deobfuscate a crash stacktrace.
 

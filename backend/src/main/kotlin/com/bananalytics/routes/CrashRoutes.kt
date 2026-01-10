@@ -141,6 +141,25 @@ fun Route.crashRoutes() {
         call.respond(updatedGroup)
     }
 
+    // Delete crash group
+    delete("/crash-groups/{id}") {
+        val user = call.getUser()
+        val id = call.parameters["id"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid crash group ID")
+
+        val group = CrashRepository.findGroupById(id)
+            ?: throw NotFoundException("Crash group not found")
+
+        requireAppAdmin(UUID.fromString(group.appId), user)
+
+        val deleted = CrashRepository.deleteGroup(id)
+        if (!deleted) {
+            throw NotFoundException("Crash group not found")
+        }
+
+        call.respond(HttpStatusCode.NoContent)
+    }
+
     // Get crashes in a group
     get("/crash-groups/{id}/crashes") {
         val user = call.getUser()

@@ -150,6 +150,13 @@ object CrashRepository {
         } > 0
     }
 
+    fun deleteGroup(id: UUID): Boolean = transaction {
+        // First delete all crashes in the group
+        Crashes.deleteWhere { Crashes.groupId eq id }
+        // Then delete the group itself
+        CrashGroups.deleteWhere { CrashGroups.id eq id } > 0
+    }
+
     fun updateDecodedStacktrace(
         crashId: UUID,
         decodedStacktrace: String?,

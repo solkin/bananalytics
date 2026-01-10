@@ -34,6 +34,10 @@ export async function updateCrashGroupStatus(
   return response.data
 }
 
+export async function deleteCrashGroup(id: string): Promise<void> {
+  await api.delete(`/crash-groups/${id}`)
+}
+
 export async function getCrashesInGroup(
   groupId: string,
   options?: { page?: number; pageSize?: number }

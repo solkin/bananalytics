@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card,
   Descriptions,
@@ -13,11 +13,12 @@ import {
   message,
   Alert,
   DatePicker,
+  Modal,
 } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
 import type { Crash, CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, type DailyStat } from '@/api/crashes'
+import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, deleteCrashGroup, type DailyStat } from '@/api/crashes'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -32,6 +33,7 @@ const statusColors: Record<string, string> = {
 
 export default function CrashDetailPage() {
   const { groupId } = useParams<{ groupId: string }>()
+  const navigate = useNavigate()
   const [group, setGroup] = useState<CrashGroup | null>(null)
   const [crashes, setCrashes] = useState<PaginatedResponse<Crash> | null>(null)
   const [selectedCrash, setSelectedCrash] = useState<Crash | null>(null)
@@ -122,6 +124,33 @@ export default function CrashDetailPage() {
     }
   }
 
+  const handleDelete = () => {
+    Modal.confirm({
+      title: 'Delete Crash Group',
+      content: (
+        <Space direction="vertical">
+          <Typography.Text>
+            Are you sure you want to delete this crash group?
+          </Typography.Text>
+          <Typography.Text type="danger">
+            This will permanently delete all {group?.occurrences || 0} crashes in this group.
+          </Typography.Text>
+        </Space>
+      ),
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteCrashGroup(groupId!)
+          message.success('Crash group deleted')
+          navigate('..')
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Failed to delete')
+        }
+      },
+    })
+  }
+
   if (loading || !group) {
     return <Card loading />
   }
@@ -139,16 +168,21 @@ export default function CrashDetailPage() {
             </Space>
           }
           extra={
-            <Select
-              value={group.status}
-              onChange={handleStatusChange}
-              style={{ width: 120 }}
-              options={[
-                { label: 'Open', value: 'open' },
-                { label: 'Resolved', value: 'resolved' },
-                { label: 'Ignored', value: 'ignored' },
-              ]}
-            />
+            <Space>
+              <Select
+                value={group.status}
+                onChange={handleStatusChange}
+                style={{ width: 120 }}
+                options={[
+                  { label: 'Open', value: 'open' },
+                  { label: 'Resolved', value: 'resolved' },
+                  { label: 'Ignored', value: 'ignored' },
+                ]}
+              />
+              <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>
+                Delete
+              </Button>
+            </Space>
           }
         >
           <Descriptions.Item label="Message" span={3}>
