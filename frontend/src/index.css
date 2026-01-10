@@ -53,3 +53,39 @@ body {
   font-size: 11px !important;
   margin-top: 2px !important;
 }
+
+/* Distribution page - responsive layout */
+.distribution-version-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.distribution-version-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.distribution-version-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.distribution-version-action {
+  flex-shrink: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 576px) {
+  .distribution-version-card {
+    flex-direction: column;
+  }
+  
+  .distribution-version-action {
+    width: 100%;
+    margin-top: 16px;
+  }
+}

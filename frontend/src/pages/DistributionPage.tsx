@@ -46,9 +46,9 @@ export default function DistributionPage() {
 
   if (versions.length === 0) {
     return (
-      <Card>
+      <Card styles={{ body: { padding: '48px 24px' } }}>
         <Empty
-          image={<AndroidOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+          image={<AndroidOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
           description={
             <Text type="secondary">
               No versions available for testing yet.
@@ -64,37 +64,31 @@ export default function DistributionPage() {
       <Title level={4} style={{ margin: 0 }}>Available Versions</Title>
       
       {versions.map((version) => (
-        <Card key={version.id} hoverable>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Space align="center">
-                  <Title level={5} style={{ margin: 0 }}>
-                    {version.version_name || `Version ${version.version_code}`}
-                  </Title>
-                  <Tag color="blue">v{version.version_code}</Tag>
-                </Space>
-                <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                  {version.apk_uploaded_at 
-                    ? `Published ${new Date(version.apk_uploaded_at).toLocaleDateString()}`
-                    : `Created ${new Date(version.created_at).toLocaleDateString()}`
-                  }
-                  {version.apk_size && ` • ${formatBytes(version.apk_size)}`}
-                </Text>
+        <Card 
+          key={version.id} 
+          bordered
+          styles={{ 
+            body: { padding: '16px' },
+          }}
+          style={{ boxShadow: 'none' }}
+        >
+          <div className="distribution-version-card">
+            <div className="distribution-version-info">
+              <div className="distribution-version-header">
+                <Title level={5} style={{ margin: 0 }}>
+                  {version.version_name || `Version ${version.version_code}`}
+                </Title>
+                <Tag color="blue" style={{ marginLeft: 8 }}>v{version.version_code}</Tag>
               </div>
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                size="large"
-                href={getApkDownloadUrl(appId!, version.id)}
-                target="_blank"
-              >
-                Download APK
-              </Button>
-            </div>
-            
-            {version.release_notes && (
-              <>
+              <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                {version.apk_uploaded_at 
+                  ? `Published ${new Date(version.apk_uploaded_at).toLocaleDateString()}`
+                  : `Created ${new Date(version.created_at).toLocaleDateString()}`
+                }
+                {version.apk_size && ` • ${formatBytes(version.apk_size)}`}
+              </Text>
+              
+              {version.release_notes && (
                 <div style={{ marginTop: 12 }}>
                   <Text strong>What's New:</Text>
                   <Paragraph 
@@ -104,9 +98,22 @@ export default function DistributionPage() {
                     {version.release_notes}
                   </Paragraph>
                 </div>
-              </>
-            )}
-          </Space>
+              )}
+            </div>
+            
+            <div className="distribution-version-action">
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                size="large"
+                href={getApkDownloadUrl(appId!, version.id)}
+                target="_blank"
+                block
+              >
+                Download APK
+              </Button>
+            </div>
+          </div>
         </Card>
       ))}
     </Space>
