@@ -12,6 +12,7 @@ import EventsPage from './pages/EventsPage'
 import EventDetailPage from './pages/EventDetailPage'
 import VersionsPage from './pages/VersionsPage'
 import AccessPage from './pages/AccessPage'
+import SettingsPage from './pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path="events/:eventName" element={<EventDetailPage />} />
           <Route path="versions" element={<VersionsPage />} />
           <Route path="access" element={<AccessPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
     </Routes>
