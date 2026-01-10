@@ -19,7 +19,7 @@ object Sessions : UUIDTable("sessions") {
 object AppAccess : UUIDTable("app_access") {
     val appId = reference("app_id", Apps)
     val userId = reference("user_id", Users)
-    val role = varchar("role", 20).default("viewer")  // "admin" or "viewer"
+    val role = varchar("role", 20).default("viewer")  // "admin", "viewer", or "tester"
     val createdAt = timestampWithTimeZone("created_at")
 
     init {

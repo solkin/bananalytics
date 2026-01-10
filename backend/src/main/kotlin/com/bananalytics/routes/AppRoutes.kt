@@ -139,8 +139,8 @@ fun Route.appRoutes() {
 
             val request = call.receive<GrantAccessRequest>()
 
-            if (request.role !in listOf("admin", "viewer")) {
-                throw BadRequestException("Role must be 'admin' or 'viewer'")
+            if (request.role !in listOf("admin", "viewer", "tester")) {
+                throw BadRequestException("Role must be 'admin', 'viewer', or 'tester'")
             }
 
             val targetUser = UserRepository.findByEmail(request.email)
@@ -172,12 +172,12 @@ fun Route.appRoutes() {
 
             val request = call.receive<UpdateAccessRequest>()
 
-            if (request.role !in listOf("admin", "viewer")) {
-                throw BadRequestException("Role must be 'admin' or 'viewer'")
+            if (request.role !in listOf("admin", "viewer", "tester")) {
+                throw BadRequestException("Role must be 'admin', 'viewer', or 'tester'")
             }
 
             // Prevent removing the last admin
-            if (request.role == "viewer") {
+            if (request.role != "admin") {
                 val currentRole = AppAccessRepository.getUserRole(appId, targetUserId)
                 if (currentRole == "admin" && AppAccessRepository.countAdmins(appId) <= 1) {
                     throw BadRequestException("Cannot remove the last admin")

@@ -43,7 +43,7 @@ data class AppAccessResponse(
 @Serializable
 data class GrantAccessRequest(
     val email: String,
-    val role: String = "viewer"  // "admin" or "viewer"
+    val role: String = "viewer"  // "admin", "viewer", or "tester"
 )
 
 @Serializable
