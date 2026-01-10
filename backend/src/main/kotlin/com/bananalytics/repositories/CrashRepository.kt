@@ -113,9 +113,11 @@ object CrashRepository {
             ZoneOffset.UTC
         )
 
-        // Calculate fingerprint from first few frames
+        // Calculate fingerprint from first few frames (use raw for consistent grouping)
         val fingerprint = calculateFingerprint(crash.stacktrace)
-        val (exceptionClass, exceptionMessage) = parseException(crash.stacktrace)
+        // Use decoded stacktrace for exception info if available
+        val stacktraceForParsing = decodedStacktrace ?: crash.stacktrace
+        val (exceptionClass, exceptionMessage) = parseException(stacktraceForParsing)
 
         // Find or create crash group
         val groupId = findOrCreateGroup(
@@ -162,11 +164,29 @@ object CrashRepository {
         decodedStacktrace: String?,
         decodeError: String?
     ): Boolean = transaction {
-        Crashes.update({ Crashes.id eq crashId }) {
+        val updated = Crashes.update({ Crashes.id eq crashId }) {
             it[stacktraceDecoded] = decodedStacktrace
             it[this.decodeError] = decodeError
             it[decodedAt] = if (decodedStacktrace != null) OffsetDateTime.now() else null
         } > 0
+
+        // Also update the crash group exception info if we have decoded stacktrace
+        if (updated && decodedStacktrace != null) {
+            val groupId = Crashes.select(Crashes.groupId)
+                .where { Crashes.id eq crashId }
+                .singleOrNull()
+                ?.get(Crashes.groupId)
+
+            if (groupId != null) {
+                val (exceptionClass, exceptionMessage) = parseException(decodedStacktrace)
+                CrashGroups.update({ CrashGroups.id eq groupId }) {
+                    it[CrashGroups.exceptionClass] = exceptionClass
+                    it[CrashGroups.exceptionMessage] = exceptionMessage?.take(1000)
+                }
+            }
+        }
+
+        updated
     }
 
     fun getCrashStatsByGroupId(
