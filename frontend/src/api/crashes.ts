@@ -54,7 +54,7 @@ export async function retraceCrash(id: string): Promise<Crash> {
   return response.data
 }
 
-export interface CrashDailyStat {
+export interface DailyStat {
   date: string
   count: number
 }
@@ -62,8 +62,18 @@ export interface CrashDailyStat {
 export async function getCrashStats(
   groupId: string,
   options?: { from?: string; to?: string }
-): Promise<CrashDailyStat[]> {
-  const response = await api.get<CrashDailyStat[]>(`/crash-groups/${groupId}/stats`, {
+): Promise<DailyStat[]> {
+  const response = await api.get<DailyStat[]>(`/crash-groups/${groupId}/stats`, {
+    params: options,
+  })
+  return response.data
+}
+
+export async function getAppCrashStats(
+  appId: string,
+  options?: { from?: string; to?: string }
+): Promise<DailyStat[]> {
+  const response = await api.get<DailyStat[]>(`/apps/${appId}/crashes/stats`, {
     params: options,
   })
   return response.data

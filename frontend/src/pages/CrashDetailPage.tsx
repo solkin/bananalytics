@@ -17,7 +17,7 @@ import {
 import { ReloadOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
 import type { Crash, CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, type CrashDailyStat } from '@/api/crashes'
+import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, type DailyStat } from '@/api/crashes'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -37,7 +37,7 @@ export default function CrashDetailPage() {
   const [selectedCrash, setSelectedCrash] = useState<Crash | null>(null)
   const [loading, setLoading] = useState(true)
   const [retracing, setRetracing] = useState(false)
-  const [stats, setStats] = useState<CrashDailyStat[]>([])
+  const [stats, setStats] = useState<DailyStat[]>([])
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
     dayjs().subtract(14, 'day'),
     dayjs(),
@@ -79,7 +79,7 @@ export default function CrashDetailPage() {
       
       // Fill all dates in range with zeros where no data
       const statsMap = new Map(statsData.map(s => [s.date, s.count]))
-      const filledStats: CrashDailyStat[] = []
+      const filledStats: DailyStat[] = []
       let current = dateRange[0].startOf('day')
       const end = dateRange[1].startOf('day')
       
@@ -166,6 +166,7 @@ export default function CrashDetailPage() {
 
       <Card
         title="Crash Timeline"
+        styles={{ header: { background: '#fafafa' } }}
         extra={
           <RangePicker
             value={dateRange}
@@ -195,10 +196,8 @@ export default function CrashDetailPage() {
             },
           }}
           tooltip={{
-            formatter: (datum: CrashDailyStat) => ({
-              name: 'Crashes',
-              value: datum.count,
-            }),
+            title: (d: DailyStat) => dayjs(d.date).format('YYYY-MM-DD'),
+            items: [{ channel: 'y', name: 'Crashes' }],
           }}
         />
       </Card>
@@ -206,6 +205,7 @@ export default function CrashDetailPage() {
       {selectedCrash && (
         <Card
           title="Crash Details"
+          styles={{ header: { background: '#fafafa' }, body: { paddingTop: 8, paddingBottom: 8 } }}
           extra={
             <Space>
               <Select

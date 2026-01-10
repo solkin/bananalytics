@@ -78,6 +78,27 @@ object EventRepository {
         PaginatedResponse(items, total, page, pageSize)
     }
 
+    fun getEventStatsByName(
+        appId: UUID,
+        eventName: String,
+        fromDate: OffsetDateTime,
+        toDate: OffsetDateTime
+    ): List<DailyStat> = transaction {
+        Events
+            .select(Events.createdAt)
+            .where { 
+                (Events.appId eq appId) and 
+                (Events.name eq eventName) and
+                (Events.createdAt greaterEq fromDate) and 
+                (Events.createdAt lessEq toDate) 
+            }
+            .map { it[Events.createdAt].toLocalDate() }
+            .groupingBy { it }
+            .eachCount()
+            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
+            .sortedBy { it.date }
+    }
+
     fun getVersionsForEvent(appId: UUID, eventName: String): List<EventVersionStats> = transaction {
         val eventVersions = Events
             .select(Events.versionCode, Events.versionCode.count())

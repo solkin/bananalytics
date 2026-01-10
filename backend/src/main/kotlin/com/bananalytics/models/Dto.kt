@@ -180,7 +180,7 @@ data class VersionInfo(
 )
 
 @Serializable
-data class CrashDailyStat(
+data class DailyStat(
     val date: String,
     val count: Long
 )

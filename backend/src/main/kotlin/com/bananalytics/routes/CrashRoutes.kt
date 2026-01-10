@@ -14,6 +14,33 @@ import io.ktor.server.routing.*
 import java.util.*
 
 fun Route.crashRoutes() {
+    // Get crash stats for an app (timeline)
+    get("/apps/{appId}/crashes/stats") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = java.time.OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            java.time.OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            java.time.OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(14)
+        }
+
+        val stats = CrashRepository.getCrashStatsByAppId(appId, fromDate, toDate)
+        call.respond(stats)
+    }
+
     // Get available version codes for filtering
     get("/apps/{appId}/crashes/versions") {
         val user = call.getUser()

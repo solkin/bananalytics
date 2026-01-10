@@ -88,6 +88,8 @@ export default function EventsPage() {
         rowKey="name"
         loading={loading}
         pagination={false}
+        bordered
+        style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden' }}
         onRow={(record) => ({
           onClick: () => navigate(encodeURIComponent(record.name)),
           style: { cursor: 'pointer' },

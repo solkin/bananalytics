@@ -86,3 +86,20 @@ export async function getEventCount(appId: string): Promise<number> {
   const response = await api.get<{ count: number }>(`/apps/${appId}/events/count`)
   return response.data.count
 }
+
+export interface DailyStat {
+  date: string
+  count: number
+}
+
+export async function getEventStats(
+  appId: string,
+  eventName: string,
+  options?: { from?: string; to?: string }
+): Promise<DailyStat[]> {
+  const response = await api.get<DailyStat[]>(
+    `/apps/${appId}/events/by-name/${encodeURIComponent(eventName)}/stats`,
+    { params: options }
+  )
+  return response.data
+}

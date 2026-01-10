@@ -149,6 +149,8 @@ export default function VersionsPage() {
           rowKey="id"
           loading={loading}
           pagination={false}
+          bordered
+          style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden' }}
         />
       </Space>
 

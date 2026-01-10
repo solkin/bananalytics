@@ -112,6 +112,7 @@ export default function AppsPage() {
     <>
       <Card
         title="Applications"
+        styles={{ header: { background: '#fafafa' } }}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
             New App

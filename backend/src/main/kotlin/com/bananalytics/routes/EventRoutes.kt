@@ -61,6 +61,35 @@ fun Route.eventRoutes() {
         call.respond(result)
     }
 
+    // Get event stats (timeline)
+    get("/apps/{appId}/events/by-name/{eventName}/stats") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+        val eventName = call.parameters["eventName"]
+            ?: throw BadRequestException("Event name is required")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = java.time.OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            java.time.OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            java.time.OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(14)
+        }
+
+        val stats = EventRepository.getEventStatsByName(appId, eventName, fromDate, toDate)
+        call.respond(stats)
+    }
+
     // Get version stats for a specific event
     get("/apps/{appId}/events/by-name/{eventName}/versions") {
         val user = call.getUser()

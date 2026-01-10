@@ -166,7 +166,7 @@ object CrashRepository {
         groupId: UUID,
         fromDate: OffsetDateTime,
         toDate: OffsetDateTime
-    ): List<CrashDailyStat> = transaction {
+    ): List<DailyStat> = transaction {
         Crashes
             .select(Crashes.createdAt)
             .where { 
@@ -177,7 +177,26 @@ object CrashRepository {
             .map { it[Crashes.createdAt].toLocalDate() }
             .groupingBy { it }
             .eachCount()
-            .map { (date, count) -> CrashDailyStat(date.toString(), count.toLong()) }
+            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
+            .sortedBy { it.date }
+    }
+
+    fun getCrashStatsByAppId(
+        appId: UUID,
+        fromDate: OffsetDateTime,
+        toDate: OffsetDateTime
+    ): List<DailyStat> = transaction {
+        Crashes
+            .select(Crashes.createdAt)
+            .where { 
+                (Crashes.appId eq appId) and 
+                (Crashes.createdAt greaterEq fromDate) and 
+                (Crashes.createdAt lessEq toDate) 
+            }
+            .map { it[Crashes.createdAt].toLocalDate() }
+            .groupingBy { it }
+            .eachCount()
+            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
             .sortedBy { it.date }
     }
 

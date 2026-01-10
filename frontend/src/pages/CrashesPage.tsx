@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Table, Tag, Select, Space, Typography, message } from 'antd'
+import { Table, Tag, Select, Space, Typography, message, Card, DatePicker } from 'antd'
+import { Column } from '@ant-design/charts'
 import type { CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroups, getCrashVersions, type VersionInfo } from '@/api/crashes'
+import { getCrashGroups, getCrashVersions, getAppCrashStats, type VersionInfo, type DailyStat } from '@/api/crashes'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 dayjs.extend(relativeTime)
+
+const { RangePicker } = DatePicker
 
 const statusColors: Record<string, string> = {
   open: 'red',
@@ -19,10 +22,15 @@ export default function CrashesPage() {
   const navigate = useNavigate()
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
+  const [stats, setStats] = useState<DailyStat[]>([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | undefined>(undefined)
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
   const [page, setPage] = useState(1)
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(14, 'day'),
+    dayjs(),
+  ])
 
   const loadCrashes = async () => {
     try {
@@ -40,9 +48,41 @@ export default function CrashesPage() {
     }
   }
 
+  const loadStats = async () => {
+    try {
+      const statsData = await getAppCrashStats(appId!, {
+        from: dateRange[0].startOf('day').toISOString(),
+        to: dateRange[1].endOf('day').toISOString(),
+      })
+      
+      // Fill all dates in range with zeros where no data
+      const statsMap = new Map(statsData.map(s => [s.date, s.count]))
+      const filledStats: DailyStat[] = []
+      let current = dateRange[0].startOf('day')
+      const end = dateRange[1].startOf('day')
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dateStr = current.format('YYYY-MM-DD')
+        filledStats.push({
+          date: dateStr,
+          count: statsMap.get(dateStr) || 0,
+        })
+        current = current.add(1, 'day')
+      }
+      
+      setStats(filledStats)
+    } catch (error) {
+      console.error('Failed to load stats', error)
+    }
+  }
+
   useEffect(() => {
     if (appId) loadCrashes()
   }, [appId, status, selectedVersion, page])
+
+  useEffect(() => {
+    if (appId) loadStats()
+  }, [appId, dateRange])
 
   const columns = [
     {
@@ -93,6 +133,44 @@ export default function CrashesPage() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Card
+        title="Crash Timeline"
+        styles={{ header: { background: '#fafafa' } }}
+        extra={
+          <RangePicker
+            value={dateRange}
+            onChange={(dates) => {
+              if (dates && dates[0] && dates[1]) {
+                setDateRange([dates[0], dates[1]])
+              }
+            }}
+            allowClear={false}
+          />
+        }
+      >
+        <Column
+          data={stats}
+          xField="date"
+          yField="count"
+          height={200}
+          color="#ff4d4f"
+          xAxis={{
+            label: {
+              formatter: (v: string) => dayjs(v).format('MM-DD'),
+            },
+          }}
+          yAxis={{
+            label: {
+              formatter: (v: string) => Math.floor(Number(v)).toString(),
+            },
+          }}
+          tooltip={{
+            title: (d: DailyStat) => dayjs(d.date).format('YYYY-MM-DD'),
+            items: [{ channel: 'y', name: 'Crashes' }],
+          }}
+        />
+      </Card>
+
       <Space wrap>
         <Select
           placeholder="Filter by status"
@@ -130,6 +208,8 @@ export default function CrashesPage() {
         columns={columns}
         rowKey="id"
         loading={loading}
+        bordered
+        style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden' }}
         onRow={(record) => ({
           onClick: () => navigate(record.id),
           style: { cursor: 'pointer' },

@@ -11,12 +11,16 @@ import {
   Descriptions,
   message,
   Drawer,
+  DatePicker,
 } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
+import { Column } from '@ant-design/charts'
 import type { Event, PaginatedResponse } from '@/types'
-import type { EventVersionStats } from '@/api/events'
-import { getEventsByName, getEventVersionStats } from '@/api/events'
+import type { EventVersionStats, DailyStat } from '@/api/events'
+import { getEventsByName, getEventVersionStats, getEventStats } from '@/api/events'
 import dayjs from 'dayjs'
+
+const { RangePicker } = DatePicker
 
 export default function EventDetailPage() {
   const { appId, eventName } = useParams<{ appId: string; eventName: string }>()
@@ -24,10 +28,15 @@ export default function EventDetailPage() {
   
   const [events, setEvents] = useState<PaginatedResponse<Event> | null>(null)
   const [versionStats, setVersionStats] = useState<EventVersionStats[]>([])
+  const [stats, setStats] = useState<DailyStat[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
   const [page, setPage] = useState(1)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(14, 'day'),
+    dayjs(),
+  ])
 
   const loadData = async () => {
     try {
@@ -52,6 +61,38 @@ export default function EventDetailPage() {
   useEffect(() => {
     if (appId && eventName) loadData()
   }, [appId, eventName, selectedVersion, page])
+
+  useEffect(() => {
+    if (appId && eventName) loadStats()
+  }, [appId, eventName, dateRange])
+
+  const loadStats = async () => {
+    try {
+      const statsData = await getEventStats(appId!, decodedEventName, {
+        from: dateRange[0].startOf('day').toISOString(),
+        to: dateRange[1].endOf('day').toISOString(),
+      })
+      
+      // Fill all dates in range with zeros where no data
+      const statsMap = new Map(statsData.map(s => [s.date, s.count]))
+      const filledStats: DailyStat[] = []
+      let current = dateRange[0].startOf('day')
+      const end = dateRange[1].startOf('day')
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dateStr = current.format('YYYY-MM-DD')
+        filledStats.push({
+          date: dateStr,
+          count: statsMap.get(dateStr) || 0,
+        })
+        current = current.add(1, 'day')
+      }
+      
+      setStats(filledStats)
+    } catch (error) {
+      console.error('Failed to load stats', error)
+    }
+  }
 
   const columns = [
     {
@@ -133,6 +174,44 @@ export default function EventDetailPage() {
           ]}
         />
 
+        <Card
+          title="Event Timeline"
+          styles={{ header: { background: '#fafafa' } }}
+          extra={
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setDateRange([dates[0], dates[1]])
+                }
+              }}
+              allowClear={false}
+            />
+          }
+        >
+          <Column
+            data={stats}
+            xField="date"
+            yField="count"
+            height={200}
+            color="#1890ff"
+            xAxis={{
+              label: {
+                formatter: (v: string) => dayjs(v).format('MM-DD'),
+              },
+            }}
+            yAxis={{
+              label: {
+                formatter: (v: string) => Math.floor(Number(v)).toString(),
+              },
+            }}
+            tooltip={{
+              title: (d: DailyStat) => dayjs(d.date).format('YYYY-MM-DD'),
+              items: [{ channel: 'y', name: 'Events' }],
+            }}
+          />
+        </Card>
+
         <Table
           dataSource={versionStats}
           rowKey="version_code"
@@ -175,7 +254,7 @@ export default function EventDetailPage() {
 
         <Card
           title="Events"
-          styles={{ body: { padding: 0 } }}
+          styles={{ header: { background: '#fafafa' }, body: { padding: 0 } }}
           extra={
             <Select
               placeholder="Filter by version"
@@ -198,6 +277,7 @@ export default function EventDetailPage() {
             columns={columns}
             rowKey="id"
             loading={loading}
+            bordered
             onRow={(record) => ({
               onClick: () => setSelectedEvent(record),
               style: { cursor: 'pointer' },
