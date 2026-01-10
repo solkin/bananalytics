@@ -11,7 +11,71 @@ import java.time.format.DateTimeParseException
 import java.util.*
 
 fun Route.eventRoutes() {
-    // Get events for an app
+    // Get event summary (aggregated by name)
+    get("/apps/{appId}/events/summary") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val summary = EventRepository.getEventSummary(appId, versionCode)
+        call.respond(summary)
+    }
+
+    // Get available version codes for filtering
+    get("/apps/{appId}/events/versions") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val versions = EventRepository.getVersionCodes(appId)
+        call.respond(versions)
+    }
+
+    // Get events by name (detail page)
+    get("/apps/{appId}/events/by-name/{eventName}") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+        val eventName = call.parameters["eventName"]
+            ?: throw BadRequestException("Event name is required")
+
+        requireAppAccess(appId, user)
+
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+        val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50
+
+        val result = EventRepository.findByAppIdAndName(
+            appId = appId,
+            eventName = eventName,
+            versionCode = versionCode,
+            page = page,
+            pageSize = pageSize
+        )
+
+        call.respond(result)
+    }
+
+    // Get version stats for a specific event
+    get("/apps/{appId}/events/by-name/{eventName}/versions") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+        val eventName = call.parameters["eventName"]
+            ?: throw BadRequestException("Event name is required")
+
+        requireAppAccess(appId, user)
+
+        val versions = EventRepository.getVersionsForEvent(appId, eventName)
+        call.respond(versions)
+    }
+
+    // Get events for an app (legacy, with filters)
     get("/apps/{appId}/events") {
         val user = call.getUser()
         val appId = call.parameters["appId"]?.toUUIDOrNull()
@@ -20,6 +84,7 @@ fun Route.eventRoutes() {
         requireAppAccess(appId, user)
 
         val eventName = call.request.queryParameters["name"]
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
         val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
@@ -28,6 +93,7 @@ fun Route.eventRoutes() {
         val result = EventRepository.findByAppId(
             appId = appId,
             eventName = eventName,
+            versionCode = versionCode,
             fromTime = fromTime,
             toTime = toTime,
             page = page,

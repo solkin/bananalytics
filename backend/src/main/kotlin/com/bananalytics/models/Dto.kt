@@ -156,6 +156,29 @@ data class PaginatedResponse<T>(
     val pageSize: Int
 )
 
+// ============ Event Summary DTOs ============
+
+@Serializable
+data class EventSummaryResponse(
+    val name: String,
+    val total: Long,
+    @SerialName("this_month") val thisMonth: Long,
+    val today: Long
+)
+
+@Serializable
+data class EventVersionStats(
+    @SerialName("version_code") val versionCode: Long,
+    @SerialName("version_name") val versionName: String? = null,
+    val count: Long
+)
+
+@Serializable
+data class VersionInfo(
+    @SerialName("version_code") val versionCode: Long,
+    @SerialName("version_name") val versionName: String? = null
+)
+
 @Serializable
 data class UpdateCrashGroupRequest(
     val status: String? = null

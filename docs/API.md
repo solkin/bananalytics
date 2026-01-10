@@ -389,10 +389,72 @@ Revoke user's access.
 
 ## Events Endpoints
 
-### GET /apps/{id}/events
-Get events for an app.
+### GET /apps/{id}/events/summary
+Get aggregated event statistics.
 
-**Query params:** `name`, `from`, `to`, `page`, `pageSize`
+**Query params:** `version` (filter by version code)
+
+**Response:**
+```json
+[
+  {
+    "name": "button_click",
+    "total": 15420,
+    "this_month": 3200,
+    "today": 150
+  }
+]
+```
+
+### GET /apps/{id}/events/versions
+Get available version codes for filtering.
+
+**Response:**
+```json
+[123, 122, 121]
+```
+
+### GET /apps/{id}/events/by-name/{eventName}
+Get events by name with pagination.
+
+**Query params:** `version`, `page`, `pageSize`
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "app_id": "uuid",
+      "version_code": 123,
+      "name": "button_click",
+      "tags": { "screen": "home" },
+      "fields": { "load_time": 1.5 },
+      "device_info": {...},
+      "created_at": "2026-01-10T12:00:00Z"
+    }
+  ],
+  "total": 1000,
+  "page": 1,
+  "pageSize": 50
+}
+```
+
+### GET /apps/{id}/events/by-name/{eventName}/versions
+Get version statistics for a specific event.
+
+**Response:**
+```json
+[
+  { "version_code": 123, "count": 500 },
+  { "version_code": 122, "count": 320 }
+]
+```
+
+### GET /apps/{id}/events
+Get events for an app (with filters).
+
+**Query params:** `name`, `version`, `from`, `to`, `page`, `pageSize`
 
 **Response:**
 ```json
@@ -421,6 +483,14 @@ Get distinct event names.
 **Response:**
 ```json
 ["app_open", "button_click", "purchase"]
+```
+
+### GET /apps/{id}/events/count
+Get total event count for an app.
+
+**Response:**
+```json
+{ "count": 15420 }
 ```
 
 ---
