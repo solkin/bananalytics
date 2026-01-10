@@ -14,10 +14,10 @@ import {
   Switch,
   Upload,
 } from 'antd'
-import { PlusOutlined, UploadOutlined, CheckCircleOutlined, CloseCircleOutlined, InboxOutlined } from '@ant-design/icons'
+import { PlusOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, InboxOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { AppVersion } from '@/types'
-import { getVersions, createVersion, uploadMapping, updateVersionMute } from '@/api/apps'
+import { getVersions, createVersion, uploadMapping, updateVersionMute, getMappingDownloadUrl } from '@/api/apps'
 
 const { Dragger } = Upload
 
@@ -121,7 +121,6 @@ export default function VersionsPage() {
       title: 'Version Code',
       dataIndex: 'version_code',
       key: 'version_code',
-      render: (code: number) => <Typography.Text strong>{code}</Typography.Text>,
     },
     {
       title: 'Mapping',
@@ -174,17 +173,29 @@ export default function VersionsPage() {
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, record: AppVersion) => (
-        <Button
-          type="link"
-          icon={<UploadOutlined />}
-          onClick={() => {
-            setSelectedVersion(record)
-            setUploadMappingFileList([])
-            setUploadModalOpen(true)
-          }}
-        >
-          {record.has_mapping ? 'Update' : 'Upload'} Mapping
-        </Button>
+        <Space size="small">
+          {record.has_mapping && (
+            <Button
+              type="link"
+              icon={<DownloadOutlined />}
+              href={getMappingDownloadUrl(appId!, record.id)}
+              target="_blank"
+            >
+              Download
+            </Button>
+          )}
+          <Button
+            type="link"
+            icon={<UploadOutlined />}
+            onClick={() => {
+              setSelectedVersion(record)
+              setUploadMappingFileList([])
+              setUploadModalOpen(true)
+            }}
+          >
+            {record.has_mapping ? 'Update' : 'Upload'}
+          </Button>
+        </Space>
       ),
     },
   ]

@@ -93,3 +93,7 @@ export async function updateVersionMute(
   )
   return response.data
 }
+
+export function getMappingDownloadUrl(appId: string, versionId: string): string {
+  return `/api/v1/apps/${appId}/versions/${versionId}/mapping`
+}

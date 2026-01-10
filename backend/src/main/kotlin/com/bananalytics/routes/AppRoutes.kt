@@ -316,6 +316,32 @@ fun Route.appRoutes() {
             call.respond(version)
         }
 
+        // Download mapping file
+        get("/{appId}/versions/{versionId}/mapping") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAccess(appId, user)
+
+            val version = VersionRepository.findById(versionId)
+                ?: throw NotFoundException("Version not found")
+
+            val mappingContent = VersionRepository.getMappingContent(appId, version.versionCode)
+                ?: throw NotFoundException("Mapping not found")
+
+            call.response.header(
+                HttpHeaders.ContentDisposition,
+                ContentDisposition.Attachment.withParameter(
+                    ContentDisposition.Parameters.FileName,
+                    "mapping-${version.versionCode}.txt"
+                ).toString()
+            )
+            call.respondText(mappingContent, ContentType.Text.Plain)
+        }
+
         // Update version mute settings
         put("/{appId}/versions/{versionId}/mute") {
             val user = call.getUser()
