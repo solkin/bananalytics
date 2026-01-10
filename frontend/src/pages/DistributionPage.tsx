@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Card, Space, Typography, message, Button, Empty, Tag } from 'antd'
+import { Card, Typography, message, Button, Empty, Tag, Divider } from 'antd'
 import { DownloadOutlined, AndroidOutlined } from '@ant-design/icons'
 import type { AppVersion } from '@/types'
 import { getDistributionVersions, getApkDownloadUrl } from '@/api/apps'
@@ -38,7 +38,11 @@ export default function DistributionPage() {
 
   if (loading) {
     return (
-      <Card loading={loading}>
+      <Card 
+        title="Available Versions" 
+        styles={{ header: { background: '#fafafa' } }}
+        loading={loading}
+      >
         <div style={{ height: 200 }} />
       </Card>
     )
@@ -46,7 +50,10 @@ export default function DistributionPage() {
 
   if (versions.length === 0) {
     return (
-      <Card styles={{ body: { padding: '48px 24px' } }}>
+      <Card 
+        title="Available Versions" 
+        styles={{ header: { background: '#fafafa' } }}
+      >
         <Empty
           image={<AndroidOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
           description={
@@ -60,18 +67,14 @@ export default function DistributionPage() {
   }
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Title level={4} style={{ margin: 0 }}>Available Versions</Title>
-      
-      {versions.map((version) => (
-        <Card 
-          key={version.id} 
-          bordered
-          styles={{ 
-            body: { padding: '16px' },
-          }}
-          style={{ boxShadow: 'none' }}
-        >
+    <Card 
+      title="Available Versions" 
+      styles={{ header: { background: '#fafafa' } }}
+    >
+      {versions.map((version, index) => (
+        <div key={version.id}>
+          {index > 0 && <Divider style={{ margin: '16px 0' }} />}
+          
           <div className="distribution-version-card">
             <div className="distribution-version-info">
               <div className="distribution-version-header">
@@ -114,8 +117,8 @@ export default function DistributionPage() {
               </Button>
             </div>
           </div>
-        </Card>
+        </div>
       ))}
-    </Space>
+    </Card>
   )
 }

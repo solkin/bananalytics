@@ -116,7 +116,7 @@ export default function AccessPage() {
           />
         ) : (
           <Tag color={role === 'admin' ? 'blue' : role === 'tester' ? 'green' : 'default'}>
-            {role.toUpperCase()}
+            {role.charAt(0).toUpperCase() + role.slice(1)}
           </Tag>
         ),
     },

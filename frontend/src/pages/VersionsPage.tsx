@@ -346,15 +346,15 @@ export default function VersionsPage() {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
+          <Form.Item name="version_name" label="Version Name">
+            <Input placeholder="1.2.3" />
+          </Form.Item>
           <Form.Item
             name="version_code"
             label="Version Code"
             rules={[{ required: true, message: 'Please enter version code' }]}
           >
             <InputNumber min={1} style={{ width: '100%' }} placeholder="123" />
-          </Form.Item>
-          <Form.Item name="version_name" label="Version Name">
-            <Input placeholder="1.2.3" />
           </Form.Item>
           <Form.Item name="release_notes" label="Release Notes">
             <TextArea rows={3} placeholder="What's new in this version..." />
