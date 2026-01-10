@@ -29,7 +29,7 @@ Services:
 ### Production
 
 ```bash
-# Create external network
+# Create external network (if not exists)
 docker network create reverseproxy
 
 # Configure environment
@@ -39,6 +39,8 @@ cp env.example .env
 # Start services
 docker compose -f docker-compose.prod.yml up -d
 ```
+
+The production setup uses Nginx as a reverse proxy. Only the `bananalytics-nginx` container is exposed to the `reverseproxy` network. Connect your main HTTPS server to proxy requests to it.
 
 ## Configuration
 
@@ -84,7 +86,7 @@ Quick overview:
 
 - **Backend**: Kotlin, Ktor, Exposed, PostgreSQL, R8 Retrace
 - **Frontend**: React, TypeScript, Ant Design, Vite
-- **Infrastructure**: Docker, Docker Compose
+- **Infrastructure**: Docker, Docker Compose, Nginx, MinIO
 
 ## License
 
