@@ -14,6 +14,7 @@ import {
   Alert,
   DatePicker,
   Modal,
+  Switch,
 } from 'antd'
 import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
@@ -44,6 +45,7 @@ export default function CrashDetailPage() {
     dayjs().subtract(14, 'day'),
     dayjs(),
   ])
+  const [showRawStacktrace, setShowRawStacktrace] = useState(false)
 
   useEffect(() => {
     if (groupId) loadData()
@@ -154,8 +156,6 @@ export default function CrashDetailPage() {
   if (loading || !group) {
     return <Card loading />
   }
-
-  const stacktrace = selectedCrash?.stacktrace_decoded || selectedCrash?.stacktrace_raw || ''
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -280,11 +280,28 @@ export default function CrashDetailPage() {
                         showIcon
                       />
                     )}
-                    {selectedCrash.stacktrace_decoded && (
-                      <Tag color="green">Deobfuscated</Tag>
-                    )}
+                    <Space>
+                      {selectedCrash.stacktrace_decoded && (
+                        <>
+                          <Tag color={showRawStacktrace ? 'default' : 'green'}>
+                            {showRawStacktrace ? 'Obfuscated' : 'Deobfuscated'}
+                          </Tag>
+                          <Switch
+                            size="small"
+                            checked={showRawStacktrace}
+                            onChange={setShowRawStacktrace}
+                            checkedChildren="Raw"
+                            unCheckedChildren="Decoded"
+                          />
+                        </>
+                      )}
+                    </Space>
                     <Paragraph>
-                      <pre className="stacktrace">{stacktrace}</pre>
+                      <pre className="stacktrace">
+                        {showRawStacktrace || !selectedCrash.stacktrace_decoded
+                          ? selectedCrash.stacktrace_raw
+                          : selectedCrash.stacktrace_decoded}
+                      </pre>
                     </Paragraph>
                   </Space>
                 ),
