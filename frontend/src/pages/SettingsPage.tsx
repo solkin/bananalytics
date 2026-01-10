@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
-  Card,
   Descriptions,
   Button,
   Typography,
@@ -54,44 +53,33 @@ export default function SettingsPage() {
   const maskedKey = showApiKey ? app.api_key : `${app.api_key.slice(0, 8)}${'•'.repeat(24)}`
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Card title="Application Info" styles={{ header: { background: '#fafafa' } }}>
-        <Descriptions column={1} bordered size="small">
-          <Descriptions.Item label="Name">{app.name}</Descriptions.Item>
-          <Descriptions.Item label="Package">
-            <Typography.Text code>{app.package_name}</Typography.Text>
-          </Descriptions.Item>
-          <Descriptions.Item label="Created">
-            {new Date(app.created_at).toLocaleDateString()}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      <Card
-        title="API Key"
-        styles={{ header: { background: '#fafafa' } }}
-        extra={
-          <Space>
-            <Tooltip title={showApiKey ? 'Hide' : 'Show'}>
-              <Button
-                icon={showApiKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                onClick={() => setShowApiKey(!showApiKey)}
-                size="small"
-              />
-            </Tooltip>
-            <Tooltip title="Copy">
-              <Button icon={<CopyOutlined />} onClick={handleCopyApiKey} size="small" />
-            </Tooltip>
-            <Tooltip title="Regenerate">
-              <Button icon={<ReloadOutlined />} onClick={handleRegenerateKey} size="small" danger />
-            </Tooltip>
-          </Space>
-        }
-      >
-        <Typography.Text code style={{ fontSize: 14 }}>
-          {maskedKey}
-        </Typography.Text>
-      </Card>
-    </Space>
+    <Descriptions column={1} bordered size="small">
+      <Descriptions.Item label="Name">{app.name}</Descriptions.Item>
+      <Descriptions.Item label="Package">
+        <Typography.Text code>{app.package_name}</Typography.Text>
+      </Descriptions.Item>
+      <Descriptions.Item label="Created">
+        {new Date(app.created_at).toLocaleDateString()}
+      </Descriptions.Item>
+      <Descriptions.Item label="API Key">
+        <Space>
+          <Typography.Text code>{maskedKey}</Typography.Text>
+          <Tooltip title={showApiKey ? 'Hide' : 'Show'}>
+            <Button
+              icon={showApiKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={() => setShowApiKey(!showApiKey)}
+              size="small"
+              type="text"
+            />
+          </Tooltip>
+          <Tooltip title="Copy">
+            <Button icon={<CopyOutlined />} onClick={handleCopyApiKey} size="small" type="text" />
+          </Tooltip>
+          <Tooltip title="Regenerate">
+            <Button icon={<ReloadOutlined />} onClick={handleRegenerateKey} size="small" type="text" danger />
+          </Tooltip>
+        </Space>
+      </Descriptions.Item>
+    </Descriptions>
   )
 }
