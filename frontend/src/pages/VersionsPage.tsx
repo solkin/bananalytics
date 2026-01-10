@@ -31,8 +31,8 @@ export default function VersionsPage() {
   const [creating, setCreating] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [form] = Form.useForm()
-  const [mappingFile, setMappingFile] = useState<UploadFile | null>(null)
-  const [uploadMappingFile, setUploadMappingFile] = useState<UploadFile | null>(null)
+  const [mappingFileList, setMappingFileList] = useState<UploadFile[]>([])
+  const [uploadMappingFileList, setUploadMappingFileList] = useState<UploadFile[]>([])
 
   const loadVersions = async () => {
     try {
@@ -56,12 +56,12 @@ export default function VersionsPage() {
   }) => {
     try {
       setCreating(true)
-      const file = mappingFile?.originFileObj as File | undefined
+      const file = mappingFileList[0]?.originFileObj
       await createVersion(appId!, values.version_code, values.version_name, file)
       message.success('Version created')
       setModalOpen(false)
       form.resetFields()
-      setMappingFile(null)
+      setMappingFileList([])
       loadVersions()
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to create version')
@@ -71,14 +71,18 @@ export default function VersionsPage() {
   }
 
   const handleUploadMapping = async () => {
-    if (!selectedVersion || !uploadMappingFile) return
+    if (!selectedVersion || uploadMappingFileList.length === 0) return
+    const file = uploadMappingFileList[0]?.originFileObj
+    if (!file) {
+      message.error('Please select a file')
+      return
+    }
     try {
       setUploading(true)
-      const file = uploadMappingFile.originFileObj as File
       await uploadMapping(appId!, selectedVersion.id, file)
       message.success('Mapping uploaded')
       setUploadModalOpen(false)
-      setUploadMappingFile(null)
+      setUploadMappingFileList([])
       loadVersions()
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to upload mapping')
@@ -175,7 +179,7 @@ export default function VersionsPage() {
           icon={<UploadOutlined />}
           onClick={() => {
             setSelectedVersion(record)
-            setUploadMappingFile(null)
+            setUploadMappingFileList([])
             setUploadModalOpen(true)
           }}
         >
@@ -210,7 +214,7 @@ export default function VersionsPage() {
         open={modalOpen}
         onCancel={() => {
           setModalOpen(false)
-          setMappingFile(null)
+          setMappingFileList([])
         }}
         footer={null}
       >
@@ -229,12 +233,9 @@ export default function VersionsPage() {
             <Dragger
               accept=".txt,.map"
               maxCount={1}
-              fileList={mappingFile ? [mappingFile] : []}
-              beforeUpload={(file) => {
-                setMappingFile(file as unknown as UploadFile)
-                return false
-              }}
-              onRemove={() => setMappingFile(null)}
+              fileList={mappingFileList}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setMappingFileList(fileList)}
             >
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
@@ -247,7 +248,7 @@ export default function VersionsPage() {
             <Space>
               <Button onClick={() => {
                 setModalOpen(false)
-                setMappingFile(null)
+                setMappingFileList([])
               }}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={creating}>
                 Create
@@ -262,18 +263,18 @@ export default function VersionsPage() {
         open={uploadModalOpen}
         onCancel={() => {
           setUploadModalOpen(false)
-          setUploadMappingFile(null)
+          setUploadMappingFileList([])
         }}
         footer={
           <Space>
             <Button onClick={() => {
               setUploadModalOpen(false)
-              setUploadMappingFile(null)
+              setUploadMappingFileList([])
             }}>Cancel</Button>
             <Button
               type="primary"
               loading={uploading}
-              disabled={!uploadMappingFile}
+              disabled={uploadMappingFileList.length === 0}
               onClick={handleUploadMapping}
             >
               Upload
@@ -284,12 +285,9 @@ export default function VersionsPage() {
         <Dragger
           accept=".txt,.map"
           maxCount={1}
-          fileList={uploadMappingFile ? [uploadMappingFile] : []}
-          beforeUpload={(file) => {
-            setUploadMappingFile(file as unknown as UploadFile)
-            return false
-          }}
-          onRemove={() => setUploadMappingFile(null)}
+          fileList={uploadMappingFileList}
+          beforeUpload={() => false}
+          onChange={({ fileList }) => setUploadMappingFileList(fileList)}
         >
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
