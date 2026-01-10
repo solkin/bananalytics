@@ -14,10 +14,11 @@ object CrashService {
         crashes: List<CrashData>
     ): Int {
         val versionCode = environment.appVersion
-        val version = VersionRepository.findByAppAndVersionCode(appId, versionCode)
-        val mappingContent = version?.let {
-            VersionRepository.getMappingContent(appId, versionCode)
-        }
+        val versionName = environment.appVersionName
+        
+        // Auto-create version if it doesn't exist
+        val version = VersionRepository.findOrCreate(appId, versionCode, versionName)
+        val mappingContent = VersionRepository.getMappingContent(appId, versionCode)
 
         val deviceInfo = DeviceInfo(
             deviceId = environment.deviceId,
@@ -38,7 +39,7 @@ object CrashService {
 
             CrashRepository.createCrash(
                 appId = appId,
-                versionId = version?.id?.let { UUID.fromString(it) },
+                versionId = UUID.fromString(version.id),
                 versionCode = versionCode,
                 crash = crash,
                 deviceInfo = deviceInfo,

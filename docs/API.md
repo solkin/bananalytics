@@ -106,6 +106,7 @@ Submit analytics events from mobile app.
   "environment": {
     "package_name": "com.example.app",
     "app_version": 123,
+    "app_version_name": "1.2.3",
     "device_id": "uuid",
     "os_version": 34,
     "manufacturer": "Google",
@@ -124,6 +125,10 @@ Submit analytics events from mobile app.
 }
 ```
 
+**Notes:**
+- `app_version_name` is optional but recommended
+- If version doesn't exist, it will be auto-created
+
 **Response:** `200 OK`
 ```json
 { "status": 200 }
@@ -140,6 +145,7 @@ Submit crash reports from mobile app.
   "environment": {
     "package_name": "com.example.app",
     "app_version": 123,
+    "app_version_name": "1.2.3",
     "device_id": "uuid",
     "os_version": 34,
     "manufacturer": "Google",
@@ -165,6 +171,11 @@ Submit crash reports from mobile app.
   ]
 }
 ```
+
+**Notes:**
+- `app_version_name` is optional but recommended
+- If version doesn't exist, it will be auto-created
+- Crash will be deobfuscated if mapping exists for this version
 
 **Response:** `200 OK`
 ```json

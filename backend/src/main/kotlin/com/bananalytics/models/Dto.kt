@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class EnvironmentData(
     @SerialName("package_name") val packageName: String,
     @SerialName("app_version") val appVersion: Long,
+    @SerialName("app_version_name") val appVersionName: String? = null,
     @SerialName("device_id") val deviceId: String,
     @SerialName("os_version") val osVersion: Int,
     val manufacturer: String,

@@ -31,6 +31,36 @@ object VersionRepository {
             ?.toVersionResponse()
     }
 
+    fun findOrCreate(
+        appId: UUID,
+        versionCode: Long,
+        versionName: String?
+    ): AppVersionResponse = transaction {
+        val existing = AppVersions.selectAll()
+            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+            .singleOrNull()
+            ?.toVersionResponse()
+
+        existing ?: run {
+            val now = OffsetDateTime.now()
+            val id = AppVersions.insertAndGetId {
+                it[AppVersions.appId] = appId
+                it[AppVersions.versionCode] = versionCode
+                it[AppVersions.versionName] = versionName
+                it[AppVersions.mappingContent] = null
+                it[AppVersions.createdAt] = now
+            }
+            AppVersionResponse(
+                id = id.value.toString(),
+                appId = appId.toString(),
+                versionCode = versionCode,
+                versionName = versionName,
+                hasMapping = false,
+                createdAt = now.toString()
+            )
+        }
+    }
+
     fun getMappingContent(appId: UUID, versionCode: Long): String? = transaction {
         AppVersions.select(AppVersions.mappingContent)
             .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
