@@ -1,0 +1,10 @@
+FROM gradle:8.12-jdk21
+
+# Install curl for healthcheck
+USER root
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Enable Gradle continuous build for hot reload
+CMD ["gradle", "run", "--continuous", "-t"]

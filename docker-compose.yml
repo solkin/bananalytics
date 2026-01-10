@@ -1,0 +1,82 @@
+# Development configuration
+# Usage: docker compose up
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bananalytics-postgres
+    environment:
+      POSTGRES_DB: bananalytics
+      POSTGRES_USER: bananalytics
+      POSTGRES_PASSWORD: bananalytics_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bananalytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bananalytics-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: bananalytics-backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/bananalytics
+      DATABASE_USER: bananalytics
+      DATABASE_PASSWORD: bananalytics_dev
+      SERVER_PORT: 8080
+      REGISTRATION_ENABLED: "true"
+    ports:
+      - "8266:8080"
+    volumes:
+      - ./backend:/app
+      - backend_gradle:/root/.gradle
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: bananalytics-frontend
+    environment:
+      VITE_API_URL: http://backend:8080
+    ports:
+      - "3177:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  backend_gradle:

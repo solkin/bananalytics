@@ -1,0 +1,66 @@
+# Production configuration
+# Usage: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bananalytics-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bananalytics}
+      POSTGRES_USER: ${POSTGRES_USER:-bananalytics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bananalytics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    # No exposed ports in prod - accessed only via internal network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: bananalytics-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bananalytics}
+      DATABASE_USER: ${POSTGRES_USER:-bananalytics}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SERVER_PORT: 8080
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - reverseproxy
+    # No exposed ports - accessed via reverse proxy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${API_URL:-/api}
+    container_name: bananalytics-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - reverseproxy
+    # No exposed ports - accessed via reverse proxy
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge
+  reverseproxy:
+    external: true

@@ -1,0 +1,32 @@
+# Environment
+.env
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backend
+backend/.gradle/
+backend/.kotlin/
+backend/build/
+backend/out/
+backend/*.jar
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Docker volumes (local development)
+postgres_data/
+pgadmin_data/
+
+# Logs
+*.log
+logs/
