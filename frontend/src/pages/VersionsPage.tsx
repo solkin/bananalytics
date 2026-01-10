@@ -24,7 +24,6 @@ import {
   DownloadOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  InboxOutlined,
   DeleteOutlined,
   LinkOutlined,
   CopyOutlined,
@@ -361,33 +360,32 @@ export default function VersionsPage() {
             <TextArea rows={3} placeholder="What's new in this version..." />
           </Form.Item>
           <Form.Item label="APK File (optional)">
-            <Dragger
-              accept=".apk"
-              maxCount={1}
-              fileList={apkFileList}
-              beforeUpload={() => false}
-              onChange={({ fileList }) => setApkFileList(fileList)}
-            >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Click or drag APK file</p>
-              <p className="ant-upload-hint">Max 200MB</p>
-            </Dragger>
+            <div className="compact-dragger">
+              <Dragger
+                accept=".apk"
+                maxCount={1}
+                fileList={apkFileList}
+                beforeUpload={() => false}
+                onChange={({ fileList }) => setApkFileList(fileList)}
+              >
+                <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                <p className="ant-upload-text">Click or drag APK file (max 200MB)</p>
+              </Dragger>
+            </div>
           </Form.Item>
           <Form.Item label="Mapping File (optional)">
-            <Dragger
-              accept=".txt,.map"
-              maxCount={1}
-              fileList={mappingFileList}
-              beforeUpload={() => false}
-              onChange={({ fileList }) => setMappingFileList(fileList)}
-            >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Click or drag mapping.txt</p>
-            </Dragger>
+            <div className="compact-dragger">
+              <Dragger
+                accept=".txt,.map"
+                maxCount={1}
+                fileList={mappingFileList}
+                beforeUpload={() => false}
+                onChange={({ fileList }) => setMappingFileList(fileList)}
+              >
+                <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                <p className="ant-upload-text">Click or drag mapping.txt</p>
+              </Dragger>
+            </div>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -517,18 +515,18 @@ export default function VersionsPage() {
                 )}
                 <Divider dashed />
                 <Typography.Text type="secondary">Update APK:</Typography.Text>
-                <Dragger
-                  accept=".apk"
-                  maxCount={1}
-                  fileList={uploadApkFileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setUploadApkFileList(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag APK file</p>
-                </Dragger>
+                <div className="compact-dragger">
+                  <Dragger
+                    accept=".apk"
+                    maxCount={1}
+                    fileList={uploadApkFileList}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setUploadApkFileList(fileList)}
+                  >
+                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-text">Click or drag APK file</p>
+                  </Dragger>
+                </div>
                 {uploadApkFileList.length > 0 && (
                   <Button
                     type="primary"
@@ -541,19 +539,18 @@ export default function VersionsPage() {
               </Space>
             ) : (
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Dragger
-                  accept=".apk"
-                  maxCount={1}
-                  fileList={uploadApkFileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setUploadApkFileList(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag APK file</p>
-                  <p className="ant-upload-hint">Max 200MB</p>
-                </Dragger>
+                <div className="compact-dragger">
+                  <Dragger
+                    accept=".apk"
+                    maxCount={1}
+                    fileList={uploadApkFileList}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setUploadApkFileList(fileList)}
+                  >
+                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-text">Click or drag APK file (max 200MB)</p>
+                  </Dragger>
+                </div>
                 {uploadApkFileList.length > 0 && (
                   <Button
                     type="primary"
@@ -580,18 +577,18 @@ export default function VersionsPage() {
                 </Space>
                 <Divider dashed />
                 <Typography.Text type="secondary">Update Mapping:</Typography.Text>
-                <Dragger
-                  accept=".txt,.map"
-                  maxCount={1}
-                  fileList={uploadMappingFileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setUploadMappingFileList(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag mapping.txt</p>
-                </Dragger>
+                <div className="compact-dragger">
+                  <Dragger
+                    accept=".txt,.map"
+                    maxCount={1}
+                    fileList={uploadMappingFileList}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setUploadMappingFileList(fileList)}
+                  >
+                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-text">Click or drag mapping.txt</p>
+                  </Dragger>
+                </div>
                 {uploadMappingFileList.length > 0 && (
                   <Button onClick={handleUploadMapping} loading={uploading}>
                     Upload Mapping
@@ -600,18 +597,18 @@ export default function VersionsPage() {
               </Space>
             ) : (
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Dragger
-                  accept=".txt,.map"
-                  maxCount={1}
-                  fileList={uploadMappingFileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setUploadMappingFileList(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">Click or drag mapping.txt</p>
-                </Dragger>
+                <div className="compact-dragger">
+                  <Dragger
+                    accept=".txt,.map"
+                    maxCount={1}
+                    fileList={uploadMappingFileList}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setUploadMappingFileList(fileList)}
+                  >
+                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-text">Click or drag mapping.txt</p>
+                  </Dragger>
+                </div>
                 {uploadMappingFileList.length > 0 && (
                   <Button onClick={handleUploadMapping} loading={uploading}>
                     Upload Mapping

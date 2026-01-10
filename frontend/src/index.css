@@ -29,3 +29,27 @@ body {
   background: #1e1e1e;
   color: #d4d4d4;
 }
+
+/* Compact drag-and-drop upload */
+.compact-dragger .ant-upload-drag {
+  padding: 12px 16px !important;
+}
+
+.compact-dragger .ant-upload-drag-icon {
+  margin-bottom: 4px !important;
+}
+
+.compact-dragger .ant-upload-drag-icon .anticon {
+  font-size: 24px !important;
+  color: #1677ff;
+}
+
+.compact-dragger .ant-upload-text {
+  font-size: 13px !important;
+  margin-bottom: 0 !important;
+}
+
+.compact-dragger .ant-upload-hint {
+  font-size: 11px !important;
+  margin-top: 2px !important;
+}
