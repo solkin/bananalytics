@@ -34,13 +34,18 @@ object RetraceService {
 
             val mappingSupplier = ProguardMappingSupplier.builder()
                 .setProguardMapProducer { mappingContent.byteInputStream() }
+                .setAllowExperimental(true)
                 .build()
 
+            // Custom regex that handles R8's r8-map-id format in source file position
+            // %c = class, %m = method, %s = source file (can be r8-map-id-xxx), %l = line number
+            val customRegex = "(?:.*?\\bat\\s+%c\\.%m\\s*\\((?:%s)?(?::%l)?\\)\\s*)|(?:(?:.*?[:\"]\\s+)?%c(?::.*)?)";
+            
             val retracer = StringRetrace.create(
                 mappingSupplier,
                 diagnosticsHandler,
-                "",  // regular expression (empty = default)
-                false  // verbose
+                customRegex,
+                true   // verbose
             )
 
             val lines = obfuscatedStacktrace.lines()
