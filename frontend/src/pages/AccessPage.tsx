@@ -111,10 +111,11 @@ export default function AccessPage() {
             options={[
               { label: 'Admin', value: 'admin' },
               { label: 'Viewer', value: 'viewer' },
+              { label: 'Tester', value: 'tester' },
             ]}
           />
         ) : (
-          <Tag color={role === 'admin' ? 'blue' : 'default'}>
+          <Tag color={role === 'admin' ? 'blue' : role === 'tester' ? 'green' : 'default'}>
             {role.toUpperCase()}
           </Tag>
         ),
@@ -197,8 +198,9 @@ export default function AccessPage() {
           >
             <Select
               options={[
-                { label: 'Viewer — Can view crashes and events', value: 'viewer' },
                 { label: 'Admin — Full access including settings', value: 'admin' },
+                { label: 'Viewer — Can view crashes and events', value: 'viewer' },
+                { label: 'Tester — Can download APK builds', value: 'tester' },
               ]}
             />
           </Form.Item>

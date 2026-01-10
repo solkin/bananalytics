@@ -43,3 +43,8 @@ export async function updateAccess(appId: string, userId: string, role: string):
 export async function revokeAccess(appId: string, userId: string): Promise<void> {
   await api.delete(`/apps/${appId}/access/${userId}`)
 }
+
+export async function getMyRole(appId: string): Promise<string> {
+  const response = await api.get<{ role: string }>(`/apps/${appId}/my-role`)
+  return response.data.role
+}

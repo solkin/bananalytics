@@ -11,6 +11,7 @@ import CrashDetailPage from './pages/CrashDetailPage'
 import EventsPage from './pages/EventsPage'
 import EventDetailPage from './pages/EventDetailPage'
 import VersionsPage from './pages/VersionsPage'
+import DistributionPage from './pages/DistributionPage'
 import AccessPage from './pages/AccessPage'
 import SettingsPage from './pages/SettingsPage'
 
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path="events" element={<EventsPage />} />
           <Route path="events/:eventName" element={<EventDetailPage />} />
           <Route path="versions" element={<VersionsPage />} />
+          <Route path="distribution" element={<DistributionPage />} />
           <Route path="access" element={<AccessPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

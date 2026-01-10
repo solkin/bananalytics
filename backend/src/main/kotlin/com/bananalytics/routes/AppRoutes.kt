@@ -4,6 +4,7 @@ import com.bananalytics.config.*
 import com.bananalytics.models.*
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
+import com.bananalytics.repositories.DownloadTokenRepository
 import com.bananalytics.repositories.UserRepository
 import com.bananalytics.repositories.VersionRepository
 import io.ktor.http.*
@@ -215,6 +216,20 @@ fun Route.appRoutes() {
             call.respond(HttpStatusCode.NoContent)
         }
 
+        // Get current user's role for an app
+        get("/{id}/my-role") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAccess(appId, user)
+
+            val role = AppAccessRepository.getUserRole(appId, UUID.fromString(user.id))
+                ?: throw NotFoundException("Access not found")
+
+            call.respond(mapOf("role" to role))
+        }
+
         // --- Versions ---
 
         get("/{id}/versions") {
@@ -342,7 +357,7 @@ fun Route.appRoutes() {
             call.respondText(mappingContent, ContentType.Text.Plain)
         }
 
-        // Update version mute settings
+        // Update version mute settings (legacy, for backwards compatibility)
         put("/{appId}/versions/{versionId}/mute") {
             val user = call.getUser()
             val appId = call.parameters["appId"]?.toUUIDOrNull()
@@ -365,6 +380,176 @@ fun Route.appRoutes() {
 
             val version = VersionRepository.findById(versionId)!!
             call.respond(version)
+        }
+
+        // Update version (release notes, published, mute settings)
+        put("/{appId}/versions/{versionId}") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val request = call.receive<UpdateVersionRequest>()
+
+            val updated = VersionRepository.update(
+                versionId,
+                releaseNotes = request.releaseNotes,
+                publishedForTesters = request.publishedForTesters,
+                muteCrashes = request.muteCrashes,
+                muteEvents = request.muteEvents
+            )
+            if (!updated) {
+                throw NotFoundException("Version not found")
+            }
+
+            val version = VersionRepository.findById(versionId)!!
+            call.respond(version)
+        }
+
+        // Upload APK
+        put("/{appId}/versions/{versionId}/apk") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            var apkBytes: ByteArray? = null
+            var apkFilename: String? = null
+
+            val multipart = call.receiveMultipart()
+            multipart.forEachPart { part ->
+                when (part) {
+                    is PartData.FileItem -> {
+                        if (part.name == "apk") {
+                            apkFilename = part.originalFileName ?: "app.apk"
+                            @Suppress("DEPRECATION")
+                            apkBytes = part.streamProvider().readBytes()
+                        }
+                    }
+                    else -> {}
+                }
+                part.dispose()
+            }
+
+            if (apkBytes == null) {
+                throw BadRequestException("APK file is required")
+            }
+
+            // Check size limit (200MB)
+            if (apkBytes!!.size > 200 * 1024 * 1024) {
+                throw BadRequestException("APK file exceeds 200MB limit")
+            }
+
+            val updated = VersionRepository.uploadApk(versionId, apkBytes!!, apkFilename!!)
+            if (!updated) {
+                throw NotFoundException("Version not found")
+            }
+
+            val version = VersionRepository.findById(versionId)!!
+            call.respond(version)
+        }
+
+        // Download APK
+        get("/{appId}/versions/{versionId}/apk") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAccess(appId, user)
+
+            val apkInfo = VersionRepository.getApkInfo(versionId)
+                ?: throw NotFoundException("Version not found")
+
+            if (apkInfo.first == null) {
+                throw NotFoundException("APK not found")
+            }
+
+            val apkContent = VersionRepository.getApkContent(versionId)
+                ?: throw NotFoundException("APK not found")
+
+            val filename = apkInfo.third ?: "app.apk"
+
+            call.response.header(
+                HttpHeaders.ContentDisposition,
+                ContentDisposition.Attachment.withParameter(
+                    ContentDisposition.Parameters.FileName,
+                    filename
+                ).toString()
+            )
+            call.respondBytes(apkContent, ContentType.parse("application/vnd.android.package-archive"))
+        }
+
+        // Delete APK
+        delete("/{appId}/versions/{versionId}/apk") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val deleted = VersionRepository.deleteApk(versionId)
+            if (!deleted) {
+                throw NotFoundException("Version not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        // Create download link (temporary public link)
+        post("/{appId}/versions/{versionId}/download-link") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            // Check if APK exists
+            val apkInfo = VersionRepository.getApkInfo(versionId)
+            if (apkInfo?.first == null) {
+                throw BadRequestException("No APK uploaded for this version")
+            }
+
+            val request = try {
+                call.receive<CreateDownloadTokenRequest>()
+            } catch (e: Exception) {
+                CreateDownloadTokenRequest()
+            }
+
+            val tokenInfo = DownloadTokenRepository.create(
+                appId = appId,
+                versionId = versionId,
+                expiresInHours = request.expiresInHours
+            )
+
+            call.respond(HttpStatusCode.Created, DownloadTokenResponse(
+                token = tokenInfo.token,
+                downloadUrl = "/api/v1/download/${tokenInfo.token}",
+                expiresAt = tokenInfo.expiresAt.toString()
+            ))
+        }
+
+        // Get published versions for testers (distribution)
+        get("/{appId}/distribution") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAccess(appId, user)
+
+            val versions = VersionRepository.findPublishedForTesters(appId)
+            call.respond(versions)
         }
     }
 }

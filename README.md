@@ -7,8 +7,10 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **Crash Reporting** — Automatic crash grouping by stacktrace fingerprint
 - **R8/ProGuard Deobfuscation** — Upload mapping files to decode stacktraces
 - **Event Analytics** — Track custom events with tags and numeric fields
+- **APK Distribution** — Upload APK builds for testers with release notes
 - **Breadcrumbs** — See user actions leading up to a crash
-- **Multi-user Access** — Share apps with team members (admin/viewer roles)
+- **Session Tracking** — Crash-free sessions and unique session metrics
+- **Multi-user Access** — Share apps with team members (admin/viewer/tester roles)
 - **Version Muting** — Disable crash/event collection for specific versions
 - **Self-hosted** — Full control over your data
 

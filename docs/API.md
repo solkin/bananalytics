@@ -322,15 +322,15 @@ Upload or update mapping file for a version.
 **Form fields:**
 - `mapping` (required): R8/ProGuard mapping file
 
-### PUT /apps/{appId}/versions/{versionId}/mute
-Update mute settings for a version.
-
-When crashes or events are muted for a version, SDK submissions will be silently ignored (return success without storing data).
+### PUT /apps/{appId}/versions/{versionId}
+Update version settings (release notes, publishing, mute settings).
 
 **Request:**
 ```json
 {
-  "mute_crashes": true,
+  "release_notes": "Bug fixes and improvements",
+  "published_for_testers": true,
+  "mute_crashes": false,
   "mute_events": false
 }
 ```
@@ -343,11 +343,105 @@ When crashes or events are muted for a version, SDK submissions will be silently
   "version_code": 123,
   "version_name": "1.2.3",
   "has_mapping": true,
-  "mute_crashes": true,
+  "has_apk": true,
+  "apk_size": 45000000,
+  "apk_filename": "app-release.apk",
+  "apk_uploaded_at": "2026-01-10T12:00:00Z",
+  "release_notes": "Bug fixes and improvements",
+  "published_for_testers": true,
+  "mute_crashes": false,
   "mute_events": false,
   "created_at": "2026-01-10T12:00:00Z"
 }
 ```
+
+### PUT /apps/{appId}/versions/{versionId}/mute
+Update mute settings for a version (legacy, prefer PUT /versions/{id}).
+
+When crashes or events are muted for a version, SDK submissions will be silently ignored (return success without storing data).
+
+**Request:**
+```json
+{
+  "mute_crashes": true,
+  "mute_events": false
+}
+```
+
+### PUT /apps/{appId}/versions/{versionId}/apk
+Upload APK file for a version.
+
+**Content-Type:** `multipart/form-data`
+
+**Form fields:**
+- `apk` (required): APK file (max 200MB)
+
+**Response:** Updated version object
+
+### GET /apps/{appId}/versions/{versionId}/apk
+Download APK file for a version.
+
+**Response:** Binary APK file with Content-Disposition header
+
+### DELETE /apps/{appId}/versions/{versionId}/apk
+Delete APK file from a version.
+
+**Response:** `204 No Content`
+
+### POST /apps/{appId}/versions/{versionId}/download-link
+Create a temporary public download link for APK.
+
+**Request:**
+```json
+{
+  "expires_in_hours": 24
+}
+```
+
+**Response:**
+```json
+{
+  "token": "abc123...",
+  "download_url": "/api/v1/download/abc123...",
+  "expires_at": "2026-01-11T12:00:00Z"
+}
+```
+
+---
+
+## Distribution Endpoints
+
+### GET /apps/{id}/distribution
+Get published versions for testers (versions with APK and `published_for_testers` = true).
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "app_id": "uuid",
+    "version_code": 123,
+    "version_name": "1.2.3",
+    "has_mapping": true,
+    "has_apk": true,
+    "apk_size": 45000000,
+    "apk_filename": "app-release.apk",
+    "apk_uploaded_at": "2026-01-10T12:00:00Z",
+    "release_notes": "Bug fixes and improvements",
+    "published_for_testers": true,
+    "mute_crashes": false,
+    "mute_events": false,
+    "created_at": "2026-01-10T12:00:00Z"
+  }
+]
+```
+
+### GET /download/{token}
+**Public endpoint** - Download APK via temporary token (no authentication required).
+
+**Response:** Binary APK file with Content-Disposition header
+
+**Note:** Returns 404 if token is invalid or expired.
 
 ---
 
@@ -514,6 +608,19 @@ Update user's role.
 Revoke user's access.
 
 **Response:** `204 No Content`
+
+### GET /apps/{id}/my-role
+Get current user's role for an app.
+
+**Response:**
+```json
+{ "role": "admin" }
+```
+
+**Roles:**
+- `admin` - Full access including settings and access management
+- `viewer` - Can view crashes, events, and versions
+- `tester` - Can only access Distribution page and download APKs
 
 ---
 

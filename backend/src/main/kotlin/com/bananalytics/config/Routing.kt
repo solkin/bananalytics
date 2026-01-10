@@ -37,6 +37,7 @@ fun Application.configureRouting() {
         route("/api/v1") {
             // Public routes
             authRoutes()
+            downloadRoutes()
             
             // SDK routes (authenticated by API key)
             sdkRoutes()

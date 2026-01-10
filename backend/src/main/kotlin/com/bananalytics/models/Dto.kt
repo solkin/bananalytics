@@ -99,9 +99,23 @@ data class AppVersionResponse(
     @SerialName("version_code") val versionCode: Long,
     @SerialName("version_name") val versionName: String?,
     @SerialName("has_mapping") val hasMapping: Boolean,
+    @SerialName("has_apk") val hasApk: Boolean,
+    @SerialName("apk_size") val apkSize: Long?,
+    @SerialName("apk_filename") val apkFilename: String?,
+    @SerialName("apk_uploaded_at") val apkUploadedAt: String?,
+    @SerialName("release_notes") val releaseNotes: String?,
+    @SerialName("published_for_testers") val publishedForTesters: Boolean = false,
     @SerialName("mute_crashes") val muteCrashes: Boolean = false,
     @SerialName("mute_events") val muteEvents: Boolean = false,
     @SerialName("created_at") val createdAt: String
+)
+
+@Serializable
+data class UpdateVersionRequest(
+    @SerialName("release_notes") val releaseNotes: String? = null,
+    @SerialName("published_for_testers") val publishedForTesters: Boolean? = null,
+    @SerialName("mute_crashes") val muteCrashes: Boolean? = null,
+    @SerialName("mute_events") val muteEvents: Boolean? = null
 )
 
 @Serializable
@@ -222,4 +236,18 @@ data class SessionVersionStats(
     @SerialName("version_code") val versionCode: Long,
     @SerialName("version_name") val versionName: String?,
     val count: Long
+)
+
+// ============ Download Token DTOs ============
+
+@Serializable
+data class DownloadTokenResponse(
+    val token: String,
+    @SerialName("download_url") val downloadUrl: String,
+    @SerialName("expires_at") val expiresAt: String
+)
+
+@Serializable
+data class CreateDownloadTokenRequest(
+    @SerialName("expires_in_hours") val expiresInHours: Int = 24
 )

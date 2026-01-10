@@ -63,6 +63,16 @@ object AppAccessRepository {
             .count() > 0
     }
 
+    fun isTester(appId: UUID, userId: UUID): Boolean = transaction {
+        AppAccess.selectAll()
+            .where { 
+                (AppAccess.appId eq appId) and 
+                (AppAccess.userId eq userId) and 
+                (AppAccess.role eq "tester") 
+            }
+            .count() > 0
+    }
+
     fun grantAccess(appId: UUID, userId: UUID, role: String): AppAccessResponse = transaction {
         val now = OffsetDateTime.now()
 

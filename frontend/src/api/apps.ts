@@ -1,5 +1,5 @@
 import api from './client'
-import type { App, AppVersion } from '@/types'
+import type { App, AppVersion, DownloadToken } from '@/types'
 
 export async function getApps(): Promise<App[]> {
   const response = await api.get<App[]>('/apps')
@@ -96,4 +96,68 @@ export async function updateVersionMute(
 
 export function getMappingDownloadUrl(appId: string, versionId: string): string {
   return `/api/v1/apps/${appId}/versions/${versionId}/mapping`
+}
+
+// Version update
+export async function updateVersion(
+  appId: string,
+  versionId: string,
+  data: {
+    release_notes?: string
+    published_for_testers?: boolean
+    mute_crashes?: boolean
+    mute_events?: boolean
+  }
+): Promise<AppVersion> {
+  const response = await api.put<AppVersion>(
+    `/apps/${appId}/versions/${versionId}`,
+    data
+  )
+  return response.data
+}
+
+// APK handling
+export async function uploadApk(
+  appId: string,
+  versionId: string,
+  apkFile: File
+): Promise<AppVersion> {
+  const formData = new FormData()
+  formData.append('apk', apkFile)
+
+  const response = await api.put<AppVersion>(
+    `/apps/${appId}/versions/${versionId}/apk`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  )
+  return response.data
+}
+
+export function getApkDownloadUrl(appId: string, versionId: string): string {
+  return `/api/v1/apps/${appId}/versions/${versionId}/apk`
+}
+
+export async function deleteApk(appId: string, versionId: string): Promise<void> {
+  await api.delete(`/apps/${appId}/versions/${versionId}/apk`)
+}
+
+// Download tokens (temporary public links)
+export async function createDownloadToken(
+  appId: string,
+  versionId: string,
+  expiresInHours: number = 24
+): Promise<DownloadToken> {
+  const response = await api.post<DownloadToken>(
+    `/apps/${appId}/versions/${versionId}/download-link`,
+    { expires_in_hours: expiresInHours }
+  )
+  return response.data
+}
+
+// Distribution (for testers)
+export async function getDistributionVersions(appId: string): Promise<AppVersion[]> {
+  const response = await api.get<AppVersion[]>(`/apps/${appId}/distribution`)
+  return response.data
 }

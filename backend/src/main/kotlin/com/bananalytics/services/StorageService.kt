@@ -87,4 +87,50 @@ object StorageService {
             // Ignore if file doesn't exist
         }
     }
+
+    // APK Storage
+
+    fun uploadApk(appId: String, versionCode: Long, content: ByteArray): String {
+        val key = "apks/$appId/$versionCode/app.apk"
+
+        s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType("application/vnd.android.package-archive")
+                .build(),
+            RequestBody.fromBytes(content)
+        )
+
+        return key
+    }
+
+    fun getApkByKey(key: String): ByteArray? {
+        return try {
+            val response = s3Client.getObjectAsBytes(
+                GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build()
+            )
+            response.asByteArray()
+        } catch (e: NoSuchKeyException) {
+            null
+        }
+    }
+
+    fun deleteApk(appId: String, versionCode: Long) {
+        val key = "apks/$appId/$versionCode/app.apk"
+
+        try {
+            s3Client.deleteObject(
+                DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build()
+            )
+        } catch (e: Exception) {
+            // Ignore if file doesn't exist
+        }
+    }
 }

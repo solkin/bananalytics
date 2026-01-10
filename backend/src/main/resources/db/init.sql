@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS app_access (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL DEFAULT 'viewer',  -- 'admin' or 'viewer'
+    role VARCHAR(20) NOT NULL DEFAULT 'viewer',  -- 'admin', 'viewer', or 'tester'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(app_id, user_id)
 );
@@ -49,13 +49,19 @@ CREATE TABLE IF NOT EXISTS app_access (
 CREATE INDEX IF NOT EXISTS idx_app_access_user_id ON app_access(user_id);
 CREATE INDEX IF NOT EXISTS idx_app_access_app_id ON app_access(app_id);
 
--- Application versions with mappings
+-- Application versions with mappings and APK distribution
 CREATE TABLE IF NOT EXISTS app_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     version_code BIGINT NOT NULL,
     version_name VARCHAR(50),
     mapping_path VARCHAR(512),
+    apk_path VARCHAR(512),
+    apk_size BIGINT,
+    apk_filename VARCHAR(255),
+    apk_uploaded_at TIMESTAMPTZ,
+    release_notes TEXT,
+    published_for_testers BOOLEAN NOT NULL DEFAULT false,
     mute_crashes BOOLEAN NOT NULL DEFAULT false,
     mute_events BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -63,6 +69,7 @@ CREATE TABLE IF NOT EXISTS app_versions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_app_versions_app_id ON app_versions(app_id);
+CREATE INDEX IF NOT EXISTS idx_app_versions_published ON app_versions(app_id, published_for_testers);
 
 -- Crash groups (aggregated by fingerprint)
 CREATE TABLE IF NOT EXISTS crash_groups (
@@ -165,3 +172,16 @@ CREATE INDEX IF NOT EXISTS idx_app_sessions_app_id ON app_sessions(app_id);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_version ON app_sessions(app_id, version_code);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_first_seen ON app_sessions(first_seen);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_has_crash ON app_sessions(app_id, has_crash);
+
+-- Download tokens for temporary public APK links
+CREATE TABLE IF NOT EXISTS download_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+    version_id UUID NOT NULL REFERENCES app_versions(id) ON DELETE CASCADE,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_download_tokens_token ON download_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_download_tokens_version ON download_tokens(version_id);

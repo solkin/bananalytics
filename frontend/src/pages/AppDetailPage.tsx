@@ -12,15 +12,18 @@ import {
   TagsOutlined,
   TeamOutlined,
   SettingOutlined,
+  CloudDownloadOutlined,
 } from '@ant-design/icons'
 import type { App } from '@/types'
 import { getApp } from '@/api/apps'
+import { getMyRole } from '@/api/auth'
 
 export default function AppDetailPage() {
   const { appId } = useParams<{ appId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const [app, setApp] = useState<App | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const currentTab = location.pathname.split('/')[3] || 'crashes'
@@ -33,8 +36,17 @@ export default function AppDetailPage() {
   const loadApp = async () => {
     try {
       setLoading(true)
-      const data = await getApp(appId!)
-      setApp(data)
+      const [appData, userRole] = await Promise.all([
+        getApp(appId!),
+        getMyRole(appId!),
+      ])
+      setApp(appData)
+      setRole(userRole)
+
+      // If tester, redirect to distribution if not already there
+      if (userRole === 'tester' && currentTab !== 'distribution') {
+        navigate('distribution', { replace: true })
+      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load app')
       navigate('/')
@@ -43,13 +55,24 @@ export default function AppDetailPage() {
     }
   }
 
-  const menuItems = [
+  const isTester = role === 'tester'
+  const isAdmin = role === 'admin'
+
+  const allMenuItems = [
     { key: 'crashes', icon: <BugOutlined />, label: <Link to="crashes">Crashes</Link> },
     { key: 'events', icon: <BarChartOutlined />, label: <Link to="events">Events</Link> },
     { key: 'versions', icon: <TagsOutlined />, label: <Link to="versions">Versions</Link> },
+    { key: 'distribution', icon: <CloudDownloadOutlined />, label: <Link to="distribution">Distribution</Link> },
     { key: 'access', icon: <TeamOutlined />, label: <Link to="access">Access</Link> },
     { key: 'settings', icon: <SettingOutlined />, label: <Link to="settings">Settings</Link> },
   ]
+
+  // Testers only see Distribution
+  const menuItems = isTester
+    ? allMenuItems.filter(item => item.key === 'distribution')
+    : isAdmin
+      ? allMenuItems
+      : allMenuItems.filter(item => !['access', 'settings'].includes(item.key))
 
   if (loading || !app) {
     return <Card loading={loading} />
@@ -67,7 +90,7 @@ export default function AppDetailPage() {
         style={{ borderBottom: 'none' }}
       />
       <div style={{ padding: 24 }}>
-        <Outlet context={{ app, reload: loadApp }} />
+        <Outlet context={{ app, role, reload: loadApp }} />
       </div>
     </Card>
   )

@@ -18,6 +18,12 @@ object AppVersions : UUIDTable("app_versions") {
     val versionCode = long("version_code")
     val versionName = varchar("version_name", 50).nullable()
     val mappingPath = varchar("mapping_path", 512).nullable()
+    val apkPath = varchar("apk_path", 512).nullable()
+    val apkSize = long("apk_size").nullable()
+    val apkFilename = varchar("apk_filename", 255).nullable()
+    val apkUploadedAt = timestampWithTimeZone("apk_uploaded_at").nullable()
+    val releaseNotes = text("release_notes").nullable()
+    val publishedForTesters = bool("published_for_testers").default(false)
     val muteCrashes = bool("mute_crashes").default(false)
     val muteEvents = bool("mute_events").default(false)
     val createdAt = timestampWithTimeZone("created_at")
@@ -87,4 +93,12 @@ object AppSessions : UUIDTable("app_sessions") {
     init {
         uniqueIndex(appId, sessionId)
     }
+}
+
+object DownloadTokens : UUIDTable("download_tokens") {
+    val appId = reference("app_id", Apps)
+    val versionId = reference("version_id", AppVersions)
+    val token = varchar("token", 64).uniqueIndex()
+    val expiresAt = timestampWithTimeZone("expires_at")
+    val createdAt = timestampWithTimeZone("created_at")
 }

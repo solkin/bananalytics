@@ -12,9 +12,21 @@ export interface AppVersion {
   version_code: number
   version_name: string | null
   has_mapping: boolean
+  has_apk: boolean
+  apk_size: number | null
+  apk_filename: string | null
+  apk_uploaded_at: string | null
+  release_notes: string | null
+  published_for_testers: boolean
   mute_crashes: boolean
   mute_events: boolean
   created_at: string
+}
+
+export interface DownloadToken {
+  token: string
+  download_url: string
+  expires_at: string
 }
 
 export interface CrashGroup {
