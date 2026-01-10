@@ -6,7 +6,8 @@ WORKDIR /app
 ARG VITE_API_URL=/api
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+# Use npm install to regenerate platform-specific optional deps
+RUN npm install --frozen-lockfile || npm install
 
 COPY . .
 RUN npm run build
