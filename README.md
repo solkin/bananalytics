@@ -9,6 +9,7 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **Event Analytics** — Track custom events with tags and numeric fields
 - **Breadcrumbs** — See user actions leading up to a crash
 - **Multi-user Access** — Share apps with team members (admin/viewer roles)
+- **Version Muting** — Disable crash/event collection for specific versions
 - **Self-hosted** — Full control over your data
 
 ## Quick Start
@@ -23,6 +24,7 @@ Services:
 - **Frontend**: http://localhost:3177
 - **Backend API**: http://localhost:8266
 - **pgAdmin**: http://localhost:5050 (admin@admin.com / admin)
+- **MinIO Console**: http://localhost:9101 (bananalytics / bananalytics_dev)
 
 ### Production
 
@@ -43,6 +45,9 @@ docker compose -f docker-compose.prod.yml up -d
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `POSTGRES_PASSWORD` | Database password | Required |
+| `S3_ACCESS_KEY` | MinIO/S3 access key | Required |
+| `S3_SECRET_KEY` | MinIO/S3 secret key | Required |
+| `S3_BUCKET` | Bucket for mapping files | `bananalytics` |
 | `REGISTRATION_ENABLED` | Allow new user registration | `false` (prod) |
 
 ## Android SDK Integration

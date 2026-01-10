@@ -234,6 +234,11 @@ Regenerate API key for an app.
 { "api_key": "bnn_new_key" }
 ```
 
+### DELETE /apps/{id}
+Delete an application and all associated data (crashes, events, versions, access).
+
+**Response:** `204 No Content`
+
 ---
 
 ## Versions Endpoints
@@ -258,23 +263,22 @@ List versions for an app.
 ```
 
 ### POST /apps/{id}/versions
-Create a new version with optional mapping.
+Create a new version with optional mapping file.
 
-**Request:**
-```json
-{
-  "version_code": 123,
-  "version_name": "1.2.3",
-  "mapping_content": "# R8 mapping file content..."
-}
-```
+**Content-Type:** `multipart/form-data`
+
+**Form fields:**
+- `version_code` (required): Version code number
+- `version_name` (optional): Version name string (e.g., "1.2.3")
+- `mapping` (optional): R8/ProGuard mapping file
 
 ### PUT /apps/{appId}/versions/{versionId}/mapping
-Upload or update mapping file.
+Upload or update mapping file for a version.
 
-**Request:** Plain text mapping file content
+**Content-Type:** `multipart/form-data`
 
-**Content-Type:** `text/plain`
+**Form fields:**
+- `mapping` (required): R8/ProGuard mapping file
 
 ### PUT /apps/{appId}/versions/{versionId}/mute
 Update mute settings for a version.
@@ -380,6 +384,43 @@ Update crash group status.
 Delete a crash group and all associated crashes.
 
 **Response:** `204 No Content`
+
+### GET /apps/{id}/crashes/stats
+Get crash statistics over time for an app.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  { "date": "2026-01-10", "count": 15 },
+  { "date": "2026-01-11", "count": 8 }
+]
+```
+
+### GET /crash-groups/{id}/stats
+Get crash statistics over time for a specific crash group.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  { "date": "2026-01-10", "count": 5 },
+  { "date": "2026-01-11", "count": 3 }
+]
+```
+
+### GET /apps/{id}/crashes/versions
+Get available version codes that have crashes.
+
+**Response:**
+```json
+[
+  { "version_code": 123, "version_name": "1.2.3" },
+  { "version_code": 122, "version_name": "1.2.2" }
+]
+```
 
 ### POST /crashes/{id}/retrace
 Re-deobfuscate a crash stacktrace.
@@ -493,8 +534,21 @@ Get version statistics for a specific event.
 **Response:**
 ```json
 [
-  { "version_code": 123, "count": 500 },
-  { "version_code": 122, "count": 320 }
+  { "version_code": 123, "version_name": "1.2.3", "count": 500 },
+  { "version_code": 122, "version_name": "1.2.2", "count": 320 }
+]
+```
+
+### GET /apps/{id}/events/by-name/{eventName}/stats
+Get event statistics over time.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  { "date": "2026-01-10", "count": 150 },
+  { "date": "2026-01-11", "count": 120 }
 ]
 ```
 
