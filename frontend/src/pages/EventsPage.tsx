@@ -53,7 +53,36 @@ export default function EventsPage() {
         version: s.version_name ? `${s.version_name} (${s.version_code})` : `v${s.version_code}`,
       }))
       
-      setSessionStats(transformed as SessionVersionStats[])
+      // Get unique versions from the data
+      const uniqueVersions = [...new Set(transformed.map(s => s.version))]
+      
+      // Create a map for quick lookup
+      const dataMap = new Map<string, number>()
+      transformed.forEach(s => {
+        dataMap.set(`${s.date}-${s.version}`, s.count)
+      })
+      
+      // Fill missing dates for each version
+      const filledData: SessionVersionStats[] = []
+      let current = dateRange[0].startOf('day')
+      const end = dateRange[1].startOf('day')
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dateStr = current.format('YYYY-MM-DD')
+        uniqueVersions.forEach(version => {
+          const count = dataMap.get(`${dateStr}-${version}`) || 0
+          filledData.push({
+            date: dateStr,
+            version_code: 0, // Not used in chart
+            version_name: null,
+            count,
+            version,
+          } as SessionVersionStats & { version: string })
+        })
+        current = current.add(1, 'day')
+      }
+      
+      setSessionStats(filledData as SessionVersionStats[])
     } catch (error) {
       console.error('Failed to load session stats', error)
     }

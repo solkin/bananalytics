@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Table, Tag, Select, Space, Typography, message, Card, DatePicker } from 'antd'
 import { Column, Line } from '@ant-design/charts'
 import type { CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroups, getCrashVersions, getAppCrashStats, getCrashFreeStats, type VersionInfo, type DailyStat, type CrashFreeStats } from '@/api/crashes'
+import { getCrashGroups, getCrashVersions, getAppCrashStats, getCrashFreeStatsByVersion, type VersionInfo, type DailyStat, type SessionVersionStats } from '@/api/crashes'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -26,7 +26,7 @@ export default function CrashesPage() {
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [stats, setStats] = useState<DailyStat[]>([])
-  const [crashFreeStats, setCrashFreeStats] = useState<CrashFreeStats[]>([])
+  const [crashFreeStats, setCrashFreeStats] = useState<(SessionVersionStats & { version: string })[]>([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | undefined>(undefined)
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
@@ -59,7 +59,7 @@ export default function CrashesPage() {
           from: dateRange[0].startOf('day').toISOString(),
           to: dateRange[1].endOf('day').toISOString(),
         }),
-        getCrashFreeStats(appId!, {
+        getCrashFreeStatsByVersion(appId!, {
           from: dateRange[0].startOf('day').toISOString(),
           to: dateRange[1].endOf('day').toISOString(),
         }),
@@ -82,19 +82,36 @@ export default function CrashesPage() {
       
       setStats(filledStats)
       
-      // Fill crash-free stats
-      const crashFreeMap = new Map(crashFreeData.map(s => [s.date, s]))
-      const filledCrashFree: CrashFreeStats[] = []
+      // Transform crash-free data for multi-line chart
+      const transformed = crashFreeData.map(s => ({
+        ...s,
+        version: s.version_name ? `${s.version_name} (${s.version_code})` : `v${s.version_code}`,
+      }))
+      
+      // Get unique versions from the data
+      const uniqueVersions = [...new Set(transformed.map(s => s.version))]
+      
+      // Create a map for quick lookup (key: date-version, value: count which is crash-free rate * 10)
+      const dataMap = new Map<string, number>()
+      transformed.forEach(s => {
+        dataMap.set(`${s.date}-${s.version}`, s.count)
+      })
+      
+      // Fill missing dates for each version
+      const filledCrashFree: (SessionVersionStats & { version: string })[] = []
       current = dateRange[0].startOf('day')
       
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         const dateStr = current.format('YYYY-MM-DD')
-        const existing = crashFreeMap.get(dateStr)
-        filledCrashFree.push(existing || {
-          date: dateStr,
-          total_sessions: 0,
-          crash_free_sessions: 0,
-          crash_free_rate: 100,
+        uniqueVersions.forEach(version => {
+          const count = dataMap.get(`${dateStr}-${version}`) ?? 1000 // 1000 = 100% when no data
+          filledCrashFree.push({
+            date: dateStr,
+            version_code: 0,
+            version_name: null,
+            count,
+            version,
+          })
         })
         current = current.add(1, 'day')
       }
@@ -161,7 +178,7 @@ export default function CrashesPage() {
   ]
 
   // Check if we have session data
-  const hasSessionData = crashFreeStats.some(s => s.total_sessions > 0)
+  const hasSessionData = crashFreeStats.length > 0
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -182,11 +199,16 @@ export default function CrashesPage() {
           }
         >
           <Line
-            data={crashFreeStats}
+            data={crashFreeStats.map(s => ({
+              date: s.date,
+              rate: s.count / 10, // count stores rate * 10 for precision
+              version: s.version,
+            }))}
             xField="date"
-            yField="crash_free_rate"
+            yField="rate"
+            seriesField="version"
             height={200}
-            color="#52c41a"
+            color={versionColors}
             xAxis={{
               label: {
                 formatter: (v: string) => dayjs(v).format('MM-DD'),
@@ -203,8 +225,11 @@ export default function CrashesPage() {
               size: 3,
               shape: 'circle',
             }}
+            legend={{
+              position: 'top-right',
+            }}
             tooltip={{
-              title: (d: CrashFreeStats) => dayjs(d.date).format('YYYY-MM-DD'),
+              title: (d: any) => dayjs(d.date).format('YYYY-MM-DD'),
               items: [
                 { channel: 'y', name: 'Crash-Free Rate', valueFormatter: (v: number) => `${v.toFixed(1)}%` },
               ],
