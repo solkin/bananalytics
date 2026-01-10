@@ -12,12 +12,14 @@ import {
   message,
   Typography,
   Switch,
+  Upload,
 } from 'antd'
-import { PlusOutlined, UploadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, UploadOutlined, CheckCircleOutlined, CloseCircleOutlined, InboxOutlined } from '@ant-design/icons'
+import type { UploadFile } from 'antd'
 import type { AppVersion } from '@/types'
 import { getVersions, createVersion, uploadMapping, updateVersionMute } from '@/api/apps'
 
-const { TextArea } = Input
+const { Dragger } = Upload
 
 export default function VersionsPage() {
   const { appId } = useParams<{ appId: string }>()
@@ -29,7 +31,8 @@ export default function VersionsPage() {
   const [creating, setCreating] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [form] = Form.useForm()
-  const [uploadForm] = Form.useForm()
+  const [mappingFile, setMappingFile] = useState<UploadFile | null>(null)
+  const [uploadMappingFile, setUploadMappingFile] = useState<UploadFile | null>(null)
 
   const loadVersions = async () => {
     try {
@@ -47,17 +50,30 @@ export default function VersionsPage() {
     if (appId) loadVersions()
   }, [appId])
 
+  const readFileContent = (file: UploadFile): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target?.result as string)
+      reader.onerror = reject
+      reader.readAsText(file.originFileObj as Blob)
+    })
+  }
+
   const handleCreate = async (values: {
     version_code: number
     version_name?: string
-    mapping_content?: string
   }) => {
     try {
       setCreating(true)
-      await createVersion(appId!, values.version_code, values.version_name, values.mapping_content)
+      let mappingContent: string | undefined
+      if (mappingFile) {
+        mappingContent = await readFileContent(mappingFile)
+      }
+      await createVersion(appId!, values.version_code, values.version_name, mappingContent)
       message.success('Version created')
       setModalOpen(false)
       form.resetFields()
+      setMappingFile(null)
       loadVersions()
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to create version')
@@ -66,14 +82,15 @@ export default function VersionsPage() {
     }
   }
 
-  const handleUploadMapping = async (values: { mapping_content: string }) => {
-    if (!selectedVersion) return
+  const handleUploadMapping = async () => {
+    if (!selectedVersion || !uploadMappingFile) return
     try {
       setUploading(true)
-      await uploadMapping(appId!, selectedVersion.id, values.mapping_content)
+      const content = await readFileContent(uploadMappingFile)
+      await uploadMapping(appId!, selectedVersion.id, content)
       message.success('Mapping uploaded')
       setUploadModalOpen(false)
-      uploadForm.resetFields()
+      setUploadMappingFile(null)
       loadVersions()
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to upload mapping')
@@ -88,7 +105,6 @@ export default function VersionsPage() {
     enabled: boolean
   ) => {
     try {
-      // Invert: enabled means NOT muted
       await updateVersionMute(
         appId!,
         version.id,
@@ -171,6 +187,7 @@ export default function VersionsPage() {
           icon={<UploadOutlined />}
           onClick={() => {
             setSelectedVersion(record)
+            setUploadMappingFile(null)
             setUploadModalOpen(true)
           }}
         >
@@ -203,7 +220,10 @@ export default function VersionsPage() {
       <Modal
         title="Add Version"
         open={modalOpen}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false)
+          setMappingFile(null)
+        }}
         footer={null}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
@@ -217,12 +237,30 @@ export default function VersionsPage() {
           <Form.Item name="version_name" label="Version Name">
             <Input placeholder="1.2.3" />
           </Form.Item>
-          <Form.Item name="mapping_content" label="Mapping File (optional)">
-            <TextArea rows={6} placeholder="Paste mapping.txt content here..." />
+          <Form.Item label="Mapping File (optional)">
+            <Dragger
+              accept=".txt,.map"
+              maxCount={1}
+              fileList={mappingFile ? [mappingFile] : []}
+              beforeUpload={(file) => {
+                setMappingFile(file as unknown as UploadFile)
+                return false
+              }}
+              onRemove={() => setMappingFile(null)}
+            >
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined />
+              </p>
+              <p className="ant-upload-text">Click or drag mapping.txt file to this area</p>
+              <p className="ant-upload-hint">Support for R8/ProGuard mapping files</p>
+            </Dragger>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={() => {
+                setModalOpen(false)
+                setMappingFile(null)
+              }}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={creating}>
                 Create
               </Button>
@@ -234,26 +272,43 @@ export default function VersionsPage() {
       <Modal
         title={`Upload Mapping for v${selectedVersion?.version_code}`}
         open={uploadModalOpen}
-        onCancel={() => setUploadModalOpen(false)}
-        footer={null}
+        onCancel={() => {
+          setUploadModalOpen(false)
+          setUploadMappingFile(null)
+        }}
+        footer={
+          <Space>
+            <Button onClick={() => {
+              setUploadModalOpen(false)
+              setUploadMappingFile(null)
+            }}>Cancel</Button>
+            <Button
+              type="primary"
+              loading={uploading}
+              disabled={!uploadMappingFile}
+              onClick={handleUploadMapping}
+            >
+              Upload
+            </Button>
+          </Space>
+        }
       >
-        <Form form={uploadForm} layout="vertical" onFinish={handleUploadMapping}>
-          <Form.Item
-            name="mapping_content"
-            label="Mapping File"
-            rules={[{ required: true, message: 'Please paste mapping content' }]}
-          >
-            <TextArea rows={10} placeholder="Paste mapping.txt content here..." />
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setUploadModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={uploading}>
-                Upload
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+        <Dragger
+          accept=".txt,.map"
+          maxCount={1}
+          fileList={uploadMappingFile ? [uploadMappingFile] : []}
+          beforeUpload={(file) => {
+            setUploadMappingFile(file as unknown as UploadFile)
+            return false
+          }}
+          onRemove={() => setUploadMappingFile(null)}
+        >
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined />
+          </p>
+          <p className="ant-upload-text">Click or drag mapping.txt file to this area</p>
+          <p className="ant-upload-hint">Support for R8/ProGuard mapping files</p>
+        </Dragger>
       </Modal>
     </>
   )
