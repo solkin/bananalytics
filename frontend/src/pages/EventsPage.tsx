@@ -133,9 +133,6 @@ export default function EventsPage() {
   // Check if we have session data
   const hasSessionData = sessionStats.length > 0
 
-  // Get unique versions for color mapping
-  const uniqueVersions = [...new Set(sessionStats.map(s => (s as any).version || `v${s.version_code}`))]
-
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {hasSessionData && (
