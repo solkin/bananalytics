@@ -12,6 +12,8 @@ export interface AppVersion {
   version_code: number
   version_name: string | null
   has_mapping: boolean
+  mute_crashes: boolean
+  mute_events: boolean
   created_at: string
 }
 

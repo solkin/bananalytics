@@ -67,3 +67,19 @@ export async function uploadMapping(
   )
   return response.data
 }
+
+export async function updateVersionMute(
+  appId: string,
+  versionId: string,
+  muteCrashes?: boolean,
+  muteEvents?: boolean
+): Promise<AppVersion> {
+  const response = await api.put<AppVersion>(
+    `/apps/${appId}/versions/${versionId}/mute`,
+    {
+      mute_crashes: muteCrashes,
+      mute_events: muteEvents,
+    }
+  )
+  return response.data
+}

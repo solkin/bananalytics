@@ -18,6 +18,8 @@ object AppVersions : UUIDTable("app_versions") {
     val versionCode = long("version_code")
     val versionName = varchar("version_name", 50).nullable()
     val mappingContent = text("mapping_content").nullable()
+    val muteCrashes = bool("mute_crashes").default(false)
+    val muteEvents = bool("mute_events").default(false)
     val createdAt = timestampWithTimeZone("created_at")
 
     init {

@@ -104,12 +104,21 @@ object VersionRepository {
         AppVersions.deleteWhere { AppVersions.id eq id } > 0
     }
 
+    fun updateMuteSettings(id: UUID, muteCrashes: Boolean?, muteEvents: Boolean?): Boolean = transaction {
+        AppVersions.update({ AppVersions.id eq id }) {
+            muteCrashes?.let { value -> it[AppVersions.muteCrashes] = value }
+            muteEvents?.let { value -> it[AppVersions.muteEvents] = value }
+        } > 0
+    }
+
     private fun ResultRow.toVersionResponse() = AppVersionResponse(
         id = this[AppVersions.id].value.toString(),
         appId = this[AppVersions.appId].value.toString(),
         versionCode = this[AppVersions.versionCode],
         versionName = this[AppVersions.versionName],
         hasMapping = this[AppVersions.mappingContent] != null,
+        muteCrashes = this[AppVersions.muteCrashes],
+        muteEvents = this[AppVersions.muteEvents],
         createdAt = this[AppVersions.createdAt].toString()
     )
 }

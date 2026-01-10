@@ -128,6 +128,7 @@ Submit analytics events from mobile app.
 **Notes:**
 - `app_version_name` is optional but recommended
 - If version doesn't exist, it will be auto-created
+- If events are muted for this version, data will be silently ignored
 
 **Response:** `200 OK`
 ```json
@@ -176,6 +177,7 @@ Submit crash reports from mobile app.
 - `app_version_name` is optional but recommended
 - If version doesn't exist, it will be auto-created
 - Crash will be deobfuscated if mapping exists for this version
+- If crashes are muted for this version, data will be silently ignored
 
 **Response:** `200 OK`
 ```json
@@ -248,6 +250,8 @@ List versions for an app.
     "version_code": 123,
     "version_name": "1.2.3",
     "has_mapping": true,
+    "mute_crashes": false,
+    "mute_events": false,
     "created_at": "2026-01-10T12:00:00Z"
   }
 ]
@@ -271,6 +275,33 @@ Upload or update mapping file.
 **Request:** Plain text mapping file content
 
 **Content-Type:** `text/plain`
+
+### PUT /apps/{appId}/versions/{versionId}/mute
+Update mute settings for a version.
+
+When crashes or events are muted for a version, SDK submissions will be silently ignored (return success without storing data).
+
+**Request:**
+```json
+{
+  "mute_crashes": true,
+  "mute_events": false
+}
+```
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "app_id": "uuid",
+  "version_code": 123,
+  "version_name": "1.2.3",
+  "has_mapping": true,
+  "mute_crashes": true,
+  "mute_events": false,
+  "created_at": "2026-01-10T12:00:00Z"
+}
+```
 
 ---
 

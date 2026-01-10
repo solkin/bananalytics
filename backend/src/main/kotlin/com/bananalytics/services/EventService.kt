@@ -18,7 +18,12 @@ object EventService {
         val versionName = environment.appVersionName
         
         // Auto-create version if it doesn't exist
-        VersionRepository.findOrCreate(appId, versionCode, versionName)
+        val version = VersionRepository.findOrCreate(appId, versionCode, versionName)
+        
+        // Check if events are muted for this version
+        if (version.muteEvents) {
+            return 0 // Silently ignore, return success
+        }
 
         val deviceInfo = DeviceInfo(
             deviceId = environment.deviceId,

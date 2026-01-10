@@ -273,6 +273,31 @@ fun Route.appRoutes() {
             val version = VersionRepository.findById(versionId)!!
             call.respond(version)
         }
+
+        // Update version mute settings
+        put("/{appId}/versions/{versionId}/mute") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val request = call.receive<UpdateVersionMuteRequest>()
+
+            val updated = VersionRepository.updateMuteSettings(
+                versionId,
+                request.muteCrashes,
+                request.muteEvents
+            )
+            if (!updated) {
+                throw NotFoundException("Version not found")
+            }
+
+            val version = VersionRepository.findById(versionId)!!
+            call.respond(version)
+        }
     }
 }
 

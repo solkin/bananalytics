@@ -97,7 +97,15 @@ data class AppVersionResponse(
     @SerialName("version_code") val versionCode: Long,
     @SerialName("version_name") val versionName: String?,
     @SerialName("has_mapping") val hasMapping: Boolean,
+    @SerialName("mute_crashes") val muteCrashes: Boolean = false,
+    @SerialName("mute_events") val muteEvents: Boolean = false,
     @SerialName("created_at") val createdAt: String
+)
+
+@Serializable
+data class UpdateVersionMuteRequest(
+    @SerialName("mute_crashes") val muteCrashes: Boolean? = null,
+    @SerialName("mute_events") val muteEvents: Boolean? = null
 )
 
 @Serializable

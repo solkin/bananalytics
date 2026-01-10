@@ -18,6 +18,12 @@ object CrashService {
         
         // Auto-create version if it doesn't exist
         val version = VersionRepository.findOrCreate(appId, versionCode, versionName)
+        
+        // Check if crashes are muted for this version
+        if (version.muteCrashes) {
+            return 0 // Silently ignore, return success
+        }
+        
         val mappingContent = VersionRepository.getMappingContent(appId, versionCode)
 
         val deviceInfo = DeviceInfo(

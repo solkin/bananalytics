@@ -7,15 +7,15 @@ import {
   Form,
   Input,
   InputNumber,
-  Upload,
   Tag,
   Space,
   message,
   Typography,
+  Switch,
 } from 'antd'
 import { PlusOutlined, UploadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import type { AppVersion } from '@/types'
-import { getVersions, createVersion, uploadMapping } from '@/api/apps'
+import { getVersions, createVersion, uploadMapping, updateVersionMute } from '@/api/apps'
 
 const { TextArea } = Input
 
@@ -82,6 +82,25 @@ export default function VersionsPage() {
     }
   }
 
+  const handleMuteToggle = async (
+    version: AppVersion,
+    type: 'crashes' | 'events',
+    checked: boolean
+  ) => {
+    try {
+      await updateVersionMute(
+        appId!,
+        version.id,
+        type === 'crashes' ? checked : undefined,
+        type === 'events' ? checked : undefined
+      )
+      message.success(`${type === 'crashes' ? 'Crashes' : 'Events'} ${checked ? 'muted' : 'unmuted'}`)
+      loadVersions()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Failed to update mute settings')
+    }
+  }
+
   const columns = [
     {
       title: 'Version Code',
@@ -115,6 +134,32 @@ export default function VersionsPage() {
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: 'Mute Crashes',
+      key: 'mute_crashes',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: AppVersion) => (
+        <Switch
+          checked={record.mute_crashes}
+          onChange={(checked) => handleMuteToggle(record, 'crashes', checked)}
+          size="small"
+        />
+      ),
+    },
+    {
+      title: 'Mute Events',
+      key: 'mute_events',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: AppVersion) => (
+        <Switch
+          checked={record.mute_events}
+          onChange={(checked) => handleMuteToggle(record, 'events', checked)}
+          size="small"
+        />
+      ),
     },
     {
       title: 'Actions',
