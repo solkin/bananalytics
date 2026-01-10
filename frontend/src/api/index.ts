@@ -1,3 +1,14 @@
 export * from './apps'
 export * from './crashes'
-export * from './events'
+export { 
+  getEventSummary,
+  getEventVersions,
+  getEventsByName,
+  getEventVersionStats,
+  getEvents,
+  getEventNames,
+  getEventCount,
+  getEventStats,
+  type EventSummary,
+  type EventVersionStats,
+} from './events'

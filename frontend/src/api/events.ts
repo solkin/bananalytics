@@ -1,5 +1,8 @@
 import api from './client'
 import type { Event, PaginatedResponse } from '@/types'
+import type { DailyStat, VersionInfo } from './crashes'
+
+export type { DailyStat, VersionInfo }
 
 export interface EventSummary {
   name: string
@@ -12,11 +15,6 @@ export interface EventVersionStats {
   version_code: number
   version_name: string | null
   count: number
-}
-
-export interface VersionInfo {
-  version_code: number
-  version_name: string | null
 }
 
 export async function getEventSummary(
@@ -85,11 +83,6 @@ export async function getEventNames(appId: string): Promise<string[]> {
 export async function getEventCount(appId: string): Promise<number> {
   const response = await api.get<{ count: number }>(`/apps/${appId}/events/count`)
   return response.data.count
-}
-
-export interface DailyStat {
-  date: string
-  count: number
 }
 
 export async function getEventStats(
