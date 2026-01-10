@@ -14,7 +14,7 @@ import {
   Alert,
   DatePicker,
   Modal,
-  Switch,
+  Segmented,
 } from 'antd'
 import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
@@ -45,7 +45,7 @@ export default function CrashDetailPage() {
     dayjs().subtract(14, 'day'),
     dayjs(),
   ])
-  const [showRawStacktrace, setShowRawStacktrace] = useState(false)
+  const [stacktraceView, setStacktraceView] = useState<'decoded' | 'raw'>('decoded')
 
   useEffect(() => {
     if (groupId) loadData()
@@ -280,25 +280,20 @@ export default function CrashDetailPage() {
                         showIcon
                       />
                     )}
-                    <Space>
-                      {selectedCrash.stacktrace_decoded && (
-                        <>
-                          <Tag color={showRawStacktrace ? 'default' : 'green'}>
-                            {showRawStacktrace ? 'Obfuscated' : 'Deobfuscated'}
-                          </Tag>
-                          <Switch
-                            size="small"
-                            checked={showRawStacktrace}
-                            onChange={setShowRawStacktrace}
-                            checkedChildren="Raw"
-                            unCheckedChildren="Decoded"
-                          />
-                        </>
-                      )}
-                    </Space>
+                    {selectedCrash.stacktrace_decoded && (
+                      <Segmented
+                        size="small"
+                        value={stacktraceView}
+                        onChange={(value) => setStacktraceView(value as 'decoded' | 'raw')}
+                        options={[
+                          { label: 'Deobfuscated', value: 'decoded' },
+                          { label: 'Original', value: 'raw' },
+                        ]}
+                      />
+                    )}
                     <Paragraph>
                       <pre className="stacktrace">
-                        {showRawStacktrace || !selectedCrash.stacktrace_decoded
+                        {stacktraceView === 'raw' || !selectedCrash.stacktrace_decoded
                           ? selectedCrash.stacktrace_raw
                           : selectedCrash.stacktrace_decoded}
                       </pre>
