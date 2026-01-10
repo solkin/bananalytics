@@ -82,22 +82,23 @@ export default function VersionsPage() {
     }
   }
 
-  const handleMuteToggle = async (
+  const handleToggle = async (
     version: AppVersion,
     type: 'crashes' | 'events',
-    checked: boolean
+    enabled: boolean
   ) => {
     try {
+      // Invert: enabled means NOT muted
       await updateVersionMute(
         appId!,
         version.id,
-        type === 'crashes' ? checked : undefined,
-        type === 'events' ? checked : undefined
+        type === 'crashes' ? !enabled : undefined,
+        type === 'events' ? !enabled : undefined
       )
-      message.success(`${type === 'crashes' ? 'Crashes' : 'Events'} ${checked ? 'muted' : 'unmuted'}`)
+      message.success(`${type === 'crashes' ? 'Crashes' : 'Events'} ${enabled ? 'enabled' : 'disabled'}`)
       loadVersions()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to update mute settings')
+      message.error(error instanceof Error ? error.message : 'Failed to update settings')
     }
   }
 
@@ -136,27 +137,27 @@ export default function VersionsPage() {
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Mute Crashes',
-      key: 'mute_crashes',
-      width: 120,
+      title: 'Crashes',
+      key: 'crashes_enabled',
+      width: 100,
       align: 'center' as const,
       render: (_: unknown, record: AppVersion) => (
         <Switch
-          checked={record.mute_crashes}
-          onChange={(checked) => handleMuteToggle(record, 'crashes', checked)}
+          checked={!record.mute_crashes}
+          onChange={(enabled) => handleToggle(record, 'crashes', enabled)}
           size="small"
         />
       ),
     },
     {
-      title: 'Mute Events',
-      key: 'mute_events',
-      width: 120,
+      title: 'Events',
+      key: 'events_enabled',
+      width: 100,
       align: 'center' as const,
       render: (_: unknown, record: AppVersion) => (
         <Switch
-          checked={record.mute_events}
-          onChange={(checked) => handleMuteToggle(record, 'events', checked)}
+          checked={!record.mute_events}
+          onChange={(enabled) => handleToggle(record, 'events', enabled)}
           size="small"
         />
       ),
