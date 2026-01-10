@@ -121,7 +121,7 @@ export default function SettingsPage() {
         }}
         style={{ borderColor: '#ffccc7' }}
       >
-        <Space direction="vertical" size="small">
+        <Space direction="vertical" size="middle">
           <Typography.Text>
             Once you delete an application, there is no going back. Please be certain.
           </Typography.Text>
