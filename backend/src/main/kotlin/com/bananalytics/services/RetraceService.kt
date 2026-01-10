@@ -1,5 +1,6 @@
 package com.bananalytics.services
 
+import com.android.tools.r8.Diagnostic
 import com.android.tools.r8.DiagnosticsHandler
 import com.android.tools.r8.retrace.ProguardMappingSupplier
 import com.android.tools.r8.retrace.RetraceStackTraceContext
@@ -16,26 +17,49 @@ object RetraceService {
 
     fun retrace(obfuscatedStacktrace: String, mappingContent: String): RetraceResult {
         return try {
+            logger.info("Starting retrace, mapping size: ${mappingContent.length} bytes")
+            logger.debug("First 200 chars of mapping: ${mappingContent.take(200)}")
+
+            val diagnosticsHandler = object : DiagnosticsHandler {
+                override fun error(error: Diagnostic) {
+                    logger.error("Retrace error: ${error.diagnosticMessage}")
+                }
+                override fun warning(warning: Diagnostic) {
+                    logger.warn("Retrace warning: ${warning.diagnosticMessage}")
+                }
+                override fun info(info: Diagnostic) {
+                    logger.info("Retrace info: ${info.diagnosticMessage}")
+                }
+            }
+
             val mappingSupplier = ProguardMappingSupplier.builder()
                 .setProguardMapProducer { mappingContent.byteInputStream() }
                 .build()
 
             val retracer = StringRetrace.create(
                 mappingSupplier,
-                object : DiagnosticsHandler {},
+                diagnosticsHandler,
                 "",  // regular expression (empty = default)
                 false  // verbose
             )
 
             val lines = obfuscatedStacktrace.lines()
-            val retracedLines = retracer.retrace(lines, RetraceStackTraceContext.empty())
+            val retracedResult = retracer.retrace(lines, RetraceStackTraceContext.empty())
             
-            // Convert the result to a list and join
+            // Convert the result to a list
             val resultLines = mutableListOf<String>()
-            retracedLines.forEach { resultLines.add(it) }
+            retracedResult.forEach { line: String -> resultLines.add(line) }
             
+            val result = resultLines.joinToString("\n")
+            logger.info("Retrace completed, result size: ${result.length} bytes")
+            
+            // Check if anything actually changed
+            if (result == obfuscatedStacktrace) {
+                logger.warn("Retrace produced identical output - mapping may not match")
+            }
+
             RetraceResult(
-                decodedStacktrace = resultLines.joinToString("\n"),
+                decodedStacktrace = result,
                 error = null
             )
         } catch (e: Exception) {

@@ -250,7 +250,8 @@ fun Route.appRoutes() {
                     }
                     is PartData.FileItem -> {
                         if (part.name == "mapping") {
-                            mappingContent = part.provider().readRemaining().readText()
+                            @Suppress("DEPRECATION")
+                            mappingContent = part.streamProvider().bufferedReader().readText()
                         }
                     }
                     else -> {}
@@ -293,7 +294,8 @@ fun Route.appRoutes() {
                 when (part) {
                     is PartData.FileItem -> {
                         if (part.name == "mapping") {
-                            mappingContent = part.provider().readRemaining().readText()
+                            @Suppress("DEPRECATION")
+                            mappingContent = part.streamProvider().bufferedReader().readText()
                         }
                     }
                     else -> {}
