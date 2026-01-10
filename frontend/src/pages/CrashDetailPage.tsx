@@ -282,7 +282,6 @@ export default function CrashDetailPage() {
                     )}
                     {selectedCrash.stacktrace_decoded && (
                       <Segmented
-                        size="small"
                         value={stacktraceView}
                         onChange={(value) => setStacktraceView(value as 'decoded' | 'raw')}
                         options={[
