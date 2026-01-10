@@ -1,13 +1,23 @@
 import api from './client'
 import type { Crash, CrashGroup, PaginatedResponse } from '@/types'
 
+export interface VersionInfo {
+  version_code: number
+  version_name: string | null
+}
+
 export async function getCrashGroups(
   appId: string,
-  options?: { status?: string; page?: number; pageSize?: number }
+  options?: { status?: string; version?: number; page?: number; pageSize?: number }
 ): Promise<PaginatedResponse<CrashGroup>> {
   const response = await api.get<PaginatedResponse<CrashGroup>>(`/apps/${appId}/crashes`, {
     params: options,
   })
+  return response.data
+}
+
+export async function getCrashVersions(appId: string): Promise<VersionInfo[]> {
+  const response = await api.get<VersionInfo[]>(`/apps/${appId}/crashes/versions`)
   return response.data
 }
 

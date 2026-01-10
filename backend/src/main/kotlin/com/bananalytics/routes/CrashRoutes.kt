@@ -14,6 +14,18 @@ import io.ktor.server.routing.*
 import java.util.*
 
 fun Route.crashRoutes() {
+    // Get available version codes for filtering
+    get("/apps/{appId}/crashes/versions") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val versions = CrashRepository.getVersionCodes(appId)
+        call.respond(versions)
+    }
+
     // Get crash groups for an app
     get("/apps/{appId}/crashes") {
         val user = call.getUser()
@@ -23,10 +35,11 @@ fun Route.crashRoutes() {
         requireAppAccess(appId, user)
 
         val status = call.request.queryParameters["status"]
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
 
-        val result = CrashRepository.findGroupsByAppId(appId, status, page, pageSize)
+        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, page, pageSize)
         call.respond(result)
     }
 

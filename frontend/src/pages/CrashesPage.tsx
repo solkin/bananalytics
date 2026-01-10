@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Table, Tag, Select, Space, Typography, message } from 'antd'
 import type { CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroups } from '@/api/crashes'
+import { getCrashGroups, getCrashVersions, type VersionInfo } from '@/api/crashes'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -17,15 +17,21 @@ const statusColors: Record<string, string> = {
 export default function CrashesPage() {
   const { appId } = useParams<{ appId: string }>()
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
+  const [versions, setVersions] = useState<VersionInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | undefined>(undefined)
+  const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
   const [page, setPage] = useState(1)
 
   const loadCrashes = async () => {
     try {
       setLoading(true)
-      const result = await getCrashGroups(appId!, { status, page, pageSize: 20 })
+      const [result, versionsData] = await Promise.all([
+        getCrashGroups(appId!, { status, version: selectedVersion, page, pageSize: 20 }),
+        getCrashVersions(appId!),
+      ])
       setData(result)
+      setVersions(versionsData)
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load crashes')
     } finally {
@@ -35,7 +41,7 @@ export default function CrashesPage() {
 
   useEffect(() => {
     if (appId) loadCrashes()
-  }, [appId, status, page])
+  }, [appId, status, selectedVersion, page])
 
   const columns = [
     {
@@ -88,18 +94,35 @@ export default function CrashesPage() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Space>
+      <Space wrap>
         <Select
           placeholder="Filter by status"
           allowClear
           style={{ width: 150 }}
           value={status}
-          onChange={setStatus}
+          onChange={(v) => {
+            setStatus(v)
+            setPage(1)
+          }}
           options={[
             { label: 'Open', value: 'open' },
             { label: 'Resolved', value: 'resolved' },
             { label: 'Ignored', value: 'ignored' },
           ]}
+        />
+        <Select
+          placeholder="Filter by version"
+          allowClear
+          style={{ width: 200 }}
+          value={selectedVersion}
+          onChange={(v) => {
+            setSelectedVersion(v)
+            setPage(1)
+          }}
+          options={versions.map((v) => ({
+            label: v.version_name ? `${v.version_name} (${v.version_code})` : `Version ${v.version_code}`,
+            value: v.version_code,
+          }))}
         />
       </Space>
 

@@ -16,15 +16,28 @@ object CrashRepository {
     fun findGroupsByAppId(
         appId: UUID,
         status: String? = null,
+        versionCode: Long? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): PaginatedResponse<CrashGroupResponse> = transaction {
-        val baseQuery = CrashGroups.selectAll()
+        // If filtering by version, get group IDs that have crashes with this version
+        val groupIdsWithVersion = if (versionCode != null) {
+            Crashes.select(Crashes.groupId)
+                .where { (Crashes.appId eq appId) and (Crashes.versionCode eq versionCode) }
+                .mapNotNull { it[Crashes.groupId]?.value }
+                .toSet()
+        } else null
+
+        var baseQuery = CrashGroups.selectAll()
             .where { CrashGroups.appId eq appId }
-            .let { query ->
-                if (status != null) query.andWhere { CrashGroups.status eq status }
-                else query
-            }
+
+        if (status != null) {
+            baseQuery = baseQuery.andWhere { CrashGroups.status eq status }
+        }
+
+        if (groupIdsWithVersion != null) {
+            baseQuery = baseQuery.andWhere { CrashGroups.id inList groupIdsWithVersion }
+        }
 
         val total = baseQuery.count()
         val items = baseQuery
@@ -33,6 +46,27 @@ object CrashRepository {
             .map { it.toCrashGroupResponse() }
 
         PaginatedResponse(items, total, page, pageSize)
+    }
+
+    fun getVersionCodes(appId: UUID): List<VersionInfo> = transaction {
+        val crashVersionCodes = Crashes
+            .select(Crashes.versionCode)
+            .where { (Crashes.appId eq appId) and Crashes.versionCode.isNotNull() }
+            .withDistinct()
+            .mapNotNull { it[Crashes.versionCode] }
+            .toSet()
+
+        val versionNames = AppVersions
+            .select(AppVersions.versionCode, AppVersions.versionName)
+            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode inList crashVersionCodes) }
+            .associate { it[AppVersions.versionCode] to it[AppVersions.versionName] }
+
+        crashVersionCodes.map { code ->
+            VersionInfo(
+                versionCode = code,
+                versionName = versionNames[code]
+            )
+        }.sortedByDescending { it.versionCode }
     }
 
     fun findGroupById(id: UUID): CrashGroupResponse? = transaction {
