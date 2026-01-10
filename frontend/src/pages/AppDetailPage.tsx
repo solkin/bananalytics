@@ -123,12 +123,12 @@ export default function AppDetailPage() {
         </Descriptions>
       </Card>
 
-      <Card bodyStyle={{ padding: 0 }}>
+      <Card styles={{ body: { padding: 0 } }}>
         <Menu
           mode="horizontal"
           selectedKeys={[currentTab]}
           items={menuItems}
-          style={{ borderBottom: 'none' }}
+          style={{ borderBottom: 'none', borderRadius: '8px 8px 0 0' }}
         />
         <div style={{ padding: 24 }}>
           <Outlet context={{ app, reload: loadApp }} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Table, Tag, Select, Space, Typography, message } from 'antd'
 import type { CrashGroup, PaginatedResponse } from '@/types'
 import { getCrashGroups, getCrashVersions, type VersionInfo } from '@/api/crashes'
@@ -16,6 +16,7 @@ const statusColors: Record<string, string> = {
 
 export default function CrashesPage() {
   const { appId } = useParams<{ appId: string }>()
+  const navigate = useNavigate()
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,16 +49,14 @@ export default function CrashesPage() {
       title: 'Exception',
       key: 'exception',
       render: (_: unknown, record: CrashGroup) => (
-        <Link to={record.id}>
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong style={{ color: '#1890ff' }}>
-              {record.exception_class || 'Unknown Exception'}
-            </Typography.Text>
-            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 500 }}>
-              {record.exception_message || 'No message'}
-            </Typography.Text>
-          </Space>
-        </Link>
+        <Space direction="vertical" size={0}>
+          <Typography.Text strong style={{ color: '#1890ff' }}>
+            {record.exception_class || 'Unknown Exception'}
+          </Typography.Text>
+          <Typography.Text type="secondary" ellipsis style={{ maxWidth: 500 }}>
+            {record.exception_message || 'No message'}
+          </Typography.Text>
+        </Space>
       ),
     },
     {
@@ -131,6 +130,10 @@ export default function CrashesPage() {
         columns={columns}
         rowKey="id"
         loading={loading}
+        onRow={(record) => ({
+          onClick: () => navigate(record.id),
+          style: { cursor: 'pointer' },
+        })}
         pagination={{
           current: page,
           pageSize: 20,

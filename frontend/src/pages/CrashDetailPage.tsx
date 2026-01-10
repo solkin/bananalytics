@@ -6,18 +6,21 @@ import {
   Tag,
   Select,
   Button,
-  Table,
   Typography,
   Timeline,
   Space,
   Tabs,
   message,
   Alert,
+  DatePicker,
 } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
+import { Column } from '@ant-design/charts'
 import type { Crash, CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash } from '@/api/crashes'
+import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, type CrashDailyStat } from '@/api/crashes'
 import dayjs from 'dayjs'
+
+const { RangePicker } = DatePicker
 
 const { Text, Paragraph } = Typography
 
@@ -34,10 +37,19 @@ export default function CrashDetailPage() {
   const [selectedCrash, setSelectedCrash] = useState<Crash | null>(null)
   const [loading, setLoading] = useState(true)
   const [retracing, setRetracing] = useState(false)
+  const [stats, setStats] = useState<CrashDailyStat[]>([])
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(14, 'day'),
+    dayjs(),
+  ])
 
   useEffect(() => {
     if (groupId) loadData()
   }, [groupId])
+
+  useEffect(() => {
+    if (groupId) loadStats()
+  }, [groupId, dateRange])
 
   const loadData = async () => {
     try {
@@ -55,6 +67,34 @@ export default function CrashDetailPage() {
       message.error(error instanceof Error ? error.message : 'Failed to load crash')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      const statsData = await getCrashStats(groupId!, {
+        from: dateRange[0].startOf('day').toISOString(),
+        to: dateRange[1].endOf('day').toISOString(),
+      })
+      
+      // Fill all dates in range with zeros where no data
+      const statsMap = new Map(statsData.map(s => [s.date, s.count]))
+      const filledStats: CrashDailyStat[] = []
+      let current = dateRange[0].startOf('day')
+      const end = dateRange[1].startOf('day')
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dateStr = current.format('YYYY-MM-DD')
+        filledStats.push({
+          date: dateStr,
+          count: statsMap.get(dateStr) || 0,
+        })
+        current = current.add(1, 'day')
+      }
+      
+      setStats(filledStats)
+    } catch (error) {
+      console.error('Failed to load stats', error)
     }
   }
 
@@ -122,6 +162,45 @@ export default function CrashDetailPage() {
             {dayjs(group.last_seen).format('YYYY-MM-DD HH:mm:ss')}
           </Descriptions.Item>
         </Descriptions>
+      </Card>
+
+      <Card
+        title="Crash Timeline"
+        extra={
+          <RangePicker
+            value={dateRange}
+            onChange={(dates) => {
+              if (dates && dates[0] && dates[1]) {
+                setDateRange([dates[0], dates[1]])
+              }
+            }}
+            allowClear={false}
+          />
+        }
+      >
+        <Column
+          data={stats}
+          xField="date"
+          yField="count"
+          height={200}
+          color="#ff4d4f"
+          xAxis={{
+            label: {
+              formatter: (v: string) => dayjs(v).format('MM-DD'),
+            },
+          }}
+          yAxis={{
+            label: {
+              formatter: (v: string) => Math.floor(Number(v)).toString(),
+            },
+          }}
+          tooltip={{
+            formatter: (datum: CrashDailyStat) => ({
+              name: 'Crashes',
+              value: datum.count,
+            }),
+          }}
+        />
       </Card>
 
       {selectedCrash && (

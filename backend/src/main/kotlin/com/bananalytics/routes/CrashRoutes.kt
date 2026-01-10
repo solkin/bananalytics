@@ -43,6 +43,36 @@ fun Route.crashRoutes() {
         call.respond(result)
     }
 
+    // Get crash stats for a group
+    get("/crash-groups/{id}/stats") {
+        val user = call.getUser()
+        val id = call.parameters["id"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid crash group ID")
+
+        val group = CrashRepository.findGroupById(id)
+            ?: throw NotFoundException("Crash group not found")
+
+        requireAppAccess(UUID.fromString(group.appId), user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = java.time.OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            java.time.OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            java.time.OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(30)
+        }
+
+        val stats = CrashRepository.getCrashStatsByGroupId(id, fromDate, toDate)
+        call.respond(stats)
+    }
+
     // Get crash group details
     get("/crash-groups/{id}") {
         val user = call.getUser()

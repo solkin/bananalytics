@@ -162,6 +162,25 @@ object CrashRepository {
         } > 0
     }
 
+    fun getCrashStatsByGroupId(
+        groupId: UUID,
+        fromDate: OffsetDateTime,
+        toDate: OffsetDateTime
+    ): List<CrashDailyStat> = transaction {
+        Crashes
+            .select(Crashes.createdAt)
+            .where { 
+                (Crashes.groupId eq groupId) and 
+                (Crashes.createdAt greaterEq fromDate) and 
+                (Crashes.createdAt lessEq toDate) 
+            }
+            .map { it[Crashes.createdAt].toLocalDate() }
+            .groupingBy { it }
+            .eachCount()
+            .map { (date, count) -> CrashDailyStat(date.toString(), count.toLong()) }
+            .sortedBy { it.date }
+    }
+
     private fun findOrCreateGroup(
         appId: UUID,
         fingerprint: String,

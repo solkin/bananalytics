@@ -180,6 +180,12 @@ data class VersionInfo(
 )
 
 @Serializable
+data class CrashDailyStat(
+    val date: String,
+    val count: Long
+)
+
+@Serializable
 data class UpdateCrashGroupRequest(
     val status: String? = null
 )

@@ -53,3 +53,18 @@ export async function retraceCrash(id: string): Promise<Crash> {
   const response = await api.post<Crash>(`/crashes/${id}/retrace`)
   return response.data
 }
+
+export interface CrashDailyStat {
+  date: string
+  count: number
+}
+
+export async function getCrashStats(
+  groupId: string,
+  options?: { from?: string; to?: string }
+): Promise<CrashDailyStat[]> {
+  const response = await api.get<CrashDailyStat[]>(`/crash-groups/${groupId}/stats`, {
+    params: options,
+  })
+  return response.data
+}
