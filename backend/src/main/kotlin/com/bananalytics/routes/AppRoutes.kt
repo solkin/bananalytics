@@ -7,6 +7,7 @@ import com.bananalytics.repositories.AppRepository
 import com.bananalytics.repositories.UserRepository
 import com.bananalytics.repositories.VersionRepository
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -234,18 +235,43 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val request = call.receive<CreateVersionRequest>()
+            var versionCode: Long? = null
+            var versionName: String? = null
+            var mappingContent: String? = null
 
-            val existing = VersionRepository.findByAppAndVersionCode(appId, request.versionCode)
+            val multipart = call.receiveMultipart()
+            multipart.forEachPart { part ->
+                when (part) {
+                    is PartData.FormItem -> {
+                        when (part.name) {
+                            "version_code" -> versionCode = part.value.toLongOrNull()
+                            "version_name" -> versionName = part.value.takeIf { it.isNotBlank() }
+                        }
+                    }
+                    is PartData.FileItem -> {
+                        if (part.name == "mapping") {
+                            mappingContent = part.provider().readRemaining().readText()
+                        }
+                    }
+                    else -> {}
+                }
+                part.dispose()
+            }
+
+            if (versionCode == null) {
+                throw BadRequestException("Version code is required")
+            }
+
+            val existing = VersionRepository.findByAppAndVersionCode(appId, versionCode!!)
             if (existing != null) {
-                throw BadRequestException("Version ${request.versionCode} already exists")
+                throw BadRequestException("Version $versionCode already exists")
             }
 
             val version = VersionRepository.create(
                 appId = appId,
-                versionCode = request.versionCode,
-                versionName = request.versionName,
-                mappingContent = request.mappingContent
+                versionCode = versionCode!!,
+                versionName = versionName,
+                mappingContent = mappingContent
             )
 
             call.respond(HttpStatusCode.Created, version)
@@ -260,12 +286,26 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val mappingContent = call.receiveText()
-            if (mappingContent.isBlank()) {
-                throw BadRequestException("Mapping content is required")
+            var mappingContent: String? = null
+
+            val multipart = call.receiveMultipart()
+            multipart.forEachPart { part ->
+                when (part) {
+                    is PartData.FileItem -> {
+                        if (part.name == "mapping") {
+                            mappingContent = part.provider().readRemaining().readText()
+                        }
+                    }
+                    else -> {}
+                }
+                part.dispose()
             }
 
-            val updated = VersionRepository.updateMapping(versionId, mappingContent)
+            if (mappingContent.isNullOrBlank()) {
+                throw BadRequestException("Mapping file is required")
+            }
+
+            val updated = VersionRepository.updateMapping(versionId, mappingContent!!)
             if (!updated) {
                 throw NotFoundException("Version not found")
             }

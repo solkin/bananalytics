@@ -43,12 +43,19 @@ export async function createVersion(
   appId: string,
   versionCode: number,
   versionName?: string,
-  mappingContent?: string
+  mappingFile?: File
 ): Promise<AppVersion> {
-  const response = await api.post<AppVersion>(`/apps/${appId}/versions`, {
-    version_code: versionCode,
-    version_name: versionName,
-    mapping_content: mappingContent,
+  const formData = new FormData()
+  formData.append('version_code', versionCode.toString())
+  if (versionName) {
+    formData.append('version_name', versionName)
+  }
+  if (mappingFile) {
+    formData.append('mapping', mappingFile)
+  }
+
+  const response = await api.post<AppVersion>(`/apps/${appId}/versions`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   })
   return response.data
 }
@@ -56,13 +63,16 @@ export async function createVersion(
 export async function uploadMapping(
   appId: string,
   versionId: string,
-  mappingContent: string
+  mappingFile: File
 ): Promise<AppVersion> {
+  const formData = new FormData()
+  formData.append('mapping', mappingFile)
+
   const response = await api.put<AppVersion>(
     `/apps/${appId}/versions/${versionId}/mapping`,
-    mappingContent,
+    formData,
     {
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'multipart/form-data' },
     }
   )
   return response.data

@@ -50,26 +50,14 @@ export default function VersionsPage() {
     if (appId) loadVersions()
   }, [appId])
 
-  const readFileContent = (file: UploadFile): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = (e) => resolve(e.target?.result as string)
-      reader.onerror = reject
-      reader.readAsText(file.originFileObj as Blob)
-    })
-  }
-
   const handleCreate = async (values: {
     version_code: number
     version_name?: string
   }) => {
     try {
       setCreating(true)
-      let mappingContent: string | undefined
-      if (mappingFile) {
-        mappingContent = await readFileContent(mappingFile)
-      }
-      await createVersion(appId!, values.version_code, values.version_name, mappingContent)
+      const file = mappingFile?.originFileObj as File | undefined
+      await createVersion(appId!, values.version_code, values.version_name, file)
       message.success('Version created')
       setModalOpen(false)
       form.resetFields()
@@ -86,8 +74,8 @@ export default function VersionsPage() {
     if (!selectedVersion || !uploadMappingFile) return
     try {
       setUploading(true)
-      const content = await readFileContent(uploadMappingFile)
-      await uploadMapping(appId!, selectedVersion.id, content)
+      const file = uploadMappingFile.originFileObj as File
+      await uploadMapping(appId!, selectedVersion.id, file)
       message.success('Mapping uploaded')
       setUploadModalOpen(false)
       setUploadMappingFile(null)
