@@ -1,69 +1,51 @@
 # 🍌 Bananalytics
 
-Lightweight crash reporting and analytics backend for Android applications.
+Lightweight self-hosted crash reporting and analytics platform for Android applications. A simple alternative to Firebase Crashlytics or HockeyApp.
+
+## Features
+
+- **Crash Reporting** — Automatic crash grouping by stacktrace fingerprint
+- **R8/ProGuard Deobfuscation** — Upload mapping files to decode stacktraces
+- **Event Analytics** — Track custom events with tags and numeric fields
+- **Breadcrumbs** — See user actions leading up to a crash
+- **Multi-user Access** — Share apps with team members (admin/viewer roles)
+- **Self-hosted** — Full control over your data
 
 ## Quick Start
 
 ### Development
 
 ```bash
-# Start all services (PostgreSQL, pgAdmin, Backend, Frontend)
 docker compose up
-
-# Access:
-# - Frontend: http://localhost:3000
-# - Backend API: http://localhost:8080
-# - pgAdmin: http://localhost:5050 (admin@admin.com / admin)
 ```
+
+Services:
+- **Frontend**: http://localhost:3177
+- **Backend API**: http://localhost:8266
+- **pgAdmin**: http://localhost:5050 (admin@admin.com / admin)
 
 ### Production
 
 ```bash
-# Create external network (if not exists)
+# Create external network
 docker network create reverseproxy
 
-# Copy and configure environment
+# Configure environment
 cp env.example .env
-# Edit .env with production values
+# Edit .env with secure values
 
 # Start services
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-## Architecture
+## Configuration
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Frontend   │────▶│   Backend   │────▶│ PostgreSQL  │
-│ React + Ant │     │ Kotlin/Ktor │     │             │
-│   :3000     │     │   :8080     │     │   :5432     │
-└─────────────┘     └─────────────┘     └─────────────┘
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGRES_PASSWORD` | Database password | Required |
+| `REGISTRATION_ENABLED` | Allow new user registration | `false` (prod) |
 
-## API Endpoints
-
-### SDK Endpoints (require X-API-Key header)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/events/submit` | Submit analytics events |
-| POST | `/api/v1/crashes/submit` | Submit crash reports |
-
-### Admin Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/apps` | List all apps |
-| POST | `/api/v1/apps` | Create new app |
-| GET | `/api/v1/apps/{id}` | Get app details |
-| GET | `/api/v1/apps/{id}/versions` | List app versions |
-| POST | `/api/v1/apps/{id}/versions` | Create version with mapping |
-| GET | `/api/v1/apps/{id}/crashes` | Get crash groups |
-| GET | `/api/v1/apps/{id}/events` | Get events |
-| GET | `/api/v1/crashes/{id}` | Get crash details |
-| POST | `/api/v1/crashes/{id}/retrace` | Retrace crash stacktrace |
-
-## SDK Integration
+## Android SDK Integration
 
 ```kotlin
 class MyEventSender(private val apiKey: String) : EventSender {
@@ -74,12 +56,26 @@ class MyEventSender(private val apiKey: String) : EventSender {
             .header("X-API-Key", apiKey)
             .post(payload.toRequestBody())
             .build()
-        // ...
+        // Execute request...
     }
 }
 ```
 
-## Stack
+## API
+
+See full API documentation with request/response contracts: **[docs/API.md](docs/API.md)**
+
+Quick overview:
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `POST /api/v1/events/submit` | API Key | Submit events from SDK |
+| `POST /api/v1/crashes/submit` | API Key | Submit crashes from SDK |
+| `POST /api/v1/auth/login` | — | Login |
+| `GET /api/v1/apps` | Session | List apps |
+| `GET /api/v1/apps/{id}/crashes` | Session | Get crash groups |
+
+## Tech Stack
 
 - **Backend**: Kotlin, Ktor, Exposed, PostgreSQL, R8 Retrace
 - **Frontend**: React, TypeScript, Ant Design, Vite
