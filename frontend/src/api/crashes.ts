@@ -82,3 +82,38 @@ export async function getAppCrashStats(
   })
   return response.data
 }
+
+// Session statistics
+export interface CrashFreeStats {
+  date: string
+  total_sessions: number
+  crash_free_sessions: number
+  crash_free_rate: number
+}
+
+export interface SessionVersionStats {
+  date: string
+  version_code: number
+  version_name: string | null
+  count: number
+}
+
+export async function getCrashFreeStats(
+  appId: string,
+  options?: { from?: string; to?: string }
+): Promise<CrashFreeStats[]> {
+  const response = await api.get<CrashFreeStats[]>(`/apps/${appId}/sessions/crash-free`, {
+    params: options,
+  })
+  return response.data
+}
+
+export async function getCrashFreeStatsByVersion(
+  appId: string,
+  options?: { from?: string; to?: string }
+): Promise<SessionVersionStats[]> {
+  const response = await api.get<SessionVersionStats[]>(`/apps/${appId}/sessions/crash-free-by-version`, {
+    params: options,
+  })
+  return response.data
+}

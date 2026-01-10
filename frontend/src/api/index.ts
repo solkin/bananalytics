@@ -9,6 +9,8 @@ export {
   getEventNames,
   getEventCount,
   getEventStats,
+  getUniqueSessionsByVersion,
   type EventSummary,
   type EventVersionStats,
+  type SessionVersionStats,
 } from './events'

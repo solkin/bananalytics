@@ -38,6 +38,7 @@ data class EventData(
 
 @Serializable
 data class EventsSubmitRequest(
+    @SerialName("session_id") val sessionId: String? = null,
     val environment: EnvironmentData,
     val events: List<EventData>
 )
@@ -61,6 +62,7 @@ data class CrashData(
 
 @Serializable
 data class CrashesSubmitRequest(
+    @SerialName("session_id") val sessionId: String? = null,
     val environment: EnvironmentData,
     val crashes: List<CrashData>
 )
@@ -202,4 +204,22 @@ data class UpdateCrashGroupRequest(
 @Serializable
 data class RetraceRequest(
     @SerialName("crash_id") val crashId: String
+)
+
+// ============ Session Stats DTOs ============
+
+@Serializable
+data class CrashFreeStatsResponse(
+    val date: String,
+    @SerialName("total_sessions") val totalSessions: Long,
+    @SerialName("crash_free_sessions") val crashFreeSessions: Long,
+    @SerialName("crash_free_rate") val crashFreeRate: Double
+)
+
+@Serializable
+data class SessionVersionStats(
+    val date: String,
+    @SerialName("version_code") val versionCode: Long,
+    @SerialName("version_name") val versionName: String?,
+    val count: Long
 )

@@ -103,6 +103,7 @@ Submit analytics events from mobile app.
 **Request:**
 ```json
 {
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "environment": {
     "package_name": "com.example.app",
     "app_version": 123,
@@ -126,6 +127,7 @@ Submit analytics events from mobile app.
 ```
 
 **Notes:**
+- `session_id` (optional) - UUID for session tracking, used for unique session statistics
 - `app_version_name` is optional but recommended
 - If version doesn't exist, it will be auto-created
 - If events are muted for this version, data will be silently ignored
@@ -143,6 +145,7 @@ Submit crash reports from mobile app.
 **Request:**
 ```json
 {
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "environment": {
     "package_name": "com.example.app",
     "app_version": 123,
@@ -174,6 +177,7 @@ Submit crash reports from mobile app.
 ```
 
 **Notes:**
+- `session_id` (optional) - UUID for session tracking, used for crash-free session statistics
 - `app_version_name` is optional but recommended
 - If version doesn't exist, it will be auto-created
 - Crash will be deobfuscated if mapping exists for this version
@@ -182,6 +186,44 @@ Submit crash reports from mobile app.
 **Response:** `200 OK`
 ```json
 { "status": 200 }
+```
+
+---
+
+## Session Endpoints
+
+### GET /apps/{id}/sessions/crash-free
+Get crash-free session statistics by day.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  {
+    "date": "2026-01-10",
+    "total_sessions": 100,
+    "crash_free_sessions": 95,
+    "crash_free_rate": 95.0
+  }
+]
+```
+
+### GET /apps/{id}/sessions/unique
+Get unique sessions count by day and version.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  {
+    "date": "2026-01-10",
+    "version_code": 123,
+    "version_name": "1.2.3",
+    "count": 50
+  }
+]
 ```
 
 ---

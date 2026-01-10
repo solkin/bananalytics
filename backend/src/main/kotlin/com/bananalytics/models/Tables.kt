@@ -73,3 +73,18 @@ object Events : Table("events") {
 
     override val primaryKey = PrimaryKey(id, createdAt)
 }
+
+object AppSessions : UUIDTable("app_sessions") {
+    val appId = reference("app_id", Apps)
+    val sessionId = uuid("session_id")
+    val versionCode = long("version_code")
+    val deviceId = varchar("device_id", 64).nullable()
+    val hasCrash = bool("has_crash").default(false)
+    val hasEvent = bool("has_event").default(false)
+    val firstSeen = timestampWithTimeZone("first_seen")
+    val lastSeen = timestampWithTimeZone("last_seen")
+
+    init {
+        uniqueIndex(appId, sessionId)
+    }
+}

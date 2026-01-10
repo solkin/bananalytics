@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Table, Tag, Select, Space, Typography, message, Card, DatePicker } from 'antd'
-import { Column } from '@ant-design/charts'
+import { Column, Line } from '@ant-design/charts'
 import type { CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroups, getCrashVersions, getAppCrashStats, type VersionInfo, type DailyStat } from '@/api/crashes'
+import { getCrashGroups, getCrashVersions, getAppCrashStats, getCrashFreeStats, type VersionInfo, type DailyStat, type CrashFreeStats } from '@/api/crashes'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -17,12 +17,16 @@ const statusColors: Record<string, string> = {
   ignored: 'default',
 }
 
+// Colors for version lines
+const versionColors = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#eb2f96', '#13c2c2']
+
 export default function CrashesPage() {
   const { appId } = useParams<{ appId: string }>()
   const navigate = useNavigate()
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [stats, setStats] = useState<DailyStat[]>([])
+  const [crashFreeStats, setCrashFreeStats] = useState<CrashFreeStats[]>([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<string | undefined>(undefined)
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
@@ -50,10 +54,16 @@ export default function CrashesPage() {
 
   const loadStats = async () => {
     try {
-      const statsData = await getAppCrashStats(appId!, {
-        from: dateRange[0].startOf('day').toISOString(),
-        to: dateRange[1].endOf('day').toISOString(),
-      })
+      const [statsData, crashFreeData] = await Promise.all([
+        getAppCrashStats(appId!, {
+          from: dateRange[0].startOf('day').toISOString(),
+          to: dateRange[1].endOf('day').toISOString(),
+        }),
+        getCrashFreeStats(appId!, {
+          from: dateRange[0].startOf('day').toISOString(),
+          to: dateRange[1].endOf('day').toISOString(),
+        }),
+      ])
       
       // Fill all dates in range with zeros where no data
       const statsMap = new Map(statsData.map(s => [s.date, s.count]))
@@ -71,6 +81,25 @@ export default function CrashesPage() {
       }
       
       setStats(filledStats)
+      
+      // Fill crash-free stats
+      const crashFreeMap = new Map(crashFreeData.map(s => [s.date, s]))
+      const filledCrashFree: CrashFreeStats[] = []
+      current = dateRange[0].startOf('day')
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dateStr = current.format('YYYY-MM-DD')
+        const existing = crashFreeMap.get(dateStr)
+        filledCrashFree.push(existing || {
+          date: dateStr,
+          total_sessions: 0,
+          crash_free_sessions: 0,
+          crash_free_rate: 100,
+        })
+        current = current.add(1, 'day')
+      }
+      
+      setCrashFreeStats(filledCrashFree)
     } catch (error) {
       console.error('Failed to load stats', error)
     }
@@ -131,21 +160,74 @@ export default function CrashesPage() {
     },
   ]
 
+  // Check if we have session data
+  const hasSessionData = crashFreeStats.some(s => s.total_sessions > 0)
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      {hasSessionData && (
+        <Card
+          title="Crash-Free Sessions"
+          styles={{ header: { background: '#fafafa' } }}
+          extra={
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setDateRange([dates[0], dates[1]])
+                }
+              }}
+              allowClear={false}
+            />
+          }
+        >
+          <Line
+            data={crashFreeStats}
+            xField="date"
+            yField="crash_free_rate"
+            height={200}
+            color="#52c41a"
+            xAxis={{
+              label: {
+                formatter: (v: string) => dayjs(v).format('MM-DD'),
+              },
+            }}
+            yAxis={{
+              min: 0,
+              max: 100,
+              label: {
+                formatter: (v: string) => `${v}%`,
+              },
+            }}
+            point={{
+              size: 3,
+              shape: 'circle',
+            }}
+            tooltip={{
+              title: (d: CrashFreeStats) => dayjs(d.date).format('YYYY-MM-DD'),
+              items: [
+                { channel: 'y', name: 'Crash-Free Rate', valueFormatter: (v: number) => `${v.toFixed(1)}%` },
+              ],
+            }}
+          />
+        </Card>
+      )}
+
       <Card
         title="Crash Timeline"
         styles={{ header: { background: '#fafafa' } }}
         extra={
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => {
-              if (dates && dates[0] && dates[1]) {
-                setDateRange([dates[0], dates[1]])
-              }
-            }}
-            allowClear={false}
-          />
+          !hasSessionData && (
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setDateRange([dates[0], dates[1]])
+                }
+              }}
+              allowClear={false}
+            />
+          )
         }
       >
         <Column

@@ -6,6 +6,7 @@ import com.bananalytics.models.CrashesSubmitRequest
 import com.bananalytics.models.EventsSubmitRequest
 import com.bananalytics.models.SubmitResponse
 import com.bananalytics.repositories.AppRepository
+import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.services.CrashService
 import com.bananalytics.services.EventService
 import io.ktor.server.request.*
@@ -23,8 +24,26 @@ fun Route.sdkRoutes() {
                 throw BadRequestException("Package name mismatch")
             }
 
+            val appId = UUID.fromString(app.id)
+            
+            // Record session if session_id provided
+            request.sessionId?.let { sessionIdStr ->
+                try {
+                    val sessionId = UUID.fromString(sessionIdStr)
+                    AppSessionRepository.recordSession(
+                        appId = appId,
+                        sessionId = sessionId,
+                        versionCode = request.environment.appVersion,
+                        deviceId = request.environment.deviceId,
+                        hasEvent = true
+                    )
+                } catch (e: IllegalArgumentException) {
+                    // Invalid UUID format, ignore
+                }
+            }
+
             val count = EventService.processEvents(
-                appId = UUID.fromString(app.id),
+                appId = appId,
                 environment = request.environment,
                 events = request.events
             )
@@ -42,8 +61,26 @@ fun Route.sdkRoutes() {
                 throw BadRequestException("Package name mismatch")
             }
 
+            val appId = UUID.fromString(app.id)
+            
+            // Record session with crash if session_id provided
+            request.sessionId?.let { sessionIdStr ->
+                try {
+                    val sessionId = UUID.fromString(sessionIdStr)
+                    AppSessionRepository.recordSession(
+                        appId = appId,
+                        sessionId = sessionId,
+                        versionCode = request.environment.appVersion,
+                        deviceId = request.environment.deviceId,
+                        hasCrash = true
+                    )
+                } catch (e: IllegalArgumentException) {
+                    // Invalid UUID format, ignore
+                }
+            }
+
             val count = CrashService.processCrashes(
-                appId = UUID.fromString(app.id),
+                appId = appId,
                 environment = request.environment,
                 crashes = request.crashes
             )

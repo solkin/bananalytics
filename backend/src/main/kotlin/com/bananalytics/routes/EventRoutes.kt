@@ -1,8 +1,10 @@
 package com.bananalytics.routes
 
 import com.bananalytics.config.*
+import com.bananalytics.models.SessionVersionStats
 import com.bananalytics.models.UserResponse
 import com.bananalytics.repositories.AppAccessRepository
+import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.repositories.EventRepository
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -11,6 +13,34 @@ import java.time.format.DateTimeParseException
 import java.util.*
 
 fun Route.eventRoutes() {
+    // Get unique sessions by version
+    get("/apps/{appId}/sessions/unique") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(14)
+        }
+
+        val stats = AppSessionRepository.getUniqueSessionsByVersion(appId, fromDate, toDate)
+            .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
+        call.respond(stats)
+    }
+
     // Get event summary (aggregated by name)
     get("/apps/{appId}/events/summary") {
         val user = call.getUser()

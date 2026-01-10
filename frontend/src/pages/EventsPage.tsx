@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Table, Select, Space, Typography, message } from 'antd'
-import type { EventSummary, VersionInfo } from '@/api/events'
-import { getEventSummary, getEventVersions } from '@/api/events'
+import { Table, Select, Space, Typography, message, Card, DatePicker } from 'antd'
+import { Line } from '@ant-design/charts'
+import type { EventSummary, VersionInfo, SessionVersionStats } from '@/api/events'
+import { getEventSummary, getEventVersions, getUniqueSessionsByVersion } from '@/api/events'
+import dayjs from 'dayjs'
+
+const { RangePicker } = DatePicker
+
+// Colors for version lines
+const versionColors = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#eb2f96', '#13c2c2', '#fa541c', '#2f54eb']
 
 export default function EventsPage() {
   const { appId } = useParams<{ appId: string }>()
   const navigate = useNavigate()
   const [data, setData] = useState<EventSummary[]>([])
   const [versions, setVersions] = useState<VersionInfo[]>([])
+  const [sessionStats, setSessionStats] = useState<SessionVersionStats[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(14, 'day'),
+    dayjs(),
+  ])
 
   const loadData = async () => {
     try {
@@ -28,9 +40,32 @@ export default function EventsPage() {
     }
   }
 
+  const loadSessionStats = async () => {
+    try {
+      const stats = await getUniqueSessionsByVersion(appId!, {
+        from: dateRange[0].startOf('day').toISOString(),
+        to: dateRange[1].endOf('day').toISOString(),
+      })
+      
+      // Transform data for multi-line chart
+      const transformed = stats.map(s => ({
+        ...s,
+        version: s.version_name ? `${s.version_name} (${s.version_code})` : `v${s.version_code}`,
+      }))
+      
+      setSessionStats(transformed as SessionVersionStats[])
+    } catch (error) {
+      console.error('Failed to load session stats', error)
+    }
+  }
+
   useEffect(() => {
     if (appId) loadData()
   }, [appId, selectedVersion])
+
+  useEffect(() => {
+    if (appId) loadSessionStats()
+  }, [appId, dateRange])
 
   const columns = [
     {
@@ -66,8 +101,66 @@ export default function EventsPage() {
     },
   ]
 
+  // Check if we have session data
+  const hasSessionData = sessionStats.length > 0
+
+  // Get unique versions for color mapping
+  const uniqueVersions = [...new Set(sessionStats.map(s => (s as any).version || `v${s.version_code}`))]
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      {hasSessionData && (
+        <Card
+          title="Unique Sessions by Version"
+          styles={{ header: { background: '#fafafa' } }}
+          extra={
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setDateRange([dates[0], dates[1]])
+                }
+              }}
+              allowClear={false}
+            />
+          }
+        >
+          <Line
+            data={sessionStats.map(s => ({
+              date: s.date,
+              count: s.count,
+              version: (s as any).version || `v${s.version_code}`,
+            }))}
+            xField="date"
+            yField="count"
+            seriesField="version"
+            height={200}
+            color={versionColors}
+            xAxis={{
+              label: {
+                formatter: (v: string) => dayjs(v).format('MM-DD'),
+              },
+            }}
+            yAxis={{
+              label: {
+                formatter: (v: string) => Math.floor(Number(v)).toString(),
+              },
+            }}
+            point={{
+              size: 3,
+              shape: 'circle',
+            }}
+            legend={{
+              position: 'top-right',
+            }}
+            tooltip={{
+              title: (d: any) => dayjs(d.date).format('YYYY-MM-DD'),
+              items: [{ channel: 'y', name: 'Sessions' }],
+            }}
+          />
+        </Card>
+      )}
+
       <Space wrap>
         <Select
           placeholder="Filter by version"

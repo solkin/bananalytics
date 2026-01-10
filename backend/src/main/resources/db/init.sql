@@ -146,3 +146,22 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
+
+-- App sessions (SDK sessions for crash-free tracking)
+CREATE TABLE IF NOT EXISTS app_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL,
+    version_code BIGINT NOT NULL,
+    device_id VARCHAR(64),
+    has_crash BOOLEAN NOT NULL DEFAULT false,
+    has_event BOOLEAN NOT NULL DEFAULT false,
+    first_seen TIMESTAMPTZ NOT NULL,
+    last_seen TIMESTAMPTZ NOT NULL,
+    UNIQUE(app_id, session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_sessions_app_id ON app_sessions(app_id);
+CREATE INDEX IF NOT EXISTS idx_app_sessions_version ON app_sessions(app_id, version_code);
+CREATE INDEX IF NOT EXISTS idx_app_sessions_first_seen ON app_sessions(first_seen);
+CREATE INDEX IF NOT EXISTS idx_app_sessions_has_crash ON app_sessions(app_id, has_crash);

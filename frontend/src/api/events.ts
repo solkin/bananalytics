@@ -96,3 +96,21 @@ export async function getEventStats(
   )
   return response.data
 }
+
+// Session statistics
+export interface SessionVersionStats {
+  date: string
+  version_code: number
+  version_name: string | null
+  count: number
+}
+
+export async function getUniqueSessionsByVersion(
+  appId: string,
+  options?: { from?: string; to?: string }
+): Promise<SessionVersionStats[]> {
+  const response = await api.get<SessionVersionStats[]>(`/apps/${appId}/sessions/unique`, {
+    params: options,
+  })
+  return response.data
+}

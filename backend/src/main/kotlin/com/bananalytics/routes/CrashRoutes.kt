@@ -1,10 +1,13 @@
 package com.bananalytics.routes
 
 import com.bananalytics.config.*
+import com.bananalytics.models.CrashFreeStatsResponse
+import com.bananalytics.models.SessionVersionStats
 import com.bananalytics.models.UpdateCrashGroupRequest
 import com.bananalytics.models.UserResponse
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
+import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.repositories.CrashRepository
 import com.bananalytics.services.CrashService
 import io.ktor.http.*
@@ -14,6 +17,62 @@ import io.ktor.server.routing.*
 import java.util.*
 
 fun Route.crashRoutes() {
+    // Get crash-free session stats by version
+    get("/apps/{appId}/sessions/crash-free") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = java.time.OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            java.time.OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            java.time.OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(14)
+        }
+
+        val stats = AppSessionRepository.getCrashFreeStats(appId, fromDate, toDate)
+            .map { CrashFreeStatsResponse(it.date, it.totalSessions, it.crashFreeSessions, it.crashFreeRate) }
+        call.respond(stats)
+    }
+
+    // Get crash-free stats by version for chart
+    get("/apps/{appId}/sessions/crash-free-by-version") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+        
+        val now = java.time.OffsetDateTime.now()
+        val toDate = if (toParam != null) {
+            java.time.OffsetDateTime.parse(toParam)
+        } else {
+            now
+        }
+        val fromDate = if (fromParam != null) {
+            java.time.OffsetDateTime.parse(fromParam)
+        } else {
+            now.minusDays(14)
+        }
+
+        val stats = AppSessionRepository.getCrashFreeStatsByVersion(appId, fromDate, toDate)
+            .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
+        call.respond(stats)
+    }
+
     // Get crash stats for an app (timeline)
     get("/apps/{appId}/crashes/stats") {
         val user = call.getUser()
