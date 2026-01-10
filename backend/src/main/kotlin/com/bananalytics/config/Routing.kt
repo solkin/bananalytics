@@ -24,6 +24,9 @@ fun Application.configureRouting() {
         allowHost("localhost:3000")
         allowHost("127.0.0.1:3177")
         allowHost("127.0.0.1:3000")
+        
+        // For production (behind reverse proxy, same origin)
+        anyHost()
     }
 
     routing {
