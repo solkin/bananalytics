@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS app_versions (
     app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     version_code BIGINT NOT NULL,
     version_name VARCHAR(50),
-    mapping_content TEXT,
+    mapping_path VARCHAR(512),
     mute_crashes BOOLEAN NOT NULL DEFAULT false,
     mute_events BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

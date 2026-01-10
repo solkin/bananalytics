@@ -43,6 +43,9 @@ dependencies {
     // R8 Retrace for deobfuscation
     implementation("com.android.tools:r8:8.5.35")
 
+    // S3 Storage (MinIO compatible)
+    implementation("software.amazon.awssdk:s3:2.29.51")
+
     // Password hashing
     implementation("at.favre.lib:bcrypt:0.10.2")
 

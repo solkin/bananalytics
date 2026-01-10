@@ -2,6 +2,7 @@ package com.bananalytics.repositories
 
 import com.bananalytics.models.AppVersionResponse
 import com.bananalytics.models.AppVersions
+import com.bananalytics.services.StorageService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -47,7 +48,7 @@ object VersionRepository {
                 it[AppVersions.appId] = appId
                 it[AppVersions.versionCode] = versionCode
                 it[AppVersions.versionName] = versionName
-                it[AppVersions.mappingContent] = null
+                it[AppVersions.mappingPath] = null
                 it[AppVersions.createdAt] = now
             }
             AppVersionResponse(
@@ -56,16 +57,22 @@ object VersionRepository {
                 versionCode = versionCode,
                 versionName = versionName,
                 hasMapping = false,
+                muteCrashes = false,
+                muteEvents = false,
                 createdAt = now.toString()
             )
         }
     }
 
-    fun getMappingContent(appId: UUID, versionCode: Long): String? = transaction {
-        AppVersions.select(AppVersions.mappingContent)
-            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
-            .singleOrNull()
-            ?.get(AppVersions.mappingContent)
+    fun getMappingContent(appId: UUID, versionCode: Long): String? {
+        val mappingPath = transaction {
+            AppVersions.select(AppVersions.mappingPath)
+                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                .singleOrNull()
+                ?.get(AppVersions.mappingPath)
+        }
+
+        return mappingPath?.let { StorageService.getMappingByKey(it) }
     }
 
     fun create(
@@ -76,11 +83,16 @@ object VersionRepository {
     ): AppVersionResponse = transaction {
         val now = OffsetDateTime.now()
 
+        // Upload mapping to S3 if provided
+        val mappingPath = mappingContent?.let {
+            StorageService.uploadMapping(appId.toString(), versionCode, it)
+        }
+
         val id = AppVersions.insertAndGetId {
             it[AppVersions.appId] = appId
             it[AppVersions.versionCode] = versionCode
             it[AppVersions.versionName] = versionName
-            it[AppVersions.mappingContent] = mappingContent
+            it[AppVersions.mappingPath] = mappingPath
             it[AppVersions.createdAt] = now
         }
 
@@ -89,19 +101,52 @@ object VersionRepository {
             appId = appId.toString(),
             versionCode = versionCode,
             versionName = versionName,
-            hasMapping = mappingContent != null,
+            hasMapping = mappingPath != null,
+            muteCrashes = false,
+            muteEvents = false,
             createdAt = now.toString()
         )
     }
 
-    fun updateMapping(id: UUID, mappingContent: String): Boolean = transaction {
-        AppVersions.update({ AppVersions.id eq id }) {
-            it[AppVersions.mappingContent] = mappingContent
-        } > 0
+    fun updateMapping(id: UUID, mappingContent: String): Boolean {
+        // First get the version to know appId and versionCode
+        val version = transaction {
+            AppVersions.selectAll()
+                .where { AppVersions.id eq id }
+                .singleOrNull()
+        } ?: return false
+
+        val appId = version[AppVersions.appId].value.toString()
+        val versionCode = version[AppVersions.versionCode]
+
+        // Upload to S3
+        val mappingPath = StorageService.uploadMapping(appId, versionCode, mappingContent)
+
+        // Update path in database
+        return transaction {
+            AppVersions.update({ AppVersions.id eq id }) {
+                it[AppVersions.mappingPath] = mappingPath
+            } > 0
+        }
     }
 
-    fun delete(id: UUID): Boolean = transaction {
-        AppVersions.deleteWhere { AppVersions.id eq id } > 0
+    fun delete(id: UUID): Boolean {
+        // First get the version to delete mapping from S3
+        val version = transaction {
+            AppVersions.selectAll()
+                .where { AppVersions.id eq id }
+                .singleOrNull()
+        }
+
+        version?.let {
+            val appId = it[AppVersions.appId].value.toString()
+            val versionCode = it[AppVersions.versionCode]
+            StorageService.deleteMapping(appId, versionCode)
+        }
+
+        return transaction {
+            AppVersions.deleteWhere { AppVersions.id eq id } > 0
+        }
     }
 
     fun updateMuteSettings(id: UUID, muteCrashes: Boolean?, muteEvents: Boolean?): Boolean = transaction {
@@ -116,7 +161,7 @@ object VersionRepository {
         appId = this[AppVersions.appId].value.toString(),
         versionCode = this[AppVersions.versionCode],
         versionName = this[AppVersions.versionName],
-        hasMapping = this[AppVersions.mappingContent] != null,
+        hasMapping = this[AppVersions.mappingPath] != null,
         muteCrashes = this[AppVersions.muteCrashes],
         muteEvents = this[AppVersions.muteEvents],
         createdAt = this[AppVersions.createdAt].toString()
