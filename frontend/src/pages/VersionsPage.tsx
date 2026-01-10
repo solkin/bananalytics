@@ -104,16 +104,16 @@ export default function VersionsPage() {
 
   const columns = [
     {
-      title: 'Version Code',
-      dataIndex: 'version_code',
-      key: 'version_code',
-      render: (code: number) => <Typography.Text strong>{code}</Typography.Text>,
-    },
-    {
       title: 'Version Name',
       dataIndex: 'version_name',
       key: 'version_name',
       render: (name: string | null) => name || <Typography.Text type="secondary">—</Typography.Text>,
+    },
+    {
+      title: 'Version Code',
+      dataIndex: 'version_code',
+      key: 'version_code',
+      render: (code: number) => <Typography.Text strong>{code}</Typography.Text>,
     },
     {
       title: 'Mapping',
