@@ -200,7 +200,7 @@ export default function CrashDetailPage() {
 
       <Card
         title="Crash Timeline"
-        styles={{ header: { background: '#fafafa' } }}
+        styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0' } }}
         extra={
           <RangePicker
             value={dateRange}
