@@ -244,7 +244,7 @@ export default function CrashesPage() {
             }}
             legend={{
               color: {
-                position: 'top',
+                position: 'bottom',
                 layout: { justifyContent: 'center' },
               },
             }}
