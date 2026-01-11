@@ -206,33 +206,47 @@ export default function CrashesPage() {
             }))}
             xField="date"
             yField="rate"
-            seriesField="version"
+            colorField="version"
+            shapeField="smooth"
             height={200}
-            color={versionColors}
-            xAxis={{
-              label: {
-                formatter: (v: string) => dayjs(v).format('MM-DD'),
+            scale={{
+              color: {
+                range: versionColors,
               },
             }}
-            yAxis={{
-              min: 0,
-              max: 100,
-              label: {
-                formatter: (v: string) => `${v}%`,
+            axis={{
+              x: {
+                labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
+              },
+              y: {
+                labelFormatter: (v: number) => `${v}%`,
+                domainMin: 0,
+                domainMax: 100,
               },
             }}
-            point={{
-              size: 3,
-              shape: 'circle',
+            style={{
+              lineWidth: 2,
+            }}
+            interaction={{
+              tooltip: {
+                render: (_: any, { title, items }: any) => {
+                  return `<div style="padding: 8px">
+                    <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
+                    ${items.map((item: any) => `
+                      <div style="display: flex; align-items: center; gap: 8px">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: ${item.color}"></span>
+                        <span>${item.name}: ${item.value.toFixed(1)}%</span>
+                      </div>
+                    `).join('')}
+                  </div>`;
+                },
+              },
             }}
             legend={{
-              position: 'top-right',
-            }}
-            tooltip={{
-              title: (d: any) => dayjs(d.date).format('YYYY-MM-DD'),
-              items: [
-                { channel: 'y', name: 'Crash-Free Rate', valueFormatter: (v: number) => `${v.toFixed(1)}%` },
-              ],
+              color: {
+                position: 'top-right',
+                layout: { justifyContent: 'flex-end' },
+              },
             }}
           />
         </Card>
