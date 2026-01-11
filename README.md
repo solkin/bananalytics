@@ -2,6 +2,13 @@
 
 Lightweight self-hosted crash reporting and analytics platform for Android applications. A simple alternative to Firebase Crashlytics or HockeyApp.
 
+<table>
+  <tr>
+    <td><img src="docs/screenshots/crash-report.jpg" alt="Crash Report" width="400"/></td>
+    <td><img src="docs/screenshots/crashes-list.jpg" alt="Crashes List" width="400"/></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Crash Reporting** — Automatic crash grouping by stacktrace fingerprint
