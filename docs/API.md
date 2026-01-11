@@ -248,6 +248,25 @@ Get crash-free session statistics by day.
 ]
 ```
 
+### GET /apps/{id}/sessions/crash-free-by-version
+Get crash-free session statistics by day, broken down by app version.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+
+**Response:**
+```json
+[
+  {
+    "date": "2026-01-10",
+    "version_code": 123,
+    "version_name": "1.2.3",
+    "count": 50
+  }
+]
+```
+
+**Note:** Returns sessions grouped by version, used for the crash-free sessions chart on the Crashes page.
+
 ### GET /apps/{id}/sessions/unique
 Get unique sessions count by day and version.
 
