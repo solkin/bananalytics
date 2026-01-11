@@ -738,6 +738,7 @@ fun Route.appRoutes() {
             for (email in request.emails) {
                 val success = EmailService.sendNewVersionEmail(
                     toEmail = email,
+                    appId = appId.toString(),
                     appName = app.name,
                     versionName = version.versionName,
                     versionCode = version.versionCode,

@@ -35,6 +35,7 @@ object EmailService {
 
     fun sendNewVersionEmail(
         toEmail: String,
+        appId: String,
         appName: String,
         versionName: String?,
         versionCode: Long,
@@ -46,6 +47,7 @@ object EmailService {
         }
 
         val versionDisplay = if (versionName != null) "$versionName ($versionCode)" else "Build $versionCode"
+        val distributionUrl = "$baseUrl/apps/$appId/distribution"
 
         val htmlContent = """
             <!DOCTYPE html>
@@ -59,6 +61,7 @@ object EmailService {
                     .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
                     .version-badge { display: inline-block; background: #e6f7ff; color: #1890ff; padding: 8px 16px; border-radius: 4px; font-weight: 600; font-size: 18px; }
                     .release-notes { background: white; border-left: 4px solid #52c41a; padding: 16px; margin: 20px 0; }
+                    .button { display: inline-block; background: #52c41a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 20px 0; }
                     .footer { text-align: center; color: #888; font-size: 12px; margin-top: 20px; }
                 </style>
             </head>
@@ -78,7 +81,10 @@ object EmailService {
                             <p>${releaseNotes.replace("\n", "<br>")}</p>
                         </div>
                         """ else ""}
-                        <p>Log in to Bananalytics to download the latest build.</p>
+                        <p style="text-align: center;">
+                            <a href="$distributionUrl" class="button">Download from Distribution</a>
+                        </p>
+                        <p style="color: #666; font-size: 14px; text-align: center;">Or copy this link: <a href="$distributionUrl">$distributionUrl</a></p>
                     </div>
                     <div class="footer">
                         <p>You received this email because you have access to $appName on Bananalytics.</p>
@@ -93,7 +99,7 @@ object EmailService {
             
             A new version of "$appName" is available: $versionDisplay
             ${if (releaseNotes != null) "\nRelease Notes:\n$releaseNotes\n" else ""}
-            Log in to Bananalytics to download the latest build.
+            Download from Distribution: $distributionUrl
         """.trimIndent()
 
         return try {
