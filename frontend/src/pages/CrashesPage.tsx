@@ -185,7 +185,7 @@ export default function CrashesPage() {
       {hasSessionData && (
         <Card
           title="Crash-Free Sessions"
-          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0' } }}
+          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
           extra={
             <RangePicker
               value={dateRange}
@@ -254,7 +254,7 @@ export default function CrashesPage() {
 
       <Card
         title="Crash Timeline"
-        styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0' } }}
+        styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
         extra={
           !hasSessionData && (
             <RangePicker

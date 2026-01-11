@@ -138,7 +138,7 @@ export default function EventsPage() {
       {hasSessionData && (
         <Card
           title="Unique Sessions by Version"
-          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0' } }}
+          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
           extra={
             <RangePicker
               value={dateRange}

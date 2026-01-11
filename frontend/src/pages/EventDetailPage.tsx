@@ -176,7 +176,7 @@ export default function EventDetailPage() {
 
         <Card
           title="Event Timeline"
-          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0' } }}
+          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
           extra={
             <RangePicker
               value={dateRange}
