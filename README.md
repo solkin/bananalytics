@@ -54,21 +54,50 @@ The production setup uses Nginx as a reverse proxy. Only the `bananalytics-nginx
 | `S3_BUCKET` | Bucket for mapping files | `bananalytics` |
 | `REGISTRATION_ENABLED` | Allow new user registration | `false` (prod) |
 
-## Android SDK Integration
+## Android SDK
 
-```kotlin
-class MyEventSender(private val apiKey: String) : EventSender {
-    override fun sendEvents(payload: String): Boolean {
-        val request = Request.Builder()
-            .url("https://your-server.com/api/v1/events/submit")
-            .header("Content-Type", "application/json")
-            .header("X-API-Key", apiKey)
-            .post(payload.toRequestBody())
-            .build()
-        // Execute request...
+Official Android SDK: **[bananalytics-android](https://github.com/solkin/bananalytics-android)**
+
+### Installation (JitPack)
+
+```gradle
+// settings.gradle
+dependencyResolutionManagement {
+    repositories {
+        maven { url 'https://jitpack.io' }
     }
 }
+
+// build.gradle
+dependencies {
+    implementation 'com.github.solkin:bananalytics-android:1.0.0'
+}
 ```
+
+### Quick Start
+
+```kotlin
+val bananalytics = BananalyticsImpl(
+    filesDir = context.filesDir,
+    config = BananalyticsConfig(
+        baseUrl = "https://your-server.com",
+        apiKey = "bnn_xxxxx"
+    ),
+    environmentProvider = MyEnvironmentProvider(),
+    isDebug = BuildConfig.DEBUG
+)
+
+// Install early in Application.onCreate()
+bananalytics.install()
+
+// Track events
+bananalytics.trackEvent("button_click", mapOf("screen" to "home"), mapOf("load_time" to 1.5))
+
+// Leave breadcrumbs
+bananalytics.leaveBreadcrumb("Opened settings", BreadcrumbCategory.NAVIGATION)
+```
+
+See full documentation in the [SDK repository](https://github.com/solkin/bananalytics-android).
 
 ## API
 
