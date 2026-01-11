@@ -274,20 +274,25 @@ export default function CrashesPage() {
           xField="date"
           yField="count"
           height={200}
-          color="#ff4d4f"
-          xAxis={{
-            label: {
-              formatter: (v: string) => dayjs(v).format('MM-DD'),
+          style={{ fill: '#ff4d4f' }}
+          axis={{
+            x: {
+              labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
+            },
+            y: {
+              labelFormatter: (v: number) => Number.isInteger(v) ? v.toString() : '',
+              tickFilter: (d: number) => Number.isInteger(d),
             },
           }}
-          yAxis={{
-            label: {
-              formatter: (v: string) => Math.floor(Number(v)).toString(),
+          interaction={{
+            tooltip: {
+              render: (_: any, { title, items }: any) => {
+                return `<div style="padding: 8px">
+                  <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
+                  <div>Crashes: ${items[0]?.value ?? 0}</div>
+                </div>`;
+              },
             },
-          }}
-          tooltip={{
-            title: (d: DailyStat) => dayjs(d.date).format('YYYY-MM-DD'),
-            items: [{ channel: 'y', name: 'Crashes' }],
           }}
         />
       </Card>

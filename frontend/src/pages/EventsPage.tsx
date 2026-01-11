@@ -172,7 +172,8 @@ export default function EventsPage() {
                 labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
               },
               y: {
-                labelFormatter: (v: number) => Math.floor(v).toString(),
+                labelFormatter: (v: number) => Number.isInteger(v) ? v.toString() : '',
+                tickFilter: (d: number) => Number.isInteger(d),
               },
             }}
             style={{
