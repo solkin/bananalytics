@@ -5,8 +5,10 @@ import com.bananalytics.models.*
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
 import com.bananalytics.repositories.DownloadTokenRepository
+import com.bananalytics.repositories.InvitationRepository
 import com.bananalytics.repositories.UserRepository
 import com.bananalytics.repositories.VersionRepository
+import com.bananalytics.services.EmailService
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -117,7 +119,7 @@ fun Route.appRoutes() {
 
         // --- Access management ---
 
-        // List users with access
+        // List users with access (including pending invitations)
         get("/{id}/access") {
             val user = call.getUser()
             val appId = call.parameters["id"]?.toUUIDOrNull()
@@ -125,11 +127,38 @@ fun Route.appRoutes() {
 
             call.requireAppAccess(appId, user)
 
-            val accessList = AppAccessRepository.findByAppId(appId)
-            call.respond(accessList)
+            // Get active access
+            val accessList = AppAccessRepository.findByAppId(appId).map { access ->
+                AccessListItemResponse(
+                    id = access.id,
+                    appId = access.appId,
+                    userId = access.userId,
+                    userEmail = access.userEmail,
+                    userName = access.userName,
+                    role = access.role,
+                    status = "active",
+                    createdAt = access.createdAt
+                )
+            }
+
+            // Get pending invitations
+            val invitations = InvitationRepository.findByAppId(appId).map { invitation ->
+                AccessListItemResponse(
+                    id = invitation.id,
+                    appId = invitation.appId,
+                    userId = null,
+                    userEmail = invitation.email,
+                    userName = null,
+                    role = invitation.role,
+                    status = "invited",
+                    createdAt = invitation.createdAt
+                )
+            }
+
+            call.respond(accessList + invitations)
         }
 
-        // Grant access to user
+        // Grant access to user (or create invitation for unknown emails)
         post("/{id}/access") {
             val user = call.getUser()
             val appId = call.parameters["id"]?.toUUIDOrNull()
@@ -144,29 +173,66 @@ fun Route.appRoutes() {
             }
 
             val targetUser = UserRepository.findByEmail(request.email)
-                ?: throw NotFoundException("User not found with email: ${request.email}")
+            
+            if (targetUser != null) {
+                // User exists - grant access directly
+                val existingRole = AppAccessRepository.getUserRole(appId, UUID.fromString(targetUser.id))
+                if (existingRole != null) {
+                    throw BadRequestException("User already has access")
+                }
 
-            val existingRole = AppAccessRepository.getUserRole(appId, UUID.fromString(targetUser.id))
-            if (existingRole != null) {
-                throw BadRequestException("User already has access")
+                val access = AppAccessRepository.grantAccess(
+                    appId = appId,
+                    userId = UUID.fromString(targetUser.id),
+                    role = request.role
+                )
+
+                call.respond(HttpStatusCode.Created, access)
+            } else {
+                // User doesn't exist - create invitation
+                val existingInvitation = InvitationRepository.findByEmailAndApp(request.email, appId)
+                if (existingInvitation != null) {
+                    throw BadRequestException("Invitation already sent to this email")
+                }
+
+                val app = AppRepository.findById(appId)
+                    ?: throw NotFoundException("App not found")
+
+                val invitation = InvitationRepository.create(
+                    email = request.email,
+                    appId = appId,
+                    role = request.role,
+                    invitedBy = UUID.fromString(user.id)
+                )
+
+                // Send invitation email if SMTP is configured
+                if (EmailService.isConfigured) {
+                    EmailService.sendInvitationEmail(
+                        toEmail = request.email,
+                        appName = app.name,
+                        role = request.role,
+                        inviteToken = invitation.token
+                    )
+                }
+
+                // Return invitation response (mimics access response format for UI consistency)
+                call.respond(HttpStatusCode.Created, InvitationResponse(
+                    id = invitation.id.toString(),
+                    email = invitation.email,
+                    appId = invitation.appId.toString(),
+                    role = invitation.role,
+                    createdAt = invitation.expiresAt.toString()
+                ))
             }
-
-            val access = AppAccessRepository.grantAccess(
-                appId = appId,
-                userId = UUID.fromString(targetUser.id),
-                role = request.role
-            )
-
-            call.respond(HttpStatusCode.Created, access)
         }
 
-        // Update user access role
-        put("/{id}/access/{userId}") {
+        // Update user access role (or invitation role)
+        put("/{id}/access/{accessId}") {
             val user = call.getUser()
             val appId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw BadRequestException("Invalid app ID")
-            val targetUserId = call.parameters["userId"]?.toUUIDOrNull()
-                ?: throw BadRequestException("Invalid user ID")
+            val accessId = call.parameters["accessId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid access ID")
 
             call.requireAppAdmin(appId, user)
 
@@ -176,15 +242,23 @@ fun Route.appRoutes() {
                 throw BadRequestException("Role must be 'admin', 'viewer', or 'tester'")
             }
 
+            // First try to update invitation
+            val invitationUpdated = InvitationRepository.updateRole(accessId, request.role)
+            if (invitationUpdated) {
+                call.respond(HttpStatusCode.NoContent)
+                return@put
+            }
+
+            // If not an invitation, update user access role
             // Prevent removing the last admin
             if (request.role != "admin") {
-                val currentRole = AppAccessRepository.getUserRole(appId, targetUserId)
+                val currentRole = AppAccessRepository.getUserRole(appId, accessId)
                 if (currentRole == "admin" && AppAccessRepository.countAdmins(appId) <= 1) {
                     throw BadRequestException("Cannot remove the last admin")
                 }
             }
 
-            val updated = AppAccessRepository.updateRole(appId, targetUserId, request.role)
+            val updated = AppAccessRepository.updateRole(appId, accessId, request.role)
             if (!updated) {
                 throw NotFoundException("Access not found")
             }
@@ -192,28 +266,89 @@ fun Route.appRoutes() {
             call.respond(HttpStatusCode.NoContent)
         }
 
-        // Revoke access
-        delete("/{id}/access/{userId}") {
+        // Revoke access (or cancel invitation)
+        delete("/{id}/access/{accessId}") {
             val user = call.getUser()
             val appId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw BadRequestException("Invalid app ID")
-            val targetUserId = call.parameters["userId"]?.toUUIDOrNull()
-                ?: throw BadRequestException("Invalid user ID")
+            val accessId = call.parameters["accessId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid access ID")
 
             call.requireAppAdmin(appId, user)
 
-            // Prevent removing yourself if you're the last admin
-            val currentRole = AppAccessRepository.getUserRole(appId, targetUserId)
+            // First try to find and delete invitation
+            val deletedInvitation = InvitationRepository.delete(accessId)
+            if (deletedInvitation) {
+                call.respond(HttpStatusCode.NoContent)
+                return@delete
+            }
+
+            // If not an invitation, try to revoke user access
+            // The accessId might be user ID for existing users
+            val currentRole = AppAccessRepository.getUserRole(appId, accessId)
             if (currentRole == "admin" && AppAccessRepository.countAdmins(appId) <= 1) {
                 throw BadRequestException("Cannot remove the last admin")
             }
 
-            val revoked = AppAccessRepository.revokeAccess(appId, targetUserId)
+            val revoked = AppAccessRepository.revokeAccess(appId, accessId)
             if (!revoked) {
                 throw NotFoundException("Access not found")
             }
 
             call.respond(HttpStatusCode.NoContent)
+        }
+
+        // Get invitation link
+        get("/{id}/access/{invitationId}/link") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val invitationId = call.parameters["invitationId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid invitation ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val invitation = InvitationRepository.findById(invitationId)
+                ?: throw NotFoundException("Invitation not found")
+
+            val baseUrl = System.getenv("BASE_URL") ?: "http://localhost:5173"
+            val inviteUrl = "$baseUrl/register?invite=${invitation.token}"
+
+            call.respond(mapOf("url" to inviteUrl))
+        }
+
+        // Resend invitation email
+        post("/{id}/access/{invitationId}/resend") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val invitationId = call.parameters["invitationId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid invitation ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val invitation = InvitationRepository.findById(invitationId)
+                ?: throw NotFoundException("Invitation not found")
+
+            if (!EmailService.isConfigured) {
+                throw BadRequestException("SMTP is not configured")
+            }
+
+            val app = AppRepository.findById(appId)
+                ?: throw NotFoundException("App not found")
+
+            val sent = EmailService.sendInvitationEmail(
+                toEmail = invitation.email,
+                appName = app.name,
+                role = invitation.role,
+                inviteToken = invitation.token
+            )
+
+            if (!sent) {
+                throw BadRequestException("Failed to send email")
+            }
+
+            call.respond(mapOf("status" to "sent"))
         }
 
         // Get current user's role for an app
@@ -550,6 +685,76 @@ fun Route.appRoutes() {
 
             val versions = VersionRepository.findPublishedForTesters(appId)
             call.respond(versions)
+        }
+
+        // Get app members for notification dialog
+        get("/{appId}/members") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val accessList = AppAccessRepository.findByAppId(appId)
+            val members = accessList.map { access ->
+                AppMemberResponse(
+                    email = access.userEmail,
+                    name = access.userName,
+                    role = access.role
+                )
+            }
+            call.respond(members)
+        }
+
+        // Notify testers about new version
+        post("/{appId}/versions/{versionId}/notify-testers") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            if (!EmailService.isConfigured) {
+                throw BadRequestException("SMTP is not configured")
+            }
+
+            val request = call.receive<NotifyTestersRequest>()
+            if (request.emails.isEmpty()) {
+                call.respond(NotifyTestersResponse(sent = 0, failed = 0))
+                return@post
+            }
+
+            val app = AppRepository.findById(appId)
+                ?: throw NotFoundException("App not found")
+
+            val version = VersionRepository.findById(versionId)
+                ?: throw NotFoundException("Version not found")
+
+            var sent = 0
+            var failed = 0
+
+            for (email in request.emails) {
+                val success = EmailService.sendNewVersionEmail(
+                    toEmail = email,
+                    appName = app.name,
+                    versionName = version.versionName,
+                    versionCode = version.versionCode,
+                    releaseNotes = version.releaseNotes
+                )
+                if (success) {
+                    sent++
+                } else {
+                    failed++
+                }
+                // Throttle: wait 500ms between emails to avoid overloading SMTP
+                if (request.emails.indexOf(email) < request.emails.size - 1) {
+                    Thread.sleep(500)
+                }
+            }
+
+            call.respond(NotifyTestersResponse(sent = sent, failed = failed))
         }
     }
 }

@@ -26,3 +26,17 @@ object AppAccess : UUIDTable("app_access") {
         uniqueIndex(appId, userId)
     }
 }
+
+object Invitations : UUIDTable("invitations") {
+    val email = varchar("email", 255)
+    val appId = reference("app_id", Apps)
+    val role = varchar("role", 20).default("viewer")  // "admin", "viewer", or "tester"
+    val token = varchar("token", 64).uniqueIndex()
+    val invitedBy = reference("invited_by", Users)
+    val expiresAt = timestampWithTimeZone("expires_at")
+    val createdAt = timestampWithTimeZone("created_at")
+
+    init {
+        uniqueIndex(email, appId)
+    }
+}

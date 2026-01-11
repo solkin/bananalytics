@@ -161,3 +161,32 @@ export async function getDistributionVersions(appId: string): Promise<AppVersion
   const response = await api.get<AppVersion[]>(`/apps/${appId}/distribution`)
   return response.data
 }
+
+// App members (for notification)
+export interface AppMember {
+  email: string
+  name: string | null
+  role: string
+}
+
+export async function getAppMembers(appId: string): Promise<AppMember[]> {
+  const response = await api.get<AppMember[]>(`/apps/${appId}/members`)
+  return response.data
+}
+
+export interface NotifyTestersResult {
+  sent: number
+  failed: number
+}
+
+export async function notifyTesters(
+  appId: string,
+  versionId: string,
+  emails: string[]
+): Promise<NotifyTestersResult> {
+  const response = await api.post<NotifyTestersResult>(
+    `/apps/${appId}/versions/${versionId}/notify-testers`,
+    { emails }
+  )
+  return response.data
+}

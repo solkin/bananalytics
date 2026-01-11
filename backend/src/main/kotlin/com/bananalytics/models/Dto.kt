@@ -251,3 +251,23 @@ data class DownloadTokenResponse(
 data class CreateDownloadTokenRequest(
     @SerialName("expires_in_hours") val expiresInHours: Int = 24
 )
+
+// ============ Notify Testers DTOs ============
+
+@Serializable
+data class NotifyTestersRequest(
+    val emails: List<String>
+)
+
+@Serializable
+data class NotifyTestersResponse(
+    val sent: Int,
+    val failed: Int
+)
+
+@Serializable
+data class AppMemberResponse(
+    val email: String,
+    val name: String?,
+    val role: String
+)

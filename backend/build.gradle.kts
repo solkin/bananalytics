@@ -49,6 +49,9 @@ dependencies {
     // Password hashing
     implementation("at.favre.lib:bcrypt:0.10.2")
 
+    // Email (Jakarta Mail)
+    implementation("org.simplejavamail:simple-java-mail:8.12.4")
+
     // Logging
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 

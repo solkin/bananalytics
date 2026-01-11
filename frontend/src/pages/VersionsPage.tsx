@@ -17,6 +17,8 @@ import {
   Descriptions,
   Divider,
   Popconfirm,
+  Checkbox,
+  List,
 } from 'antd'
 import {
   PlusOutlined,
@@ -27,6 +29,7 @@ import {
   DeleteOutlined,
   LinkOutlined,
   CopyOutlined,
+  MailOutlined,
 } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { AppVersion } from '@/types'
@@ -40,7 +43,11 @@ import {
   getMappingDownloadUrl,
   getApkDownloadUrl,
   createDownloadToken,
+  getAppMembers,
+  notifyTesters,
+  type AppMember,
 } from '@/api/apps'
+import { useAuth } from '@/context/AuthContext'
 
 const { Dragger } = Upload
 const { TextArea } = Input
@@ -55,6 +62,7 @@ function formatBytes(bytes: number): string {
 
 export default function VersionsPage() {
   const { appId } = useParams<{ appId: string }>()
+  const { config } = useAuth()
   const [versions, setVersions] = useState<AppVersion[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -72,6 +80,13 @@ export default function VersionsPage() {
   const [uploadApkFileList, setUploadApkFileList] = useState<UploadFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [downloadLink, setDownloadLink] = useState<string | null>(null)
+
+  // Notify testers dialog state
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false)
+  const [notifyLoading, setNotifyLoading] = useState(false)
+  const [members, setMembers] = useState<AppMember[]>([])
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([])
+  const [pendingPublish, setPendingPublish] = useState(false)
 
   const loadVersions = async () => {
     try {
@@ -98,20 +113,20 @@ export default function VersionsPage() {
       setCreating(true)
       const mappingFile = mappingFileList[0]?.originFileObj
       const apkFile = apkFileList[0]?.originFileObj
-      
+
       // First create version with mapping
       const version = await createVersion(appId!, values.version_code, values.version_name, mappingFile)
-      
+
       // Then upload APK if provided
       if (apkFile) {
         await uploadApk(appId!, version.id, apkFile)
       }
-      
+
       // Update release notes if provided
       if (values.release_notes) {
         await updateVersion(appId!, version.id, { release_notes: values.release_notes })
       }
-      
+
       message.success('Version created')
       setModalOpen(false)
       form.resetFields()
@@ -136,6 +151,18 @@ export default function VersionsPage() {
 
   const handleToggle = async (type: 'crashes' | 'events' | 'published', enabled: boolean) => {
     if (!selectedVersion) return
+
+    // If enabling "published for testers" and SMTP is configured, show notification dialog
+    if (type === 'published' && enabled && config?.smtp_configured) {
+      await openNotifyDialog()
+      return
+    }
+
+    await performToggle(type, enabled)
+  }
+
+  const performToggle = async (type: 'crashes' | 'events' | 'published', enabled: boolean) => {
+    if (!selectedVersion) return
     try {
       const update: Record<string, boolean> = {}
       if (type === 'crashes') update.mute_crashes = !enabled
@@ -155,6 +182,60 @@ export default function VersionsPage() {
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to update settings')
     }
+  }
+
+  const openNotifyDialog = async () => {
+    try {
+      const membersData = await getAppMembers(appId!)
+      setMembers(membersData)
+      setSelectedEmails(membersData.map((m) => m.email))
+      setPendingPublish(true)
+      setNotifyModalOpen(true)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Failed to load members')
+    }
+  }
+
+  const handleNotifyAndPublish = async () => {
+    if (!selectedVersion) return
+    try {
+      setNotifyLoading(true)
+
+      // First publish
+      await performToggle('published', true)
+
+      // Then notify selected users
+      if (selectedEmails.length > 0) {
+        const result = await notifyTesters(appId!, selectedVersion.id, selectedEmails)
+        if (result.sent > 0) {
+          message.success(`Notified ${result.sent} user${result.sent > 1 ? 's' : ''}`)
+        }
+        if (result.failed > 0) {
+          message.warning(`Failed to notify ${result.failed} user${result.failed > 1 ? 's' : ''}`)
+        }
+      }
+
+      setNotifyModalOpen(false)
+      setPendingPublish(false)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Failed to notify')
+    } finally {
+      setNotifyLoading(false)
+    }
+  }
+
+  const handleSkipNotification = async () => {
+    await performToggle('published', true)
+    setNotifyModalOpen(false)
+    setPendingPublish(false)
+  }
+
+  const handleSelectAll = () => {
+    setSelectedEmails(members.map((m) => m.email))
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedEmails([])
   }
 
   const handleSaveReleaseNotes = async () => {
@@ -294,11 +375,7 @@ export default function VersionsPage() {
       key: 'published_for_testers',
       width: 100,
       render: (published: boolean) =>
-        published ? (
-          <Tag color="blue">Published</Tag>
-        ) : (
-          <Tag color="default">Draft</Tag>
-        ),
+        published ? <Tag color="blue">Published</Tag> : <Tag color="default">Draft</Tag>,
     },
     {
       title: 'Created',
@@ -308,6 +385,12 @@ export default function VersionsPage() {
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
   ]
+
+  const versionDisplay = selectedVersion
+    ? selectedVersion.version_name
+      ? `${selectedVersion.version_name} (${selectedVersion.version_code})`
+      : `Build ${selectedVersion.version_code}`
+    : ''
 
   return (
     <>
@@ -368,7 +451,9 @@ export default function VersionsPage() {
                 beforeUpload={() => false}
                 onChange={({ fileList }) => setApkFileList(fileList)}
               >
-                <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                <p className="ant-upload-drag-icon">
+                  <UploadOutlined />
+                </p>
                 <p className="ant-upload-text">Click or drag APK file (max 200MB)</p>
               </Dragger>
             </div>
@@ -382,24 +467,110 @@ export default function VersionsPage() {
                 beforeUpload={() => false}
                 onChange={({ fileList }) => setMappingFileList(fileList)}
               >
-                <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                <p className="ant-upload-drag-icon">
+                  <UploadOutlined />
+                </p>
                 <p className="ant-upload-text">Click or drag mapping.txt</p>
               </Dragger>
             </div>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => {
-                setModalOpen(false)
-                setMappingFileList([])
-                setApkFileList([])
-              }}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  setModalOpen(false)
+                  setMappingFileList([])
+                  setApkFileList([])
+                }}
+              >
+                Cancel
+              </Button>
               <Button type="primary" htmlType="submit" loading={creating}>
                 Create
               </Button>
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Notify Testers Modal */}
+      <Modal
+        title={
+          <Space>
+            <MailOutlined />
+            Notify Testers
+          </Space>
+        }
+        open={notifyModalOpen}
+        onCancel={() => {
+          setNotifyModalOpen(false)
+          setPendingPublish(false)
+        }}
+        footer={
+          <Space>
+            <Button onClick={handleSkipNotification}>Skip</Button>
+            <Button
+              type="primary"
+              icon={<MailOutlined />}
+              onClick={handleNotifyAndPublish}
+              loading={notifyLoading}
+              disabled={selectedEmails.length === 0}
+            >
+              Notify & Publish
+            </Button>
+          </Space>
+        }
+        width={500}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Typography.Text>
+            <strong>{versionDisplay}</strong> is ready for testing.
+            <br />
+            Select who should receive notification:
+          </Typography.Text>
+
+          <Space>
+            <Button size="small" onClick={handleSelectAll}>
+              Select All
+            </Button>
+            <Button size="small" onClick={handleDeselectAll}>
+              Deselect All
+            </Button>
+          </Space>
+
+          <List
+            bordered
+            size="small"
+            dataSource={members}
+            style={{ maxHeight: 300, overflow: 'auto' }}
+            renderItem={(member) => (
+              <List.Item style={{ padding: '8px 16px' }}>
+                <Checkbox
+                  checked={selectedEmails.includes(member.email)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedEmails([...selectedEmails, member.email])
+                    } else {
+                      setSelectedEmails(selectedEmails.filter((e) => e !== member.email))
+                    }
+                  }}
+                >
+                  <Space>
+                    <span>{member.email}</span>
+                    {member.name && (
+                      <Typography.Text type="secondary">({member.name})</Typography.Text>
+                    )}
+                    <Tag>{member.role}</Tag>
+                  </Space>
+                </Checkbox>
+              </List.Item>
+            )}
+          />
+
+          <Typography.Text type="secondary">
+            {selectedEmails.length} of {members.length} selected
+          </Typography.Text>
+        </Space>
       </Modal>
 
       {/* Version Details Drawer */}
@@ -418,7 +589,9 @@ export default function VersionsPage() {
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Version Code">{selectedVersion.version_code}</Descriptions.Item>
-              <Descriptions.Item label="Version Name">{selectedVersion.version_name || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Version Name">
+                {selectedVersion.version_name || '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Created">
                 {new Date(selectedVersion.created_at).toLocaleString()}
               </Descriptions.Item>
@@ -502,15 +675,8 @@ export default function VersionsPage() {
                 </Space>
                 {downloadLink && (
                   <Input.Group compact style={{ marginTop: 8 }}>
-                    <Input
-                      value={downloadLink}
-                      readOnly
-                      style={{ width: 'calc(100% - 32px)' }}
-                    />
-                    <Button
-                      icon={<CopyOutlined />}
-                      onClick={() => copyToClipboard(downloadLink)}
-                    />
+                    <Input value={downloadLink} readOnly style={{ width: 'calc(100% - 32px)' }} />
+                    <Button icon={<CopyOutlined />} onClick={() => copyToClipboard(downloadLink)} />
                   </Input.Group>
                 )}
                 <Divider dashed />
@@ -523,16 +689,14 @@ export default function VersionsPage() {
                     beforeUpload={() => false}
                     onChange={({ fileList }) => setUploadApkFileList(fileList)}
                   >
-                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-drag-icon">
+                      <UploadOutlined />
+                    </p>
                     <p className="ant-upload-text">Click or drag APK file</p>
                   </Dragger>
                 </div>
                 {uploadApkFileList.length > 0 && (
-                  <Button
-                    type="primary"
-                    onClick={handleUploadApk}
-                    loading={uploading}
-                  >
+                  <Button type="primary" onClick={handleUploadApk} loading={uploading}>
                     Upload APK
                   </Button>
                 )}
@@ -547,16 +711,14 @@ export default function VersionsPage() {
                     beforeUpload={() => false}
                     onChange={({ fileList }) => setUploadApkFileList(fileList)}
                   >
-                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-drag-icon">
+                      <UploadOutlined />
+                    </p>
                     <p className="ant-upload-text">Click or drag APK file (max 200MB)</p>
                   </Dragger>
                 </div>
                 {uploadApkFileList.length > 0 && (
-                  <Button
-                    type="primary"
-                    onClick={handleUploadApk}
-                    loading={uploading}
-                  >
+                  <Button type="primary" onClick={handleUploadApk} loading={uploading}>
                     Upload APK
                   </Button>
                 )}
@@ -585,7 +747,9 @@ export default function VersionsPage() {
                     beforeUpload={() => false}
                     onChange={({ fileList }) => setUploadMappingFileList(fileList)}
                   >
-                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-drag-icon">
+                      <UploadOutlined />
+                    </p>
                     <p className="ant-upload-text">Click or drag mapping.txt</p>
                   </Dragger>
                 </div>
@@ -605,7 +769,9 @@ export default function VersionsPage() {
                     beforeUpload={() => false}
                     onChange={({ fileList }) => setUploadMappingFileList(fileList)}
                   >
-                    <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+                    <p className="ant-upload-drag-icon">
+                      <UploadOutlined />
+                    </p>
                     <p className="ant-upload-text">Click or drag mapping.txt</p>
                   </Dragger>
                 </div>

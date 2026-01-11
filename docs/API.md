@@ -20,21 +20,60 @@ Get server configuration.
 **Response:**
 ```json
 {
-  "registration_enabled": true
+  "registration_enabled": true,
+  "smtp_configured": true
 }
 ```
 
+### POST /auth/check-email
+Check if a user with this email exists.
+
+**Request:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "exists": true,
+  "smtp_configured": true
+}
+```
+
+### GET /auth/invite/{token}
+Get invitation info by token. Used to pre-fill registration form.
+
+**Response:**
+```json
+{
+  "email": "invited@example.com"
+}
+```
+
+**Errors:**
+- `404` - Invalid or expired invitation
+
 ### POST /auth/register
-Register a new user (if enabled).
+Register a new user.
 
 **Request:**
 ```json
 {
   "email": "user@example.com",
   "password": "secret123",
-  "name": "John Doe"
+  "name": "John Doe",
+  "invite_token": "abc123..."
 }
 ```
+
+**Notes:**
+- Registration is allowed if `registration_enabled` is true, OR if the user has pending invitations
+- `invite_token` is optional — used when registering via invitation link
+- If email matches pending invitations, access is automatically granted to invited projects
+- All pending invitations for this email are processed upon registration
 
 **Response:** `201 Created`
 ```json
@@ -411,6 +450,48 @@ Create a temporary public download link for APK.
 
 ## Distribution Endpoints
 
+### GET /apps/{appId}/members
+Get all members of an app (for notification dialog).
+
+**Response:**
+```json
+[
+  {
+    "email": "admin@example.com",
+    "name": "John Admin",
+    "role": "admin"
+  },
+  {
+    "email": "tester@example.com",
+    "name": null,
+    "role": "tester"
+  }
+]
+```
+
+### POST /apps/{appId}/versions/{versionId}/notify-testers
+Send notification emails about new version to selected users.
+
+**Request:**
+```json
+{
+  "emails": ["tester1@example.com", "tester2@example.com"]
+}
+```
+
+**Response:**
+```json
+{
+  "sent": 2,
+  "failed": 0
+}
+```
+
+**Notes:**
+- Requires SMTP to be configured
+- Emails are sent with 500ms delay between each to avoid overloading SMTP
+- Returns count of successfully sent and failed emails
+
 ### GET /apps/{id}/distribution
 Get published versions for testers (versions with APK and `published_for_testers` = true).
 
@@ -568,7 +649,7 @@ Re-deobfuscate a crash stacktrace.
 ## Access Endpoints
 
 ### GET /apps/{id}/access
-List users with access to an app.
+List users and pending invitations for an app.
 
 **Response:**
 ```json
@@ -580,13 +661,28 @@ List users with access to an app.
     "user_email": "user@example.com",
     "user_name": "John Doe",
     "role": "admin",
+    "status": "active",
+    "created_at": "2026-01-10T12:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "app_id": "uuid",
+    "user_id": null,
+    "user_email": "invited@example.com",
+    "user_name": null,
+    "role": "viewer",
+    "status": "invited",
     "created_at": "2026-01-10T12:00:00Z"
   }
 ]
 ```
 
+**Notes:**
+- `status` is `active` for registered users, `invited` for pending invitations
+- `user_id` and `user_name` are `null` for invitations
+
 ### POST /apps/{id}/access
-Grant access to a user.
+Grant access to a user or send invitation.
 
 **Request:**
 ```json
@@ -596,18 +692,77 @@ Grant access to a user.
 }
 ```
 
-### PUT /apps/{id}/access/{userId}
-Update user's role.
+**Behavior:**
+- If user exists: grants access immediately
+- If user doesn't exist: creates invitation
+  - If SMTP is configured: sends invitation email with registration link
+  - If SMTP is not configured: creates invitation without sending email
+
+**Response for existing user:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "app_id": "uuid",
+  "user_id": "uuid",
+  "user_email": "teammate@example.com",
+  "user_name": "Team Mate",
+  "role": "viewer",
+  "status": "active",
+  "created_at": "2026-01-10T12:00:00Z"
+}
+```
+
+**Response for new invitation:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "email": "invited@example.com",
+  "app_id": "uuid",
+  "role": "viewer",
+  "created_at": "2026-01-10T12:00:00Z"
+}
+```
+
+### PUT /apps/{id}/access/{accessId}
+Update user's or invitation's role.
 
 **Request:**
 ```json
 { "role": "admin" }
 ```
 
-### DELETE /apps/{id}/access/{userId}
-Revoke user's access.
+**Note:** `accessId` can be either a user ID (for active access) or an invitation ID (for pending invitations).
+
+### DELETE /apps/{id}/access/{accessId}
+Revoke user's access or cancel invitation.
 
 **Response:** `204 No Content`
+
+**Note:** `accessId` can be either a user ID (for active access) or an invitation ID (for pending invitations).
+
+### GET /apps/{id}/access/{invitationId}/link
+Get the invitation registration link.
+
+**Response:**
+```json
+{
+  "url": "https://your-domain.com/register?invite=abc123..."
+}
+```
+
+**Note:** Only works for pending invitations.
+
+### POST /apps/{id}/access/{invitationId}/resend
+Resend the invitation email.
+
+**Response:**
+```json
+{
+  "status": "sent"
+}
+```
+
+**Note:** Requires SMTP to be configured. Returns 400 error if SMTP is not available.
 
 ### GET /apps/{id}/my-role
 Get current user's role for an app.
@@ -621,6 +776,19 @@ Get current user's role for an app.
 - `admin` - Full access including settings and access management
 - `viewer` - Can view crashes, events, and versions
 - `tester` - Can only access Distribution page and download APKs
+
+## Invitation Flow
+
+1. Admin calls `POST /apps/{id}/access` with email of non-registered user
+2. System creates invitation record and (if SMTP configured) sends email
+3. User clicks link in email: `/register?invite=<token>`
+4. User registers → all pending invitations for this email are processed
+5. User automatically gets access to all invited projects
+
+**Notes:**
+- Invitations expire after 30 days
+- Registration via invite link works even when `registration_enabled` is `false`
+- If user registers normally (without invite link), pending invitations are still processed
 
 ---
 

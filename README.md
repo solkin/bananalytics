@@ -18,6 +18,7 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **Breadcrumbs** — See user actions leading up to a crash
 - **Session Tracking** — Crash-free sessions and unique session metrics
 - **Multi-user Access** — Share apps with team members (admin/viewer/tester roles)
+- **Email Invitations** — Invite users by email, even if they're not registered yet
 - **Version Muting** — Disable crash/event collection for specific versions
 - **Self-hosted** — Full control over your data
 
@@ -60,6 +61,15 @@ The production setup uses Nginx as a reverse proxy. Only the `bananalytics-nginx
 | `S3_SECRET_KEY` | MinIO/S3 secret key | Required |
 | `S3_BUCKET` | Bucket for mapping files | `bananalytics` |
 | `REGISTRATION_ENABLED` | Allow new user registration | `false` (prod) |
+| `SMTP_HOST` | SMTP server host | — |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_USER` | SMTP username | — |
+| `SMTP_PASSWORD` | SMTP password | — |
+| `SMTP_FROM` | Sender email address | `noreply@bananalytics.local` |
+| `SMTP_FROM_NAME` | Sender display name | `Bananalytics` |
+| `BASE_URL` | Public URL for invitation links | `http://localhost:5173` |
+
+**Note:** SMTP is optional. If not configured, invitations are created but no emails are sent — you'll need to share registration links manually.
 
 ## Android SDK
 
