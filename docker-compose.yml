@@ -67,6 +67,7 @@ services:
       S3_ACCESS_KEY: bananalytics
       S3_SECRET_KEY: bananalytics_dev
       S3_BUCKET: bananalytics
+      BASE_URL: http://localhost:3177
     ports:
       - "8266:8080"
     volumes:
