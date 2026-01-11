@@ -86,7 +86,6 @@ export default function VersionsPage() {
   const [notifyLoading, setNotifyLoading] = useState(false)
   const [members, setMembers] = useState<AppMember[]>([])
   const [selectedEmails, setSelectedEmails] = useState<string[]>([])
-  const [pendingPublish, setPendingPublish] = useState(false)
 
   const loadVersions = async () => {
     try {
@@ -189,7 +188,6 @@ export default function VersionsPage() {
       const membersData = await getAppMembers(appId!)
       setMembers(membersData)
       setSelectedEmails(membersData.map((m) => m.email))
-      setPendingPublish(true)
       setNotifyModalOpen(true)
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load members')
@@ -216,7 +214,6 @@ export default function VersionsPage() {
       }
 
       setNotifyModalOpen(false)
-      setPendingPublish(false)
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to notify')
     } finally {
@@ -227,7 +224,6 @@ export default function VersionsPage() {
   const handleSkipNotification = async () => {
     await performToggle('published', true)
     setNotifyModalOpen(false)
-    setPendingPublish(false)
   }
 
   const handleSelectAll = () => {
@@ -502,10 +498,7 @@ export default function VersionsPage() {
           </Space>
         }
         open={notifyModalOpen}
-        onCancel={() => {
-          setNotifyModalOpen(false)
-          setPendingPublish(false)
-        }}
+        onCancel={() => setNotifyModalOpen(false)}
         footer={
           <Space>
             <Button onClick={handleSkipNotification}>Skip</Button>
