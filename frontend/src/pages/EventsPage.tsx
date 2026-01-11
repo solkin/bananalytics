@@ -196,8 +196,8 @@ export default function EventsPage() {
             }}
             legend={{
               color: {
-                position: 'top-right',
-                layout: { justifyContent: 'flex-end' },
+                position: 'top',
+                layout: { justifyContent: 'center' },
               },
             }}
           />
