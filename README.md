@@ -70,9 +70,11 @@ dependencyResolutionManagement {
 
 // build.gradle
 dependencies {
-    implementation 'com.github.solkin:bananalytics-android:1.0.0'
+    implementation 'com.github.solkin:bananalytics-android:<version>'
 }
 ```
+
+> Check the [SDK repository](https://github.com/solkin/bananalytics-android/releases) for the latest version.
 
 ### Quick Start
 
