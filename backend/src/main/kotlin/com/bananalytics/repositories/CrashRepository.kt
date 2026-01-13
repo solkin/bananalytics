@@ -289,29 +289,22 @@ object CrashRepository {
                 }
             } else {
                 // Multiple groups need to be merged
-                val sortedGroups = groups.map { it.first }.sortedBy { it.firstSeen }
-                val targetGroup = sortedGroups.first()
-                val duplicateGroups = sortedGroups.drop(1)
+                val allGroups = groups.map { it.first }
+                
+                // Prefer group that already has the new fingerprint to avoid constraint violation
+                // Otherwise, use the oldest group (by firstSeen)
+                val targetGroup = allGroups.find { it.oldFingerprint == newFingerprint }
+                    ?: allGroups.minBy { it.firstSeen }
+                val duplicateGroups = allGroups.filter { it.id != targetGroup.id }
 
                 // Calculate merged values
-                val mergedFirstSeen = sortedGroups.minOf { it.firstSeen }
-                val mergedLastSeen = sortedGroups.maxOf { it.lastSeen }
-                val mergedOccurrences = sortedGroups.sumOf { it.occurrences }
-                val mergedStatus = selectBestStatus(sortedGroups.map { it.status })
+                val mergedFirstSeen = allGroups.minOf { it.firstSeen }
+                val mergedLastSeen = allGroups.maxOf { it.lastSeen }
+                val mergedOccurrences = allGroups.sumOf { it.occurrences }
+                val mergedStatus = selectBestStatus(allGroups.map { it.status })
                 val (exceptionClass, exceptionMessage) = parseException(targetGroup.stacktrace)
 
-                // Update target group
-                CrashGroups.update({ CrashGroups.id eq targetGroup.id }) {
-                    it[fingerprint] = newFingerprint
-                    it[firstSeen] = mergedFirstSeen
-                    it[lastSeen] = mergedLastSeen
-                    it[occurrences] = mergedOccurrences
-                    it[status] = mergedStatus
-                    it[CrashGroups.exceptionClass] = exceptionClass
-                    it[CrashGroups.exceptionMessage] = exceptionMessage?.take(1000)
-                }
-
-                // Move crashes from duplicate groups to target
+                // FIRST: Move crashes from duplicate groups to target and delete duplicates
                 for (duplicate in duplicateGroups) {
                     val movedCount = Crashes.update({ Crashes.groupId eq duplicate.id }) {
                         it[groupId] = targetGroup.id
@@ -321,6 +314,17 @@ object CrashRepository {
                     // Delete the empty duplicate group
                     CrashGroups.deleteWhere { CrashGroups.id eq duplicate.id }
                     groupsMerged++
+                }
+
+                // THEN: Update target group (now safe, duplicates are gone)
+                CrashGroups.update({ CrashGroups.id eq targetGroup.id }) {
+                    it[fingerprint] = newFingerprint
+                    it[firstSeen] = mergedFirstSeen
+                    it[lastSeen] = mergedLastSeen
+                    it[occurrences] = mergedOccurrences
+                    it[status] = mergedStatus
+                    it[CrashGroups.exceptionClass] = exceptionClass
+                    it[CrashGroups.exceptionMessage] = exceptionMessage?.take(1000)
                 }
             }
         }
