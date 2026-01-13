@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Table, Tag, Select, Space, Typography, message, Card, DatePicker } from 'antd'
 import { Column, Line } from '@ant-design/charts'
 import type { CrashGroup, PaginatedResponse } from '@/types'
@@ -23,18 +23,37 @@ const versionColors = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#eb2f96', '#
 export default function CrashesPage() {
   const { appId } = useParams<{ appId: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  // Read initial state from URL
+  const status = searchParams.get('status') || undefined
+  const selectedVersion = searchParams.get('version') ? Number(searchParams.get('version')) : undefined
+  const page = searchParams.get('page') ? Number(searchParams.get('page')) : 1
+
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [stats, setStats] = useState<DailyStat[]>([])
   const [crashFreeStats, setCrashFreeStats] = useState<(SessionVersionStats & { version: string })[]>([])
   const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState<string | undefined>(undefined)
-  const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined)
-  const [page, setPage] = useState(1)
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
     dayjs().subtract(14, 'day'),
     dayjs(),
   ])
+
+  // Update URL params
+  const updateParams = useCallback((updates: Record<string, string | undefined>) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev)
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === '') {
+          newParams.delete(key)
+        } else {
+          newParams.set(key, value)
+        }
+      })
+      return newParams
+    })
+  }, [setSearchParams])
 
   const loadCrashes = async () => {
     try {
@@ -304,8 +323,7 @@ export default function CrashesPage() {
           style={{ width: 150 }}
           value={status}
           onChange={(v) => {
-            setStatus(v)
-            setPage(1)
+            updateParams({ status: v, page: undefined })
           }}
           options={[
             { label: 'Open', value: 'open' },
@@ -319,8 +337,7 @@ export default function CrashesPage() {
           style={{ width: 200 }}
           value={selectedVersion}
           onChange={(v) => {
-            setSelectedVersion(v)
-            setPage(1)
+            updateParams({ version: v?.toString(), page: undefined })
           }}
           options={versions.map((v) => ({
             label: v.version_name ? `${v.version_name} (${v.version_code})` : `Version ${v.version_code}`,
@@ -344,7 +361,7 @@ export default function CrashesPage() {
           current: page,
           pageSize: 20,
           total: data?.total || 0,
-          onChange: setPage,
+          onChange: (p) => updateParams({ page: p > 1 ? p.toString() : undefined }),
           showSizeChanger: false,
         }}
       />

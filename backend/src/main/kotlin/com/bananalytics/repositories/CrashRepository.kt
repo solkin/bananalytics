@@ -41,7 +41,7 @@ object CrashRepository {
 
         val total = baseQuery.count()
         val items = baseQuery
-            .orderBy(CrashGroups.lastSeen, SortOrder.DESC)
+            .orderBy(CrashGroups.occurrences, SortOrder.DESC)
             .limit(pageSize).offset(((page - 1) * pageSize).toLong())
             .map { it.toCrashGroupResponse() }
 
