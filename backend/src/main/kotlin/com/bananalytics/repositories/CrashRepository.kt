@@ -390,48 +390,95 @@ object CrashRepository {
         }
     }
 
+    /**
+     * Calculates fingerprint for crash grouping.
+     * 
+     * Algorithm:
+     * 1. Extract root cause (last "Caused by:" or first exception line)
+     * 2. Extract app frames (non-system packages)
+     * 3. Fingerprint = normalized_root_cause + app_frames (if any)
+     * 
+     * This ensures:
+     * - System-only crashes group by exception type (e.g., TransactionTooLargeException)
+     * - App crashes group by exception + location in app code
+     */
     private fun calculateFingerprint(stacktrace: String): String {
-        // Filter only meaningful lines: exception declarations, stack frames, caused by
-        val significantLines = stacktrace.lines()
-            .filter { line ->
-                val trimmed = line.trim()
-                trimmed.startsWith("at ") ||
-                trimmed.startsWith("Caused by:") ||
-                (trimmed.contains("Exception") && !trimmed.startsWith("[")) ||
-                (trimmed.contains("Error") && !trimmed.startsWith("["))
+        val lines = stacktrace.lines()
+        
+        // 1. Extract root cause - last "Caused by:" or first exception line
+        val rootCause = extractRootCause(lines)
+        
+        // 2. Extract app frames (non-system packages)
+        val appFrames = extractAppFrames(lines)
+        
+        // 3. Build fingerprint: root cause + app frames (if any)
+        val significantParts = mutableListOf<String>()
+        
+        // Always include normalized root cause
+        significantParts.add(normalizeExceptionMessage(rootCause))
+        
+        // Add app frames if present (max 3)
+        if (appFrames.isNotEmpty()) {
+            appFrames.take(3).forEach { frame ->
+                significantParts.add(normalizeStackFrame(frame))
             }
-            .take(5)
-            .map { line ->
-                val trimmed = line.trim()
-                when {
-                    trimmed.startsWith("at ") -> normalizeStackFrame(line)
-                    else -> normalizeExceptionMessage(line)
-                }
-            }
-            .joinToString("\n")
-
+        }
+        
+        val fingerprint = significantParts.joinToString("\n")
+        
         val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(significantLines.toByteArray())
+        val hash = digest.digest(fingerprint.toByteArray())
         return hash.take(16).joinToString("") { "%02x".format(it) }
     }
 
     /**
+     * Extracts root cause from stacktrace.
+     * Returns the last "Caused by:" line, or the first exception line if no causes.
+     */
+    private fun extractRootCause(lines: List<String>): String {
+        // Find last "Caused by:" line
+        val lastCausedBy = lines.lastOrNull { it.trim().startsWith("Caused by:") }
+        if (lastCausedBy != null) {
+            // Remove "Caused by: " prefix
+            return lastCausedBy.trim().removePrefix("Caused by:").trim()
+        }
+        
+        // Otherwise, return first exception/error line
+        return lines.firstOrNull { line ->
+            val trimmed = line.trim()
+            (trimmed.contains("Exception") || trimmed.contains("Error")) &&
+            !trimmed.startsWith("at ") &&
+            !trimmed.startsWith("[")
+        } ?: lines.firstOrNull()?.trim() ?: ""
+    }
+
+    /**
+     * Extracts stack frames from application code (non-system packages).
+     */
+    private fun extractAppFrames(lines: List<String>): List<String> {
+        return lines
+            .filter { it.trim().startsWith("at ") }
+            .filterNot { isSystemFrame(it) }
+    }
+
+    /**
+     * Checks if a stack frame belongs to a system package.
+     */
+    private fun isSystemFrame(frame: String): Boolean {
+        val systemPackages = listOf(
+            "android.", "java.", "javax.", "com.android.", "dalvik.",
+            "kotlin.", "kotlinx.", "sun.", "com.sun.", "org.json.",
+            "androidx.", "com.google.android."
+        )
+        return systemPackages.any { frame.contains(it) }
+    }
+
+    /**
      * Normalizes stack frame by removing line numbers for system classes.
-     * Line numbers in system classes vary between Android versions but the crash is the same.
-     * 
-     * Examples:
-     * - "at android.app.ActivityClient.activityStopped(ActivityClient.java:88)"
-     *   -> "at android.app.ActivityClient.activityStopped(ActivityClient.java)"
-     * - "at com.myapp.MainActivity.onCreate(MainActivity.kt:42)"
-     *   -> unchanged (app code, line numbers are meaningful)
+     * For app code, line numbers are preserved as they are meaningful for debugging.
      */
     private fun normalizeStackFrame(frame: String): String {
-        val systemPackages = listOf(
-            "android.", "java.", "javax.", "com.android.", "dalvik.", 
-            "kotlin.", "kotlinx.", "sun.", "com.sun.", "org.json."
-        )
-        
-        return if (systemPackages.any { frame.contains(it) }) {
+        return if (isSystemFrame(frame)) {
             // Remove line number from system classes: (File.java:123) -> (File.java)
             frame.replace(Regex(":\\d+\\)"), ")")
         } else {
