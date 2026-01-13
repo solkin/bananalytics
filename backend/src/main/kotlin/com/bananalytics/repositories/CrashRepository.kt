@@ -391,20 +391,52 @@ object CrashRepository {
     }
 
     private fun calculateFingerprint(stacktrace: String): String {
-        // Take first 5 meaningful lines for fingerprint
+        // Filter only meaningful lines: exception declarations, stack frames, caused by
         val significantLines = stacktrace.lines()
-            .filter { it.trim().startsWith("at ") || it.contains("Exception") || it.contains("Error") }
+            .filter { line ->
+                val trimmed = line.trim()
+                trimmed.startsWith("at ") ||
+                trimmed.startsWith("Caused by:") ||
+                (trimmed.contains("Exception") && !trimmed.startsWith("[")) ||
+                (trimmed.contains("Error") && !trimmed.startsWith("["))
+            }
             .take(5)
             .map { line ->
-                // Normalize only exception/error lines (not stack frames)
-                if (line.trim().startsWith("at ")) line
-                else normalizeExceptionMessage(line)
+                val trimmed = line.trim()
+                when {
+                    trimmed.startsWith("at ") -> normalizeStackFrame(line)
+                    else -> normalizeExceptionMessage(line)
+                }
             }
             .joinToString("\n")
 
         val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(significantLines.toByteArray())
         return hash.take(16).joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Normalizes stack frame by removing line numbers for system classes.
+     * Line numbers in system classes vary between Android versions but the crash is the same.
+     * 
+     * Examples:
+     * - "at android.app.ActivityClient.activityStopped(ActivityClient.java:88)"
+     *   -> "at android.app.ActivityClient.activityStopped(ActivityClient.java)"
+     * - "at com.myapp.MainActivity.onCreate(MainActivity.kt:42)"
+     *   -> unchanged (app code, line numbers are meaningful)
+     */
+    private fun normalizeStackFrame(frame: String): String {
+        val systemPackages = listOf(
+            "android.", "java.", "javax.", "com.android.", "dalvik.", 
+            "kotlin.", "kotlinx.", "sun.", "com.sun.", "org.json."
+        )
+        
+        return if (systemPackages.any { frame.contains(it) }) {
+            // Remove line number from system classes: (File.java:123) -> (File.java)
+            frame.replace(Regex(":\\d+\\)"), ")")
+        } else {
+            frame
+        }
     }
 
     /**
