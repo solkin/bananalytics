@@ -238,23 +238,29 @@ object CrashRepository {
         var groupsMerged = 0
         var crashesReassigned = 0
 
-        // Step 1: Get all crash groups for this app with a representative crash
+        // Step 1: Get all crash groups for this app
         val groupsWithCrashes = CrashGroups
-            .join(Crashes, JoinType.LEFT, CrashGroups.id, Crashes.groupId)
-            .select(CrashGroups.id, CrashGroups.fingerprint, CrashGroups.status, 
-                    CrashGroups.firstSeen, CrashGroups.lastSeen, CrashGroups.occurrences,
-                    Crashes.stacktraceRaw)
+            .selectAll()
             .where { CrashGroups.appId eq appId }
-            .groupBy(CrashGroups.id)
-            .map { row ->
+            .mapNotNull { row ->
+                val groupId = row[CrashGroups.id].value
+                // Get one representative crash for this group
+                val stacktrace = Crashes
+                    .select(Crashes.stacktraceRaw)
+                    .where { Crashes.groupId eq groupId }
+                    .limit(1)
+                    .firstOrNull()
+                    ?.get(Crashes.stacktraceRaw)
+                    ?: return@mapNotNull null // Skip groups without crashes
+
                 GroupMigrationData(
-                    id = row[CrashGroups.id].value,
+                    id = groupId,
                     oldFingerprint = row[CrashGroups.fingerprint],
                     status = row[CrashGroups.status],
                     firstSeen = row[CrashGroups.firstSeen],
                     lastSeen = row[CrashGroups.lastSeen],
                     occurrences = row[CrashGroups.occurrences],
-                    stacktrace = row[Crashes.stacktraceRaw]
+                    stacktrace = stacktrace
                 )
             }
 
