@@ -9,6 +9,9 @@ import {
   message,
   Modal,
   Tooltip,
+  Statistic,
+  Row,
+  Col,
 } from 'antd'
 import {
   CopyOutlined,
@@ -16,9 +19,12 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   DeleteOutlined,
+  ToolOutlined,
+  MergeCellsOutlined,
 } from '@ant-design/icons'
 import type { App } from '@/types'
 import { regenerateApiKey, deleteApp } from '@/api/apps'
+import { migrateCrashFingerprints, type MigrationResult } from '@/api/crashes'
 
 interface OutletContext {
   app: App
@@ -29,6 +35,8 @@ export default function SettingsPage() {
   const { app, reload } = useOutletContext<OutletContext>()
   const navigate = useNavigate()
   const [showApiKey, setShowApiKey] = useState(false)
+  const [migrating, setMigrating] = useState(false)
+  const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null)
 
   const handleCopyApiKey = () => {
     navigator.clipboard.writeText(app.api_key)
@@ -80,6 +88,24 @@ export default function SettingsPage() {
     })
   }
 
+  const handleMigrateFingerprints = async () => {
+    setMigrating(true)
+    setMigrationResult(null)
+    try {
+      const result = await migrateCrashFingerprints(app.id)
+      setMigrationResult(result)
+      if (result.groups_merged > 0) {
+        message.success(`Migration complete: ${result.groups_merged} groups merged`)
+      } else {
+        message.info('Migration complete: no groups needed merging')
+      }
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Migration failed')
+    } finally {
+      setMigrating(false)
+    }
+  }
+
   const maskedKey = showApiKey ? app.api_key : `${app.api_key.slice(0, 8)}${'•'.repeat(24)}`
 
   return (
@@ -112,6 +138,66 @@ export default function SettingsPage() {
           </Space>
         </Descriptions.Item>
       </Descriptions>
+
+      <Card
+        title={
+          <Space>
+            <ToolOutlined />
+            Maintenance
+          </Space>
+        }
+        styles={{
+          header: { background: '#f0f5ff', color: '#1d39c4', borderBottom: '1px solid #adc6ff' },
+          body: { background: '#fff' },
+        }}
+        style={{ borderColor: '#adc6ff' }}
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div>
+            <Typography.Title level={5} style={{ marginBottom: 4 }}>
+              <MergeCellsOutlined /> Regroup Crashes
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Merge crash groups with variable data in exception messages (e.g., memory sizes, 
+              file paths, timestamps). This improves grouping for crashes like{' '}
+              <Typography.Text code>TransactionTooLargeException: data parcel size 1057544 bytes</Typography.Text>.
+            </Typography.Text>
+          </div>
+          
+          <Button 
+            type="primary"
+            icon={<MergeCellsOutlined />}
+            onClick={handleMigrateFingerprints}
+            loading={migrating}
+          >
+            {migrating ? 'Processing...' : 'Run Migration'}
+          </Button>
+
+          {migrationResult && (
+            <Row gutter={16}>
+              <Col span={8}>
+                <Statistic 
+                  title="Groups Processed" 
+                  value={migrationResult.groups_processed} 
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic 
+                  title="Groups Merged" 
+                  value={migrationResult.groups_merged}
+                  valueStyle={migrationResult.groups_merged > 0 ? { color: '#52c41a' } : undefined}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic 
+                  title="Crashes Reassigned" 
+                  value={migrationResult.crashes_reassigned}
+                />
+              </Col>
+            </Row>
+          )}
+        </Space>
+      </Card>
 
       <Card
         title="Danger Zone"

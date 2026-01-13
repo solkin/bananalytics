@@ -265,6 +265,18 @@ fun Route.crashRoutes() {
         val crash = CrashService.retraceCrash(id)
         call.respond(crash)
     }
+
+    // Migrate crash groups to use normalized fingerprints
+    post("/apps/{appId}/maintenance/migrate-fingerprints") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAdmin(appId, user)
+
+        val result = CrashRepository.migrateToNormalizedFingerprints(appId)
+        call.respond(result)
+    }
 }
 
 private fun String.toUUIDOrNull(): UUID? = try {

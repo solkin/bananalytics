@@ -271,3 +271,12 @@ data class AppMemberResponse(
     val name: String?,
     val role: String
 )
+
+// ============ Maintenance DTOs ============
+
+@Serializable
+data class MigrationResult(
+    @SerialName("groups_processed") val groupsProcessed: Int,
+    @SerialName("groups_merged") val groupsMerged: Int,
+    @SerialName("crashes_reassigned") val crashesReassigned: Int
+)

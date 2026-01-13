@@ -117,3 +117,16 @@ export async function getCrashFreeStatsByVersion(
   })
   return response.data
 }
+
+// Maintenance
+
+export interface MigrationResult {
+  groups_processed: number
+  groups_merged: number
+  crashes_reassigned: number
+}
+
+export async function migrateCrashFingerprints(appId: string): Promise<MigrationResult> {
+  const response = await api.post<MigrationResult>(`/apps/${appId}/maintenance/migrate-fingerprints`)
+  return response.data
+}
