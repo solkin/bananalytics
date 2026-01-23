@@ -205,54 +205,79 @@ object EventRepository {
         versionCode: Long? = null,
         limit: Int = 10
     ): DeviceStatsResponse = transaction {
-        // Build base query with optional version filter
-        val baseCondition = if (versionCode != null) {
-            Op.build { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
-        } else {
-            Op.build { Events.appId eq appId }
-        }
+        val versionFilter = if (versionCode != null) "AND version_code = $versionCode" else ""
+        
+        // Aggregate by model (manufacturer + model) using SQL
+        val modelCounts = exec("""
+            SELECT 
+                CONCAT(device_info->>'manufacturer', ' ', device_info->>'model') as name,
+                COUNT(*) as count
+            FROM events
+            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
+            GROUP BY device_info->>'manufacturer', device_info->>'model'
+            ORDER BY count DESC
+            LIMIT $limit
+        """.trimIndent()) { rs ->
+            val results = mutableListOf<DeviceStatItem>()
+            while (rs.next()) {
+                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
+            }
+            results
+        } ?: emptyList()
 
-        // Get all events with device info
-        val events = Events
-            .select(Events.deviceInfo)
-            .where { baseCondition and Events.deviceInfo.isNotNull() }
-            .mapNotNull { it[Events.deviceInfo] }
+        // Aggregate by OS version using SQL
+        val osCounts = exec("""
+            SELECT 
+                CONCAT('Android ', device_info->>'os_version') as name,
+                COUNT(*) as count
+            FROM events
+            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
+            GROUP BY device_info->>'os_version'
+            ORDER BY count DESC
+            LIMIT $limit
+        """.trimIndent()) { rs ->
+            val results = mutableListOf<DeviceStatItem>()
+            while (rs.next()) {
+                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
+            }
+            results
+        } ?: emptyList()
 
-        // Aggregate by model (manufacturer + model)
-        val modelCounts = events
-            .groupingBy { "${it.manufacturer} ${it.model}" }
-            .eachCount()
-            .entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { DeviceStatItem(it.key, it.value.toLong()) }
+        // Aggregate by country using SQL
+        val countryCounts = exec("""
+            SELECT 
+                UPPER(device_info->>'country') as name,
+                COUNT(*) as count
+            FROM events
+            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
+            GROUP BY device_info->>'country'
+            ORDER BY count DESC
+            LIMIT $limit
+        """.trimIndent()) { rs ->
+            val results = mutableListOf<DeviceStatItem>()
+            while (rs.next()) {
+                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
+            }
+            results
+        } ?: emptyList()
 
-        // Aggregate by OS version
-        val osCounts = events
-            .groupingBy { "Android ${it.osVersion}" }
-            .eachCount()
-            .entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { DeviceStatItem(it.key, it.value.toLong()) }
-
-        // Aggregate by country
-        val countryCounts = events
-            .groupingBy { it.country.uppercase() }
-            .eachCount()
-            .entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { DeviceStatItem(it.key, it.value.toLong()) }
-
-        // Aggregate by language
-        val languageCounts = events
-            .groupingBy { it.language }
-            .eachCount()
-            .entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { DeviceStatItem(it.key, it.value.toLong()) }
+        // Aggregate by language using SQL
+        val languageCounts = exec("""
+            SELECT 
+                device_info->>'language' as name,
+                COUNT(*) as count
+            FROM events
+            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
+            GROUP BY device_info->>'language'
+            ORDER BY count DESC
+            LIMIT $limit
+        """.trimIndent()) { rs ->
+            val results = mutableListOf<DeviceStatItem>()
+            while (rs.next()) {
+                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
+            }
+            results
+        } ?: emptyList()
 
         DeviceStatsResponse(
             models = modelCounts,

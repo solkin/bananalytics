@@ -202,3 +202,12 @@ CREATE TABLE IF NOT EXISTS invitations (
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
 CREATE INDEX IF NOT EXISTS idx_invitations_app_id ON invitations(app_id);
+
+-- Device stats indexes for faster aggregation
+CREATE INDEX IF NOT EXISTS idx_events_device_info ON events USING GIN (device_info);
+CREATE INDEX IF NOT EXISTS idx_events_device_manufacturer ON events ((device_info->>'manufacturer'));
+CREATE INDEX IF NOT EXISTS idx_events_device_model ON events ((device_info->>'model'));
+CREATE INDEX IF NOT EXISTS idx_events_device_os_version ON events ((device_info->>'os_version'));
+CREATE INDEX IF NOT EXISTS idx_events_device_country ON events ((device_info->>'country'));
+CREATE INDEX IF NOT EXISTS idx_events_device_language ON events ((device_info->>'language'));
+CREATE INDEX IF NOT EXISTS idx_events_app_device ON events (app_id) WHERE device_info IS NOT NULL;
