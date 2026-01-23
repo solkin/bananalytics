@@ -40,6 +40,7 @@ import {
   updateVersion,
   uploadApk,
   deleteApk,
+  deleteVersion,
   getMappingDownloadUrl,
   getApkDownloadUrl,
   createDownloadToken,
@@ -319,6 +320,19 @@ export default function VersionsPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     message.success('Copied to clipboard')
+  }
+
+  const handleDeleteVersion = async () => {
+    if (!selectedVersion) return
+    try {
+      await deleteVersion(appId!, selectedVersion.id)
+      message.success('Version deleted')
+      setDrawerOpen(false)
+      setSelectedVersion(null)
+      loadVersions()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Failed to delete version')
+    }
   }
 
   const columns = [
@@ -775,6 +789,20 @@ export default function VersionsPage() {
                 )}
               </Space>
             )}
+
+            <Divider orientation="left" style={{ borderColor: '#ff4d4f' }}>Danger Zone</Divider>
+            <Popconfirm
+              title="Delete version"
+              description="This will delete the version and all related data (events, sessions, download links). Crashes will be unlinked but preserved. This action cannot be undone."
+              onConfirm={handleDeleteVersion}
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+              placement="topRight"
+            >
+              <Button danger icon={<DeleteOutlined />} block>
+                Delete Version
+              </Button>
+            </Popconfirm>
           </Space>
         )}
       </Drawer>

@@ -1,6 +1,6 @@
 import { Layout, Typography, Dropdown, Space, Avatar } from 'antd'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { UserOutlined, LogoutOutlined, AppstoreOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useAuth } from '@/context/AuthContext'
 
 const { Header, Content } = Layout
@@ -38,7 +38,7 @@ export default function AppLayout() {
         }}
       >
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <AppstoreOutlined style={{ fontSize: 24, marginRight: 12, color: '#fff' }} />
+          <img src="/banana.svg" alt="Bananalytics" style={{ width: 28, height: 28, marginRight: 10 }} />
           <Typography.Title level={4} style={{ margin: 0, color: '#fff' }}>
             Bananalytics
           </Typography.Title>

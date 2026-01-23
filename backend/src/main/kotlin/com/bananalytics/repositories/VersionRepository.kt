@@ -2,6 +2,10 @@ package com.bananalytics.repositories
 
 import com.bananalytics.models.AppVersionResponse
 import com.bananalytics.models.AppVersions
+import com.bananalytics.models.Crashes
+import com.bananalytics.models.DownloadTokens
+import com.bananalytics.models.Events
+import com.bananalytics.models.AppSessions
 import com.bananalytics.services.StorageService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -163,20 +167,36 @@ object VersionRepository {
     }
 
     fun delete(id: UUID): Boolean {
-        // First get the version to delete mapping from S3
+        // First get the version info
         val version = transaction {
             AppVersions.selectAll()
                 .where { AppVersions.id eq id }
                 .singleOrNull()
-        }
+        } ?: return false
 
-        version?.let {
-            val appId = it[AppVersions.appId].value.toString()
-            val versionCode = it[AppVersions.versionCode]
-            StorageService.deleteMapping(appId, versionCode)
-        }
+        val appId = version[AppVersions.appId].value
+        val versionCode = version[AppVersions.versionCode]
+
+        // Delete files from storage
+        StorageService.deleteMapping(appId.toString(), versionCode)
+        StorageService.deleteApk(appId.toString(), versionCode)
 
         return transaction {
+            // Delete download tokens for this version
+            DownloadTokens.deleteWhere { DownloadTokens.versionId eq id }
+
+            // Set version_id to null for crashes (keep crash data, just unlink from version)
+            Crashes.update({ Crashes.versionId eq id }) {
+                it[versionId] = null
+            }
+
+            // Delete events for this app and version_code
+            Events.deleteWhere { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
+
+            // Delete app sessions for this app and version_code
+            AppSessions.deleteWhere { (AppSessions.appId eq appId) and (AppSessions.versionCode eq versionCode) }
+
+            // Delete the version record
             AppVersions.deleteWhere { AppVersions.id eq id } > 0
         }
     }

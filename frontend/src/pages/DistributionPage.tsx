@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Card, Typography, message, Button, Empty, Tag, Divider } from 'antd'
-import { DownloadOutlined, AndroidOutlined } from '@ant-design/icons'
+import { DownloadOutlined } from '@ant-design/icons'
 import type { AppVersion } from '@/types'
 import { getDistributionVersions, getApkDownloadUrl } from '@/api/apps'
 
@@ -55,12 +55,8 @@ export default function DistributionPage() {
         styles={{ header: { borderBottom: '1px solid #f0f0f0' } }}
       >
         <Empty
-          image={<AndroidOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
-          description={
-            <Text type="secondary">
-              No versions available for testing yet.
-            </Text>
-          }
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description="No versions available for testing yet"
         />
       </Card>
     )

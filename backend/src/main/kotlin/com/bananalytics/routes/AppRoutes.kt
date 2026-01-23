@@ -517,6 +517,24 @@ fun Route.appRoutes() {
             call.respond(version)
         }
 
+        // Delete version
+        delete("/{appId}/versions/{versionId}") {
+            val user = call.getUser()
+            val appId = call.parameters["appId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val versionId = call.parameters["versionId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid version ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val deleted = VersionRepository.delete(versionId)
+            if (!deleted) {
+                throw NotFoundException("Version not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
+        }
+
         // Update version (release notes, published, mute settings)
         put("/{appId}/versions/{versionId}") {
             val user = call.getUser()

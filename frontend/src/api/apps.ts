@@ -143,6 +143,10 @@ export async function deleteApk(appId: string, versionId: string): Promise<void>
   await api.delete(`/apps/${appId}/versions/${versionId}/apk`)
 }
 
+export async function deleteVersion(appId: string, versionId: string): Promise<void> {
+  await api.delete(`/apps/${appId}/versions/${versionId}`)
+}
+
 // Download tokens (temporary public links)
 export async function createDownloadToken(
   appId: string,
