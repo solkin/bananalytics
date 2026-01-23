@@ -134,11 +134,11 @@ export default function EventsPage() {
   const hasSessionData = sessionStats.length > 0
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
       {hasSessionData && (
         <Card
           title="Unique Sessions by Version"
-          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
+          styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
           extra={
             <RangePicker
               value={dateRange}

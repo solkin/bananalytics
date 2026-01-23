@@ -40,7 +40,7 @@ export default function DistributionPage() {
     return (
       <Card 
         title="Available Versions" 
-        styles={{ header: { background: '#fafafa' } }}
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' } }}
         loading={loading}
       >
         <div style={{ height: 200 }} />
@@ -52,7 +52,7 @@ export default function DistributionPage() {
     return (
       <Card 
         title="Available Versions" 
-        styles={{ header: { background: '#fafafa' } }}
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' } }}
       >
         <Empty
           image={<AndroidOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
@@ -69,7 +69,7 @@ export default function DistributionPage() {
   return (
     <Card 
       title="Available Versions" 
-      styles={{ header: { background: '#fafafa' } }}
+      styles={{ header: { borderBottom: '1px solid #f0f0f0' } }}
     >
       {versions.map((version, index) => (
         <div key={version.id}>

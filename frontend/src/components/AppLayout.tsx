@@ -1,6 +1,6 @@
 import { Layout, Typography, Dropdown, Space, Avatar } from 'antd'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, AppstoreOutlined } from '@ant-design/icons'
 import { useAuth } from '@/context/AuthContext'
 
 const { Header, Content } = Layout
@@ -14,7 +14,7 @@ export default function AppLayout() {
     navigate('/login')
   }
 
-  const menuItems = [
+  const userMenuItems = [
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -25,22 +25,34 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
+      <Header 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          padding: '0 24px',
+          background: '#001529',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+        }}
+      >
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <span style={{ fontSize: 24, marginRight: 8 }}>🍌</span>
+          <AppstoreOutlined style={{ fontSize: 24, marginRight: 12, color: '#fff' }} />
           <Typography.Title level={4} style={{ margin: 0, color: '#fff' }}>
             Bananalytics
           </Typography.Title>
         </Link>
 
-        <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Space style={{ cursor: 'pointer', color: '#fff' }}>
-            <Avatar size="small" icon={<UserOutlined />} />
+            <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
             <span>{user?.name || user?.email}</span>
           </Space>
         </Dropdown>
       </Header>
-      <Content style={{ padding: '24px', background: '#f0f2f5' }}>
+
+      <Content style={{ background: '#f5f5f5', minHeight: 'calc(100vh - 64px)' }}>
         <Outlet />
       </Content>
     </Layout>

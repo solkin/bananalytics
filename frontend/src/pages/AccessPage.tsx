@@ -252,7 +252,7 @@ export default function AccessPage() {
 
   return (
     <>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
         {isAdmin && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>

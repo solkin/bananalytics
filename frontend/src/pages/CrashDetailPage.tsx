@@ -158,7 +158,7 @@ export default function CrashDetailPage() {
   }
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
       <Card>
         <Descriptions
           title={
@@ -200,7 +200,7 @@ export default function CrashDetailPage() {
 
       <Card
         title="Crash Timeline"
-        styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
         extra={
           <RangePicker
             value={dateRange}
@@ -244,7 +244,7 @@ export default function CrashDetailPage() {
       {selectedCrash && (
         <Card
           title="Crash Details"
-          styles={{ header: { background: '#fafafa' }, body: { paddingTop: 8, paddingBottom: 8 } }}
+          styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { paddingTop: 8, paddingBottom: 8 } }}
           extra={
             <Space>
               <Select

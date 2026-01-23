@@ -166,7 +166,7 @@ export default function EventDetailPage() {
 
   return (
     <>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
         <Breadcrumb
           items={[
             { title: <Link to=".."><ArrowLeftOutlined /> Events</Link> },
@@ -176,7 +176,7 @@ export default function EventDetailPage() {
 
         <Card
           title="Event Timeline"
-          styles={{ header: { background: '#fafafa' }, body: { padding: '8px 0 0 0' } }}
+          styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
           extra={
             <RangePicker
               value={dateRange}
@@ -259,7 +259,7 @@ export default function EventDetailPage() {
 
         <Card
           title="Events"
-          styles={{ header: { background: '#fafafa' }, body: { padding: 0 } }}
+          styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: 0 } }}
           extra={
             <Select
               placeholder="Filter by version"

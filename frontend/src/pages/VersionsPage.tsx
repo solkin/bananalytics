@@ -390,7 +390,7 @@ export default function VersionsPage() {
 
   return (
     <>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
             Add Version
@@ -515,7 +515,7 @@ export default function VersionsPage() {
         }
         width={500}
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
           <Typography.Text>
             <strong>{versionDisplay}</strong> is ready for testing.
             <br />

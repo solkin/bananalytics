@@ -11,12 +11,17 @@ import {
   Space,
   Popconfirm,
   Typography,
+  Grid,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons'
 import type { App } from '@/types'
 import { getApps, createApp, deleteApp } from '@/api/apps'
 
+const { useBreakpoint } = Grid
+
 export default function AppsPage() {
+  const screens = useBreakpoint()
+  const isMobile = !screens.md
   const [apps, setApps] = useState<App[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -109,13 +114,13 @@ export default function AppsPage() {
   ]
 
   return (
-    <>
+    <div style={{ padding: isMobile ? '8px 8px' : '12px 12px' }}>
       <Card
         title="Applications"
-        styles={{ header: { background: '#fafafa' } }}
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' } }}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
-            New App
+            {isMobile ? 'New' : 'New App'}
           </Button>
         }
       >
@@ -125,6 +130,7 @@ export default function AppsPage() {
           rowKey="id"
           loading={loading}
           pagination={false}
+          scroll={isMobile ? { x: 500 } : undefined}
         />
       </Card>
 
@@ -162,6 +168,6 @@ export default function AppsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   )
 }

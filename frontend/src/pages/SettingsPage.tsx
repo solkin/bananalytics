@@ -109,7 +109,7 @@ export default function SettingsPage() {
   const maskedKey = showApiKey ? app.api_key : `${app.api_key.slice(0, 8)}${'•'.repeat(24)}`
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
       <Descriptions column={1} bordered size="small">
         <Descriptions.Item label="Name">{app.name}</Descriptions.Item>
         <Descriptions.Item label="Package">
@@ -152,7 +152,7 @@ export default function SettingsPage() {
         }}
         style={{ borderColor: '#adc6ff' }}
       >
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <div>
             <Typography.Title level={5} style={{ marginBottom: 4 }}>
               <MergeCellsOutlined /> Regroup Crashes
@@ -207,7 +207,7 @@ export default function SettingsPage() {
         }}
         style={{ borderColor: '#ffccc7' }}
       >
-        <Space direction="vertical" size="middle">
+        <Space direction="vertical" size={12}>
           <Typography.Text>
             Once you delete an application, there is no going back. Please be certain.
           </Typography.Text>
