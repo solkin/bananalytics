@@ -12,6 +12,7 @@ import EventsPage from './pages/EventsPage'
 import EventDetailPage from './pages/EventDetailPage'
 import VersionsPage from './pages/VersionsPage'
 import DistributionPage from './pages/DistributionPage'
+import DevicesPage from './pages/DevicesPage'
 import AccessPage from './pages/AccessPage'
 import SettingsPage from './pages/SettingsPage'
 
@@ -76,6 +77,7 @@ function AppRoutes() {
           <Route path="events" element={<EventsPage />} />
           <Route path="events/:eventName" element={<EventDetailPage />} />
           <Route path="versions" element={<VersionsPage />} />
+          <Route path="devices" element={<DevicesPage />} />
           <Route path="distribution" element={<DistributionPage />} />
           <Route path="access" element={<AccessPage />} />
           <Route path="settings" element={<SettingsPage />} />

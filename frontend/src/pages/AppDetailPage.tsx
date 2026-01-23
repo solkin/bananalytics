@@ -19,6 +19,7 @@ import {
   CloudDownloadOutlined,
   ArrowLeftOutlined,
   MenuOutlined,
+  MobileOutlined,
 } from '@ant-design/icons'
 import type { App } from '@/types'
 import { getApp } from '@/api/apps'
@@ -79,6 +80,7 @@ export default function AppDetailPage() {
     { key: 'crashes', icon: <BugOutlined />, label: 'Crashes' },
     { key: 'events', icon: <BarChartOutlined />, label: 'Events' },
     { key: 'versions', icon: <TagsOutlined />, label: 'Versions' },
+    { key: 'devices', icon: <MobileOutlined />, label: 'Devices' },
     { key: 'distribution', icon: <CloudDownloadOutlined />, label: 'Distribution' },
     { key: 'access', icon: <TeamOutlined />, label: 'Access' },
     { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },

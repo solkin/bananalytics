@@ -200,6 +200,68 @@ object EventRepository {
         Events.selectAll().where { Events.appId eq appId }.count()
     }
 
+    fun getDeviceStats(
+        appId: UUID,
+        versionCode: Long? = null,
+        limit: Int = 10
+    ): DeviceStatsResponse = transaction {
+        // Build base query with optional version filter
+        val baseCondition = if (versionCode != null) {
+            Op.build { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
+        } else {
+            Op.build { Events.appId eq appId }
+        }
+
+        // Get all events with device info
+        val events = Events
+            .select(Events.deviceInfo)
+            .where { baseCondition and Events.deviceInfo.isNotNull() }
+            .mapNotNull { it[Events.deviceInfo] }
+
+        // Aggregate by model (manufacturer + model)
+        val modelCounts = events
+            .groupingBy { "${it.manufacturer} ${it.model}" }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { DeviceStatItem(it.key, it.value.toLong()) }
+
+        // Aggregate by OS version
+        val osCounts = events
+            .groupingBy { "Android ${it.osVersion}" }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { DeviceStatItem(it.key, it.value.toLong()) }
+
+        // Aggregate by country
+        val countryCounts = events
+            .groupingBy { it.country.uppercase() }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { DeviceStatItem(it.key, it.value.toLong()) }
+
+        // Aggregate by language
+        val languageCounts = events
+            .groupingBy { it.language }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { DeviceStatItem(it.key, it.value.toLong()) }
+
+        DeviceStatsResponse(
+            models = modelCounts,
+            osVersions = osCounts,
+            countries = countryCounts,
+            languages = languageCounts
+        )
+    }
+
     private fun ResultRow.toEventResponse() = EventResponse(
         id = this[Events.id],
         appId = this[Events.appId].toString(),

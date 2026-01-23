@@ -114,3 +114,26 @@ export async function getUniqueSessionsByVersion(
   })
   return response.data
 }
+
+// Device statistics
+export interface DeviceStatItem {
+  name: string
+  count: number
+}
+
+export interface DeviceStats {
+  models: DeviceStatItem[]
+  os_versions: DeviceStatItem[]
+  countries: DeviceStatItem[]
+  languages: DeviceStatItem[]
+}
+
+export async function getDeviceStats(
+  appId: string,
+  options?: { version?: number; limit?: number }
+): Promise<DeviceStats> {
+  const response = await api.get<DeviceStats>(`/apps/${appId}/devices/stats`, {
+    params: options,
+  })
+  return response.data
+}

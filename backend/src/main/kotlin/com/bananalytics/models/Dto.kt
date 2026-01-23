@@ -272,6 +272,22 @@ data class AppMemberResponse(
     val role: String
 )
 
+// ============ Device Stats DTOs ============
+
+@Serializable
+data class DeviceStatItem(
+    val name: String,
+    val count: Long
+)
+
+@Serializable
+data class DeviceStatsResponse(
+    val models: List<DeviceStatItem>,
+    @SerialName("os_versions") val osVersions: List<DeviceStatItem>,
+    val countries: List<DeviceStatItem>,
+    val languages: List<DeviceStatItem>
+)
+
 // ============ Maintenance DTOs ============
 
 @Serializable

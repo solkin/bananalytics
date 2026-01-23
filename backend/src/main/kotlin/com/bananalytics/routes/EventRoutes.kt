@@ -185,6 +185,21 @@ fun Route.eventRoutes() {
         val count = EventRepository.countByAppId(appId)
         call.respond(mapOf("count" to count))
     }
+
+    // Get device stats
+    get("/apps/{appId}/devices/stats") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
+
+        val stats = EventRepository.getDeviceStats(appId, versionCode, limit)
+        call.respond(stats)
+    }
 }
 
 private fun String.toUUIDOrNull(): UUID? = try {
