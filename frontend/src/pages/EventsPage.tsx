@@ -181,7 +181,7 @@ export default function EventsPage() {
             }}
             interaction={{
               tooltip: {
-                position: 'bottom',
+                position: 'bottom-right',
                 render: (_: any, { title, items }: any) => {
                   return `<div style="padding: 8px">
                     <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>

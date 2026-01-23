@@ -72,7 +72,7 @@ export default function DevicesPage() {
     },
     interaction: {
       tooltip: {
-        position: 'bottom' as const,
+        position: 'bottom-right' as const,
       },
     },
   })
