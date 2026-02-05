@@ -40,6 +40,8 @@ interface StoredFilters {
   version?: number
   days?: number
   status?: string
+  sortBy?: string
+  sortOrder?: string
 }
 
 function getStoredFilters(appId: string): StoredFilters {
@@ -79,8 +81,8 @@ export default function CrashesPage() {
     ? Number(searchParams.get('days')) 
     : (hasUrlParams ? 28 : (storedFilters.days ?? 28))
   const page = searchParams.get('page') ? Number(searchParams.get('page')) : 1
-  const sortBy = searchParams.get('sortBy') || undefined
-  const sortOrder = searchParams.get('sortOrder') || undefined
+  const sortBy = searchParams.get('sortBy') || (hasUrlParams ? undefined : storedFilters.sortBy)
+  const sortOrder = searchParams.get('sortOrder') || (hasUrlParams ? undefined : storedFilters.sortOrder)
 
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
@@ -95,6 +97,8 @@ export default function CrashesPage() {
       if (storedFilters.version) newParams.set('version', storedFilters.version.toString())
       if (storedFilters.days && storedFilters.days !== 28) newParams.set('days', storedFilters.days.toString())
       if (storedFilters.status) newParams.set('status', storedFilters.status)
+      if (storedFilters.sortBy) newParams.set('sortBy', storedFilters.sortBy)
+      if (storedFilters.sortOrder) newParams.set('sortOrder', storedFilters.sortOrder)
       if (newParams.toString()) {
         setSearchParams(newParams, { replace: true })
       }
@@ -109,9 +113,11 @@ export default function CrashesPage() {
         version: selectedVersion,
         days,
         status,
+        sortBy,
+        sortOrder,
       })
     }
-  }, [appId, selectedVersion, days, status, initialized])
+  }, [appId, selectedVersion, days, status, sortBy, sortOrder, initialized])
 
   // Update URL params
   const updateParams = useCallback((updates: Record<string, string | undefined>) => {
@@ -467,29 +473,35 @@ export default function CrashesPage() {
           },
           style: { cursor: 'pointer' },
         })}
-        onChange={(_pagination, _filters, sorter) => {
+        onChange={(paginationInfo, _filters, sorter) => {
           const s = Array.isArray(sorter) ? sorter[0] : sorter
-          if (s?.order) {
+          const newPage = paginationInfo.current
+          
+          // Check if sorting changed
+          const currentSortField = sortBy
+          const currentSortOrder = sortOrder
+          const newSortField = s?.order ? s.field as string : undefined
+          const newSortOrder = s?.order ? (s.order === 'ascend' ? 'asc' : 'desc') : undefined
+          
+          const sortingChanged = newSortField !== currentSortField || newSortOrder !== currentSortOrder
+          
+          if (sortingChanged) {
+            // Sorting changed - reset page and update sort
             updateParams({
-              sortBy: s.field as string,
-              sortOrder: s.order === 'ascend' ? 'asc' : 'desc',
+              sortBy: newSortField,
+              sortOrder: newSortOrder,
               page: undefined,
             })
-          } else {
-            updateParams({
-              sortBy: undefined,
-              sortOrder: undefined,
-              page: undefined,
-            })
+          } else if (newPage !== page) {
+            // Only page changed
+            updateParams({ page: newPage && newPage > 1 ? newPage.toString() : undefined })
           }
         }}
         pagination={{
           current: page,
           pageSize: 20,
           total: data?.total || 0,
-          onChange: (p) => updateParams({ page: p > 1 ? p.toString() : undefined }),
           showSizeChanger: false,
-          size: 'small',
         }}
       />
     </Space>
