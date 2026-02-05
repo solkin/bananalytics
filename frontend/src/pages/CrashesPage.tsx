@@ -344,11 +344,11 @@ export default function CrashesPage() {
         </Space>
       </div>
 
-      {hasSessionData && (
-        <Card
-          title="Crash-Free Sessions"
-          styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
-        >
+      <Card
+        title="Crash-Free Sessions"
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
+      >
+        {hasSessionData ? (
           <Line
             data={crashFreeStats.map(s => ({
               date: s.date,
@@ -401,8 +401,12 @@ export default function CrashesPage() {
               },
             }}
           />
-        </Card>
-      )}
+        ) : (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography.Text type="secondary">No session data available</Typography.Text>
+          </div>
+        )}
+      </Card>
 
       <Card
         title="Crash Timeline"

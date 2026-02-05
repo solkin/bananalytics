@@ -83,23 +83,24 @@ export default function CrashDetailPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [groupData, versionsData] = await Promise.all([
+      const [groupData, versionsData, crashesData] = await Promise.all([
         getCrashGroup(groupId!),
         getCrashGroupVersions(groupId!),
+        getCrashesInGroup(groupId!, { 
+          version: selectedVersion, 
+          days, 
+          pageSize: 50 
+        }),
       ])
       setGroup(groupData)
       setVersions(versionsData)
-      
-      // Load crashes with current filters
-      const crashesData = await getCrashesInGroup(groupId!, { 
-        version: selectedVersion, 
-        days, 
-        pageSize: 50 
-      })
       setCrashes(crashesData)
       if (crashesData.items.length > 0) {
         setSelectedCrash(crashesData.items[0])
       }
+      
+      // Load stats after initial data
+      loadStats()
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load crash')
     } finally {
@@ -287,8 +288,7 @@ export default function CrashDetailPage() {
 
       <Card
         title="Crash Timeline"
-        size="small"
-        styles={{ body: { padding: '12px' } }}
+        styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '12px' } }}
       >
         <Column
           data={stats}
