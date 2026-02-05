@@ -348,97 +348,107 @@ export default function CrashesPage() {
         title="Crash-Free Sessions"
         styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
       >
-        {hasSessionData ? (
-          <Line
-            data={crashFreeStats.map(s => ({
-              date: s.date,
-              rate: s.count / 10, // count stores rate * 10 for precision
-              version: s.version,
-            }))}
-            xField="date"
-            yField="rate"
-            colorField="version"
-            shapeField="smooth"
-            height={200}
-            scale={{
-              color: {
-                range: versionColors,
-              },
-            }}
-            axis={{
-              x: {
-                labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
-              },
-              y: {
-                labelFormatter: (v: number) => `${v}%`,
-                domainMin: 0,
-                domainMax: 100,
-              },
-            }}
-            style={{
-              lineWidth: 2,
-            }}
-            interaction={{
-              tooltip: {
-                position: 'bottom-right',
-                render: (_: any, { title, items }: any) => {
-                  return `<div style="padding: 8px">
-                    <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
-                    ${items.map((item: any) => `
-                      <div style="display: flex; align-items: center; gap: 8px">
-                        <span style="width: 8px; height: 8px; border-radius: 50%; background: ${item.color}"></span>
-                        <span>${item.name}: ${item.value.toFixed(1)}%</span>
-                      </div>
-                    `).join('')}
-                  </div>`;
+        <div style={{ height: 200 }}>
+          {hasSessionData ? (
+            <Line
+              data={crashFreeStats.map(s => ({
+                date: s.date,
+                rate: s.count / 10, // count stores rate * 10 for precision
+                version: s.version,
+              }))}
+              xField="date"
+              yField="rate"
+              colorField="version"
+              shapeField="smooth"
+              height={200}
+              scale={{
+                color: {
+                  range: versionColors,
                 },
-              },
-            }}
-            legend={{
-              color: {
-                position: 'bottom',
-                layout: { justifyContent: 'center' },
-              },
-            }}
-          />
-        ) : (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography.Text type="secondary">No session data available</Typography.Text>
-          </div>
-        )}
+              }}
+              axis={{
+                x: {
+                  labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
+                },
+                y: {
+                  labelFormatter: (v: number) => `${v}%`,
+                  domainMin: 0,
+                  domainMax: 100,
+                },
+              }}
+              style={{
+                lineWidth: 2,
+              }}
+              interaction={{
+                tooltip: {
+                  position: 'bottom-right',
+                  render: (_: any, { title, items }: any) => {
+                    return `<div style="padding: 8px">
+                      <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
+                      ${items.map((item: any) => `
+                        <div style="display: flex; align-items: center; gap: 8px">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${item.color}"></span>
+                          <span>${item.name}: ${item.value.toFixed(1)}%</span>
+                        </div>
+                      `).join('')}
+                    </div>`;
+                  },
+                },
+              }}
+              legend={{
+                color: {
+                  position: 'bottom',
+                  layout: { justifyContent: 'center' },
+                },
+              }}
+            />
+          ) : (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography.Text type="secondary">Loading...</Typography.Text>
+            </div>
+          )}
+        </div>
       </Card>
 
       <Card
         title="Crash Timeline"
         styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
       >
-        <Column
-          data={stats}
-          xField="date"
-          yField="count"
-          height={200}
-          style={{ fill: '#ff4d4f' }}
-          axis={{
-            x: {
-              labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
-            },
-            y: {
-              labelFormatter: (v: number) => Number.isInteger(v) ? v.toString() : '',
-              tickFilter: (d: number) => Number.isInteger(d),
-            },
-          }}
-          interaction={{
-            tooltip: {
-              position: 'bottom-right',
-              render: (_: any, { title, items }: any) => {
-                return `<div style="padding: 8px">
-                  <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
-                  <div>Crashes: ${items[0]?.value ?? 0}</div>
-                </div>`;
-              },
-            },
-          }}
-        />
+        <div style={{ height: 200 }}>
+          {stats.length > 0 ? (
+            <Column
+              data={stats}
+              xField="date"
+              yField="count"
+              height={200}
+              style={{ fill: '#ff4d4f' }}
+              axis={{
+                x: {
+                  labelFormatter: (v: string) => dayjs(v).format('MM-DD'),
+                },
+                y: {
+                  labelFormatter: (v: number) => Number.isInteger(v) ? v.toString() : '',
+                  tickFilter: (d: number) => Number.isInteger(d),
+                },
+              }}
+              interaction={{
+                tooltip: {
+                  position: 'bottom-right',
+                  render: (_: any, { title, items }: any) => {
+                    return `<div style="padding: 8px">
+                      <div style="margin-bottom: 4px; font-weight: 500">${dayjs(title).format('YYYY-MM-DD')}</div>
+                      <div>Crashes: ${items[0]?.value ?? 0}</div>
+                    </div>`;
+                  },
+                },
+              }}
+            />
+          ) : (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography.Text type="secondary">Loading...</Typography.Text>
+            </div>
+          )}
+        </div>
       </Card>
 
       <Table
