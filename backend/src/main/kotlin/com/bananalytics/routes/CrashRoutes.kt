@@ -125,11 +125,13 @@ fun Route.crashRoutes() {
         val status = call.request.queryParameters["status"]
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 28
+        val sortBy = call.request.queryParameters["sortBy"]
+        val sortOrder = call.request.queryParameters["sortOrder"]
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
 
         val fromDate = java.time.OffsetDateTime.now().minusDays(days.toLong())
-        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, fromDate, page, pageSize)
+        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, fromDate, sortBy, sortOrder, page, pageSize)
         call.respond(result)
     }
 

@@ -8,7 +8,7 @@ export interface VersionInfo {
 
 export async function getCrashGroups(
   appId: string,
-  options?: { status?: string; version?: number; days?: number; page?: number; pageSize?: number }
+  options?: { status?: string; version?: number; days?: number; sortBy?: string; sortOrder?: string; page?: number; pageSize?: number }
 ): Promise<PaginatedResponse<CrashGroup>> {
   const response = await api.get<PaginatedResponse<CrashGroup>>(`/apps/${appId}/crashes`, {
     params: options,

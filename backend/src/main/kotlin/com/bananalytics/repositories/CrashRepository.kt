@@ -18,11 +18,13 @@ object CrashRepository {
         status: String? = null,
         versionCode: Long? = null,
         fromDate: OffsetDateTime? = null,
+        sortBy: String? = null,
+        sortOrder: String? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): PaginatedResponse<CrashGroupResponse> = transaction {
         // Always calculate stats from Crashes table to support date/version filtering
-        findGroupsByAppIdWithFilters(appId, status, versionCode, fromDate, page, pageSize)
+        findGroupsByAppIdWithFilters(appId, status, versionCode, fromDate, sortBy, sortOrder, page, pageSize)
     }
 
     private fun findGroupsByAppIdWithFilters(
@@ -30,6 +32,8 @@ object CrashRepository {
         status: String?,
         versionCode: Long?,
         fromDate: OffsetDateTime?,
+        sortBy: String?,
+        sortOrder: String?,
         page: Int,
         pageSize: Int
     ): PaginatedResponse<CrashGroupResponse> {
@@ -96,9 +100,17 @@ object CrashRepository {
             )
         }
         
-        // Sort by filtered occurrences and paginate
-        val items = allGroups
-            .sortedByDescending { it.occurrences }
+        // Sort by requested field and paginate
+        val ascending = sortOrder == "asc"
+        val sortedGroups = when (sortBy) {
+            "status" -> if (ascending) allGroups.sortedBy { it.status } else allGroups.sortedByDescending { it.status }
+            "occurrences" -> if (ascending) allGroups.sortedBy { it.occurrences } else allGroups.sortedByDescending { it.occurrences }
+            "affected_devices" -> if (ascending) allGroups.sortedBy { it.affectedDevices } else allGroups.sortedByDescending { it.affectedDevices }
+            "last_seen" -> if (ascending) allGroups.sortedBy { it.lastSeen } else allGroups.sortedByDescending { it.lastSeen }
+            else -> allGroups.sortedByDescending { it.occurrences } // Default: sort by occurrences desc
+        }
+        
+        val items = sortedGroups
             .drop((page - 1) * pageSize)
             .take(pageSize)
 

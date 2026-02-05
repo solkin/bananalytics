@@ -79,6 +79,8 @@ export default function CrashesPage() {
     ? Number(searchParams.get('days')) 
     : (hasUrlParams ? 28 : (storedFilters.days ?? 28))
   const page = searchParams.get('page') ? Number(searchParams.get('page')) : 1
+  const sortBy = searchParams.get('sortBy') || undefined
+  const sortOrder = searchParams.get('sortOrder') || undefined
 
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
   const [versions, setVersions] = useState<VersionInfo[]>([])
@@ -130,7 +132,7 @@ export default function CrashesPage() {
     try {
       setLoading(true)
       const [result, versionsData] = await Promise.all([
-        getCrashGroups(appId!, { status, version: selectedVersion, days, page, pageSize: 20 }),
+        getCrashGroups(appId!, { status, version: selectedVersion, days, sortBy, sortOrder, page, pageSize: 20 }),
         getCrashVersions(appId!),
       ])
       setData(result)
@@ -219,7 +221,7 @@ export default function CrashesPage() {
 
   useEffect(() => {
     if (appId) loadCrashes()
-  }, [appId, status, selectedVersion, days, page])
+  }, [appId, status, selectedVersion, days, sortBy, sortOrder, page])
 
   useEffect(() => {
     if (appId) loadStats()
@@ -246,6 +248,8 @@ export default function CrashesPage() {
       dataIndex: 'status',
       key: 'status',
       width: 90,
+      sorter: true,
+      sortOrder: sortBy === 'status' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
       render: (status: string) => (
         <Tag color={statusColors[status]} style={{ margin: 0 }}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -256,22 +260,26 @@ export default function CrashesPage() {
       title: 'Count',
       dataIndex: 'occurrences',
       key: 'occurrences',
-      width: 70,
-      align: 'right' as const,
+      width: 85,
+      sorter: true,
+      sortOrder: sortBy === 'occurrences' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
       render: (count: number) => (
-        <span style={{ fontWeight: 500 }}>{formatCount(count)}</span>
+        <div style={{ textAlign: 'right', fontWeight: 500 }}>{formatCount(count)}</div>
       ),
     },
     {
       title: 'Devices',
       dataIndex: 'affected_devices',
       key: 'affected_devices',
-      width: 70,
-      align: 'right' as const,
+      width: 95,
+      sorter: true,
+      sortOrder: sortBy === 'affected_devices' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
       render: (count: number) => (
-        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-          {formatCount(count)}
-        </Typography.Text>
+        <div style={{ textAlign: 'right' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            {formatCount(count)}
+          </Typography.Text>
+        </div>
       ),
     },
     {
@@ -279,6 +287,8 @@ export default function CrashesPage() {
       dataIndex: 'last_seen',
       key: 'last_seen',
       width: 120,
+      sorter: true,
+      sortOrder: sortBy === 'last_seen' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
       render: (date: string) => (
         <Typography.Text type="secondary" style={{ fontSize: 13 }}>
           {dayjs(date).fromNow()}
@@ -437,6 +447,22 @@ export default function CrashesPage() {
           onClick: () => navigate(record.id),
           style: { cursor: 'pointer' },
         })}
+        onChange={(_pagination, _filters, sorter) => {
+          const s = Array.isArray(sorter) ? sorter[0] : sorter
+          if (s?.order) {
+            updateParams({
+              sortBy: s.field as string,
+              sortOrder: s.order === 'ascend' ? 'asc' : 'desc',
+              page: undefined,
+            })
+          } else {
+            updateParams({
+              sortBy: undefined,
+              sortOrder: undefined,
+              page: undefined,
+            })
+          }
+        }}
         pagination={{
           current: page,
           pageSize: 20,
