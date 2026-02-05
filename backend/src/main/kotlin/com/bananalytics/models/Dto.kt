@@ -296,3 +296,10 @@ data class MigrationResult(
     @SerialName("groups_merged") val groupsMerged: Int,
     @SerialName("crashes_reassigned") val crashesReassigned: Int
 )
+
+@Serializable
+data class CleanupResult(
+    @SerialName("crashes_deleted") val crashesDeleted: Int,
+    @SerialName("groups_recalculated") val groupsRecalculated: Int,
+    @SerialName("groups_deleted") val groupsDeleted: Int
+)

@@ -55,6 +55,7 @@ fun Route.crashRoutes() {
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         
         val now = java.time.OffsetDateTime.now()
         val toDate = if (toParam != null) {
@@ -68,7 +69,7 @@ fun Route.crashRoutes() {
             now.minusDays(14)
         }
 
-        val stats = AppSessionRepository.getCrashFreeStatsByVersion(appId, fromDate, toDate)
+        val stats = AppSessionRepository.getCrashFreeStatsByVersion(appId, fromDate, toDate, versionCode)
             .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
         call.respond(stats)
     }
@@ -83,6 +84,7 @@ fun Route.crashRoutes() {
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         
         val now = java.time.OffsetDateTime.now()
         val toDate = if (toParam != null) {
@@ -96,7 +98,7 @@ fun Route.crashRoutes() {
             now.minusDays(14)
         }
 
-        val stats = CrashRepository.getCrashStatsByAppId(appId, fromDate, toDate)
+        val stats = CrashRepository.getCrashStatsByAppId(appId, fromDate, toDate, versionCode)
         call.respond(stats)
     }
 
@@ -122,10 +124,12 @@ fun Route.crashRoutes() {
 
         val status = call.request.queryParameters["status"]
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 28
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
 
-        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, page, pageSize)
+        val fromDate = java.time.OffsetDateTime.now().minusDays(days.toLong())
+        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, fromDate, page, pageSize)
         call.respond(result)
     }
 
@@ -275,6 +279,18 @@ fun Route.crashRoutes() {
         requireAppAdmin(appId, user)
 
         val result = CrashRepository.migrateToNormalizedFingerprints(appId)
+        call.respond(result)
+    }
+
+    // Delete orphaned crashes (crashes from deleted versions)
+    post("/apps/{appId}/maintenance/cleanup-orphaned-crashes") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAdmin(appId, user)
+
+        val result = CrashRepository.deleteOrphanedCrashes(appId)
         call.respond(result)
     }
 }

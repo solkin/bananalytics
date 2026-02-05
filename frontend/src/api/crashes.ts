@@ -8,7 +8,7 @@ export interface VersionInfo {
 
 export async function getCrashGroups(
   appId: string,
-  options?: { status?: string; version?: number; page?: number; pageSize?: number }
+  options?: { status?: string; version?: number; days?: number; page?: number; pageSize?: number }
 ): Promise<PaginatedResponse<CrashGroup>> {
   const response = await api.get<PaginatedResponse<CrashGroup>>(`/apps/${appId}/crashes`, {
     params: options,
@@ -75,7 +75,7 @@ export async function getCrashStats(
 
 export async function getAppCrashStats(
   appId: string,
-  options?: { from?: string; to?: string }
+  options?: { from?: string; to?: string; version?: number }
 ): Promise<DailyStat[]> {
   const response = await api.get<DailyStat[]>(`/apps/${appId}/crashes/stats`, {
     params: options,
@@ -110,7 +110,7 @@ export async function getCrashFreeStats(
 
 export async function getCrashFreeStatsByVersion(
   appId: string,
-  options?: { from?: string; to?: string }
+  options?: { from?: string; to?: string; version?: number }
 ): Promise<SessionVersionStats[]> {
   const response = await api.get<SessionVersionStats[]>(`/apps/${appId}/sessions/crash-free-by-version`, {
     params: options,
@@ -128,5 +128,16 @@ export interface MigrationResult {
 
 export async function migrateCrashFingerprints(appId: string): Promise<MigrationResult> {
   const response = await api.post<MigrationResult>(`/apps/${appId}/maintenance/migrate-fingerprints`)
+  return response.data
+}
+
+export interface CleanupResult {
+  crashes_deleted: number
+  groups_recalculated: number
+  groups_deleted: number
+}
+
+export async function cleanupOrphanedCrashes(appId: string): Promise<CleanupResult> {
+  const response = await api.post<CleanupResult>(`/apps/${appId}/maintenance/cleanup-orphaned-crashes`)
   return response.data
 }

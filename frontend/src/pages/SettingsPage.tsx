@@ -21,10 +21,11 @@ import {
   DeleteOutlined,
   ToolOutlined,
   MergeCellsOutlined,
+  ClearOutlined,
 } from '@ant-design/icons'
 import type { App } from '@/types'
 import { regenerateApiKey, deleteApp } from '@/api/apps'
-import { migrateCrashFingerprints, type MigrationResult } from '@/api/crashes'
+import { migrateCrashFingerprints, cleanupOrphanedCrashes, type MigrationResult, type CleanupResult } from '@/api/crashes'
 
 interface OutletContext {
   app: App
@@ -37,6 +38,8 @@ export default function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null)
+  const [cleaningUp, setCleaningUp] = useState(false)
+  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null)
 
   const handleCopyApiKey = () => {
     navigator.clipboard.writeText(app.api_key)
@@ -103,6 +106,24 @@ export default function SettingsPage() {
       message.error(error instanceof Error ? error.message : 'Migration failed')
     } finally {
       setMigrating(false)
+    }
+  }
+
+  const handleCleanupOrphanedCrashes = async () => {
+    setCleaningUp(true)
+    setCleanupResult(null)
+    try {
+      const result = await cleanupOrphanedCrashes(app.id)
+      setCleanupResult(result)
+      if (result.crashes_deleted > 0) {
+        message.success(`Cleanup complete: ${result.crashes_deleted} crashes deleted`)
+      } else {
+        message.info('Cleanup complete: no orphaned crashes found')
+      }
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Cleanup failed')
+    } finally {
+      setCleaningUp(false)
     }
   }
 
@@ -192,6 +213,50 @@ export default function SettingsPage() {
                 <Statistic 
                   title="Crashes Reassigned" 
                   value={migrationResult.crashes_reassigned}
+                />
+              </Col>
+            </Row>
+          )}
+
+          <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 16, paddingTop: 16 }}>
+            <Typography.Title level={5} style={{ marginBottom: 4 }}>
+              <ClearOutlined /> Cleanup Orphaned Crashes
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Delete crashes that are no longer associated with any existing version.
+              This cleans up data from deleted versions.
+            </Typography.Text>
+          </div>
+          
+          <Button 
+            type="primary"
+            icon={<ClearOutlined />}
+            onClick={handleCleanupOrphanedCrashes}
+            loading={cleaningUp}
+          >
+            {cleaningUp ? 'Cleaning up...' : 'Run Cleanup'}
+          </Button>
+
+          {cleanupResult && (
+            <Row gutter={16}>
+              <Col span={8}>
+                <Statistic 
+                  title="Crashes Deleted" 
+                  value={cleanupResult.crashes_deleted}
+                  valueStyle={cleanupResult.crashes_deleted > 0 ? { color: '#52c41a' } : undefined}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic 
+                  title="Groups Recalculated" 
+                  value={cleanupResult.groups_recalculated}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic 
+                  title="Groups Deleted" 
+                  value={cleanupResult.groups_deleted}
+                  valueStyle={cleanupResult.groups_deleted > 0 ? { color: '#faad14' } : undefined}
                 />
               </Col>
             </Row>

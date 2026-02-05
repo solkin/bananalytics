@@ -185,10 +185,8 @@ object VersionRepository {
             // Delete download tokens for this version
             DownloadTokens.deleteWhere { DownloadTokens.versionId eq id }
 
-            // Set version_id to null for crashes (keep crash data, just unlink from version)
-            Crashes.update({ Crashes.versionId eq id }) {
-                it[versionId] = null
-            }
+            // Delete crashes and recalculate affected crash groups
+            CrashRepository.deleteCrashesByVersionId(id)
 
             // Delete events for this app and version_code
             Events.deleteWhere { (Events.appId eq appId) and (Events.versionCode eq versionCode) }

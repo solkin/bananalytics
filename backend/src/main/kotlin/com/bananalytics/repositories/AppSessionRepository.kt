@@ -176,15 +176,21 @@ object AppSessionRepository {
     fun getCrashFreeStatsByVersion(
         appId: UUID,
         fromDate: OffsetDateTime,
-        toDate: OffsetDateTime
+        toDate: OffsetDateTime,
+        versionCode: Long? = null
     ): List<UniqueSessionStats> = transaction {
-        val sessions = AppSessions.selectAll()
+        var query = AppSessions.selectAll()
             .where {
                 (AppSessions.appId eq appId) and
                 (AppSessions.firstSeen greaterEq fromDate) and
                 (AppSessions.firstSeen lessEq toDate)
             }
-            .map {
+        
+        if (versionCode != null) {
+            query = query.andWhere { AppSessions.versionCode eq versionCode }
+        }
+        
+        val sessions = query.map {
                 Triple(
                     it[AppSessions.firstSeen].toLocalDate(),
                     it[AppSessions.versionCode],

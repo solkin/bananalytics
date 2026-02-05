@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Table, Tag, Select, Space, Typography, message, Card, DatePicker } from 'antd'
+import { Table, Tag, Select, Space, Typography, message, Card } from 'antd'
 import { Column, Line } from '@ant-design/charts'
 import type { CrashGroup, PaginatedResponse } from '@/types'
 import { getCrashGroups, getCrashVersions, getAppCrashStats, getCrashFreeStatsByVersion, type VersionInfo, type DailyStat, type SessionVersionStats } from '@/api/crashes'
@@ -8,8 +8,6 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 dayjs.extend(relativeTime)
-
-const { RangePicker } = DatePicker
 
 const statusColors: Record<string, string> = {
   open: 'red',
@@ -20,14 +18,59 @@ const statusColors: Record<string, string> = {
 // Colors for version lines
 const versionColors = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#eb2f96', '#13c2c2']
 
+// Date range options
+const dateRangeOptions = [
+  { label: 'Last 24 hours', value: 1 },
+  { label: 'Last 3 days', value: 3 },
+  { label: 'Last 7 days', value: 7 },
+  { label: 'Last 28 days', value: 28 },
+]
+
+// LocalStorage helpers
+const STORAGE_KEY = 'crashes_filters'
+
+interface StoredFilters {
+  version?: number
+  days?: number
+  status?: string
+}
+
+function getStoredFilters(appId: string): StoredFilters {
+  try {
+    const stored = localStorage.getItem(`${STORAGE_KEY}_${appId}`)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveFilters(appId: string, filters: StoredFilters) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY}_${appId}`, JSON.stringify(filters))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export default function CrashesPage() {
   const { appId } = useParams<{ appId: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [initialized, setInitialized] = useState(false)
   
-  // Read initial state from URL
-  const status = searchParams.get('status') || undefined
-  const selectedVersion = searchParams.get('version') ? Number(searchParams.get('version')) : undefined
+  // Get stored filters for this app
+  const storedFilters = appId ? getStoredFilters(appId) : {}
+  
+  // Read state: URL params take priority, then localStorage, then defaults
+  const hasUrlParams = searchParams.has('status') || searchParams.has('version') || searchParams.has('days')
+  
+  const status = searchParams.get('status') || (hasUrlParams ? undefined : storedFilters.status) || undefined
+  const selectedVersion = searchParams.has('version') 
+    ? Number(searchParams.get('version')) 
+    : (hasUrlParams ? undefined : storedFilters.version)
+  const days = searchParams.has('days') 
+    ? Number(searchParams.get('days')) 
+    : (hasUrlParams ? 28 : (storedFilters.days ?? 28))
   const page = searchParams.get('page') ? Number(searchParams.get('page')) : 1
 
   const [data, setData] = useState<PaginatedResponse<CrashGroup> | null>(null)
@@ -35,10 +78,31 @@ export default function CrashesPage() {
   const [stats, setStats] = useState<DailyStat[]>([])
   const [crashFreeStats, setCrashFreeStats] = useState<(SessionVersionStats & { version: string })[]>([])
   const [loading, setLoading] = useState(true)
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
-    dayjs().subtract(14, 'day'),
-    dayjs(),
-  ])
+
+  // Initialize URL from localStorage if no URL params
+  useEffect(() => {
+    if (!initialized && appId && !hasUrlParams && Object.keys(storedFilters).length > 0) {
+      const newParams = new URLSearchParams()
+      if (storedFilters.version) newParams.set('version', storedFilters.version.toString())
+      if (storedFilters.days && storedFilters.days !== 28) newParams.set('days', storedFilters.days.toString())
+      if (storedFilters.status) newParams.set('status', storedFilters.status)
+      if (newParams.toString()) {
+        setSearchParams(newParams, { replace: true })
+      }
+    }
+    setInitialized(true)
+  }, [appId])
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    if (appId && initialized) {
+      saveFilters(appId, {
+        version: selectedVersion,
+        days,
+        status,
+      })
+    }
+  }, [appId, selectedVersion, days, status, initialized])
 
   // Update URL params
   const updateParams = useCallback((updates: Record<string, string | undefined>) => {
@@ -59,7 +123,7 @@ export default function CrashesPage() {
     try {
       setLoading(true)
       const [result, versionsData] = await Promise.all([
-        getCrashGroups(appId!, { status, version: selectedVersion, page, pageSize: 20 }),
+        getCrashGroups(appId!, { status, version: selectedVersion, days, page, pageSize: 20 }),
         getCrashVersions(appId!),
       ])
       setData(result)
@@ -73,22 +137,27 @@ export default function CrashesPage() {
 
   const loadStats = async () => {
     try {
+      const fromDate = dayjs().subtract(days, 'day').startOf('day')
+      const toDate = dayjs().endOf('day')
+      
       const [statsData, crashFreeData] = await Promise.all([
         getAppCrashStats(appId!, {
-          from: dateRange[0].startOf('day').toISOString(),
-          to: dateRange[1].endOf('day').toISOString(),
+          from: fromDate.toISOString(),
+          to: toDate.toISOString(),
+          version: selectedVersion,
         }),
         getCrashFreeStatsByVersion(appId!, {
-          from: dateRange[0].startOf('day').toISOString(),
-          to: dateRange[1].endOf('day').toISOString(),
+          from: fromDate.toISOString(),
+          to: toDate.toISOString(),
+          version: selectedVersion,
         }),
       ])
       
       // Fill all dates in range with zeros where no data
       const statsMap = new Map(statsData.map(s => [s.date, s.count]))
       const filledStats: DailyStat[] = []
-      let current = dateRange[0].startOf('day')
-      const end = dateRange[1].startOf('day')
+      let current = fromDate
+      const end = toDate.startOf('day')
       
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         const dateStr = current.format('YYYY-MM-DD')
@@ -118,7 +187,7 @@ export default function CrashesPage() {
       
       // Fill missing dates for each version
       const filledCrashFree: (SessionVersionStats & { version: string })[] = []
-      current = dateRange[0].startOf('day')
+      current = fromDate
       
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         const dateStr = current.format('YYYY-MM-DD')
@@ -143,11 +212,11 @@ export default function CrashesPage() {
 
   useEffect(() => {
     if (appId) loadCrashes()
-  }, [appId, status, selectedVersion, page])
+  }, [appId, status, selectedVersion, days, page])
 
   useEffect(() => {
     if (appId) loadStats()
-  }, [appId, dateRange])
+  }, [appId, days, selectedVersion])
 
   const columns = [
     {
@@ -201,21 +270,52 @@ export default function CrashesPage() {
 
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      {/* Header with title and filters */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>Crashes</Typography.Title>
+        <Space wrap>
+          <Select
+            placeholder="Filter by version"
+            allowClear
+            style={{ width: 200 }}
+            value={selectedVersion}
+            onChange={(v) => {
+              updateParams({ version: v?.toString(), page: undefined })
+            }}
+            options={versions.map((v) => ({
+              label: v.version_name ? `${v.version_name} (${v.version_code})` : `Version ${v.version_code}`,
+              value: v.version_code,
+            }))}
+          />
+          <Select
+            value={days}
+            style={{ width: 150 }}
+            onChange={(v) => {
+              updateParams({ days: v !== 28 ? v.toString() : undefined, page: undefined })
+            }}
+            options={dateRangeOptions}
+          />
+          <Select
+            placeholder="Filter by status"
+            allowClear
+            style={{ width: 150 }}
+            value={status}
+            onChange={(v) => {
+              updateParams({ status: v, page: undefined })
+            }}
+            options={[
+              { label: 'Open', value: 'open' },
+              { label: 'Resolved', value: 'resolved' },
+              { label: 'Ignored', value: 'ignored' },
+            ]}
+          />
+        </Space>
+      </div>
+
       {hasSessionData && (
         <Card
           title="Crash-Free Sessions"
           styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
-          extra={
-            <RangePicker
-              value={dateRange}
-              onChange={(dates) => {
-                if (dates && dates[0] && dates[1]) {
-                  setDateRange([dates[0], dates[1]])
-                }
-              }}
-              allowClear={false}
-            />
-          }
         >
           <Line
             data={crashFreeStats.map(s => ({
@@ -275,19 +375,6 @@ export default function CrashesPage() {
       <Card
         title="Crash Timeline"
         styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
-        extra={
-          !hasSessionData && (
-            <RangePicker
-              value={dateRange}
-              onChange={(dates) => {
-                if (dates && dates[0] && dates[1]) {
-                  setDateRange([dates[0], dates[1]])
-                }
-              }}
-              allowClear={false}
-            />
-          )
-        }
       >
         <Column
           data={stats}
@@ -317,36 +404,6 @@ export default function CrashesPage() {
           }}
         />
       </Card>
-
-      <Space wrap>
-        <Select
-          placeholder="Filter by status"
-          allowClear
-          style={{ width: 150 }}
-          value={status}
-          onChange={(v) => {
-            updateParams({ status: v, page: undefined })
-          }}
-          options={[
-            { label: 'Open', value: 'open' },
-            { label: 'Resolved', value: 'resolved' },
-            { label: 'Ignored', value: 'ignored' },
-          ]}
-        />
-        <Select
-          placeholder="Filter by version"
-          allowClear
-          style={{ width: 200 }}
-          value={selectedVersion}
-          onChange={(v) => {
-            updateParams({ version: v?.toString(), page: undefined })
-          }}
-          options={versions.map((v) => ({
-            label: v.version_name ? `${v.version_name} (${v.version_code})` : `Version ${v.version_code}`,
-            value: v.version_code,
-          }))}
-        />
-      </Space>
 
       <Table
         dataSource={data?.items || []}
