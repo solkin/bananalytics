@@ -249,7 +249,7 @@ export default function CrashesPage() {
       key: 'status',
       width: 90,
       sorter: true,
-      sortOrder: sortBy === 'status' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
+      sortOrder: sortBy === 'status' ? (sortOrder === 'asc' ? 'ascend' as const : 'descend' as const) : undefined,
       render: (status: string) => (
         <Tag color={statusColors[status]} style={{ margin: 0 }}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -262,7 +262,7 @@ export default function CrashesPage() {
       key: 'occurrences',
       width: 85,
       sorter: true,
-      sortOrder: sortBy === 'occurrences' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
+      sortOrder: sortBy === 'occurrences' ? (sortOrder === 'asc' ? 'ascend' as const : 'descend' as const) : undefined,
       render: (count: number) => (
         <div style={{ textAlign: 'right', fontWeight: 500 }}>{formatCount(count)}</div>
       ),
@@ -273,7 +273,7 @@ export default function CrashesPage() {
       key: 'affected_devices',
       width: 95,
       sorter: true,
-      sortOrder: sortBy === 'affected_devices' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
+      sortOrder: sortBy === 'affected_devices' ? (sortOrder === 'asc' ? 'ascend' as const : 'descend' as const) : undefined,
       render: (count: number) => (
         <div style={{ textAlign: 'right' }}>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
@@ -288,7 +288,7 @@ export default function CrashesPage() {
       key: 'last_seen',
       width: 120,
       sorter: true,
-      sortOrder: sortBy === 'last_seen' ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined,
+      sortOrder: sortBy === 'last_seen' ? (sortOrder === 'asc' ? 'ascend' as const : 'descend' as const) : undefined,
       render: (date: string) => (
         <Typography.Text type="secondary" style={{ fontSize: 13 }}>
           {dayjs(date).fromNow()}
