@@ -15,6 +15,13 @@ const statusColors: Record<string, string> = {
   ignored: 'default',
 }
 
+const formatCount = (count: number): string => {
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`
+  }
+  return count.toString()
+}
+
 // Colors for version lines
 const versionColors = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#eb2f96', '#13c2c2']
 
@@ -222,46 +229,61 @@ export default function CrashesPage() {
     {
       title: 'Exception',
       key: 'exception',
+      ellipsis: true,
       render: (_: unknown, record: CrashGroup) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text strong style={{ color: '#1890ff' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {record.exception_class || 'Unknown Exception'}
-          </Typography.Text>
-          <Typography.Text type="secondary" ellipsis style={{ maxWidth: 500 }}>
+          </div>
+          <Typography.Text type="secondary" ellipsis style={{ fontSize: 12 }}>
             {record.exception_message || 'No message'}
           </Typography.Text>
-        </Space>
+        </div>
       ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 90,
       render: (status: string) => (
-        <Tag color={statusColors[status]}>{status.toUpperCase()}</Tag>
+        <Tag color={statusColors[status]} style={{ margin: 0 }}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Tag>
       ),
     },
     {
       title: 'Count',
       dataIndex: 'occurrences',
       key: 'occurrences',
-      width: 80,
-      render: (count: number) => <Typography.Text strong>{count}</Typography.Text>,
+      width: 70,
+      align: 'right' as const,
+      render: (count: number) => (
+        <span style={{ fontWeight: 500 }}>{formatCount(count)}</span>
+      ),
     },
     {
-      title: 'Last Seen',
+      title: 'Devices',
+      dataIndex: 'affected_devices',
+      key: 'affected_devices',
+      width: 70,
+      align: 'right' as const,
+      render: (count: number) => (
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          {formatCount(count)}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: 'Last Report',
       dataIndex: 'last_seen',
       key: 'last_seen',
-      width: 150,
-      render: (date: string) => dayjs(date).fromNow(),
-    },
-    {
-      title: 'First Seen',
-      dataIndex: 'first_seen',
-      key: 'first_seen',
-      width: 150,
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
+      width: 120,
+      render: (date: string) => (
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          {dayjs(date).fromNow()}
+        </Typography.Text>
+      ),
     },
   ]
 
@@ -410,8 +432,7 @@ export default function CrashesPage() {
         columns={columns}
         rowKey="id"
         loading={loading}
-        bordered
-        style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden' }}
+        size="small"
         onRow={(record) => ({
           onClick: () => navigate(record.id),
           style: { cursor: 'pointer' },
@@ -422,6 +443,7 @@ export default function CrashesPage() {
           total: data?.total || 0,
           onChange: (p) => updateParams({ page: p > 1 ? p.toString() : undefined }),
           showSizeChanger: false,
+          size: 'small',
         }}
       />
     </Space>

@@ -37,6 +37,7 @@ export interface CrashGroup {
   first_seen: string
   last_seen: string
   occurrences: number
+  affected_devices: number
   status: 'open' | 'resolved' | 'ignored'
 }
 

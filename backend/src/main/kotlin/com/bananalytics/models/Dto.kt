@@ -140,6 +140,7 @@ data class CrashGroupResponse(
     @SerialName("first_seen") val firstSeen: String,
     @SerialName("last_seen") val lastSeen: String,
     val occurrences: Int,
+    @SerialName("affected_devices") val affectedDevices: Int,
     val status: String
 )
 

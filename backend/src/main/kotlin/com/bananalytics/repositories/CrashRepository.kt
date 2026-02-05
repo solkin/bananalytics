@@ -37,10 +37,11 @@ object CrashRepository {
         val minCreatedAt = Crashes.createdAt.min()
         val maxCreatedAt = Crashes.createdAt.max()
         val countCrashes = Crashes.id.count()
+        val countDevices = Crashes.deviceId.countDistinct()
         
         // Build query with filters
         var crashQuery = Crashes
-            .select(Crashes.groupId, minCreatedAt, maxCreatedAt, countCrashes)
+            .select(Crashes.groupId, minCreatedAt, maxCreatedAt, countCrashes, countDevices)
             .where { (Crashes.appId eq appId) and Crashes.groupId.isNotNull() }
         
         if (versionCode != null) {
@@ -58,6 +59,7 @@ object CrashRepository {
                 val groupId = row[Crashes.groupId]!!.value
                 groupId to FilteredCrashStats(
                     count = row[countCrashes].toInt(),
+                    affectedDevices = row[countDevices].toInt(),
                     firstSeen = row[minCreatedAt]!!,
                     lastSeen = row[maxCreatedAt]!!
                 )
@@ -89,6 +91,7 @@ object CrashRepository {
                 firstSeen = stats.firstSeen.toString(),
                 lastSeen = stats.lastSeen.toString(),
                 occurrences = stats.count,
+                affectedDevices = stats.affectedDevices,
                 status = row[CrashGroups.status]
             )
         }
@@ -104,6 +107,7 @@ object CrashRepository {
 
     private data class FilteredCrashStats(
         val count: Int,
+        val affectedDevices: Int,
         val firstSeen: OffsetDateTime,
         val lastSeen: OffsetDateTime
     )
@@ -130,10 +134,27 @@ object CrashRepository {
     }
 
     fun findGroupById(id: UUID): CrashGroupResponse? = transaction {
-        CrashGroups.selectAll()
+        val group = CrashGroups.selectAll()
             .where { CrashGroups.id eq id }
-            .singleOrNull()
-            ?.toCrashGroupResponse()
+            .singleOrNull() ?: return@transaction null
+        
+        // Count distinct devices for this group
+        val affectedDevices = Crashes
+            .select(Crashes.deviceId.countDistinct())
+            .where { Crashes.groupId eq id }
+            .single()[Crashes.deviceId.countDistinct()].toInt()
+        
+        CrashGroupResponse(
+            id = group[CrashGroups.id].value.toString(),
+            appId = group[CrashGroups.appId].value.toString(),
+            exceptionClass = group[CrashGroups.exceptionClass],
+            exceptionMessage = group[CrashGroups.exceptionMessage],
+            firstSeen = group[CrashGroups.firstSeen].toString(),
+            lastSeen = group[CrashGroups.lastSeen].toString(),
+            occurrences = group[CrashGroups.occurrences],
+            affectedDevices = affectedDevices,
+            status = group[CrashGroups.status]
+        )
     }
 
     fun findCrashesByGroupId(
@@ -193,6 +214,7 @@ object CrashRepository {
             it[Crashes.versionId] = versionId
             it[Crashes.groupId] = groupId
             it[Crashes.versionCode] = versionCode
+            it[Crashes.deviceId] = deviceInfo?.deviceId
             it[stacktraceRaw] = crash.stacktrace
             it[stacktraceDecoded] = decodedStacktrace
             it[decodedAt] = if (decodedStacktrace != null) now else null
@@ -696,16 +718,6 @@ object CrashRepository {
         }
     }
 
-    private fun ResultRow.toCrashGroupResponse() = CrashGroupResponse(
-        id = this[CrashGroups.id].value.toString(),
-        appId = this[CrashGroups.appId].value.toString(),
-        exceptionClass = this[CrashGroups.exceptionClass],
-        exceptionMessage = this[CrashGroups.exceptionMessage],
-        firstSeen = this[CrashGroups.firstSeen].toString(),
-        lastSeen = this[CrashGroups.lastSeen].toString(),
-        occurrences = this[CrashGroups.occurrences],
-        status = this[CrashGroups.status]
-    )
 
     private fun ResultRow.toCrashResponse() = CrashResponse(
         id = this[Crashes.id].value.toString(),

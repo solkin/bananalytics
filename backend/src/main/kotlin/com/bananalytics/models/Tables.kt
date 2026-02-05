@@ -55,6 +55,7 @@ object Crashes : UUIDTable("crashes") {
     val versionId = reference("version_id", AppVersions).nullable()
     val groupId = reference("group_id", CrashGroups).nullable()
     val versionCode = long("version_code").nullable()
+    val deviceId = varchar("device_id", 64).nullable()
     val stacktraceRaw = text("stacktrace_raw")
     val stacktraceDecoded = text("stacktrace_decoded").nullable()
     val decodedAt = timestampWithTimeZone("decoded_at").nullable()
