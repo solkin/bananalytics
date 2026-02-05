@@ -148,6 +148,7 @@ fun Route.crashRoutes() {
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         
         val now = java.time.OffsetDateTime.now()
         val toDate = if (toParam != null) {
@@ -161,7 +162,7 @@ fun Route.crashRoutes() {
             now.minusDays(30)
         }
 
-        val stats = CrashRepository.getCrashStatsByGroupId(id, fromDate, toDate)
+        val stats = CrashRepository.getCrashStatsByGroupId(id, fromDate, toDate, versionCode)
         call.respond(stats)
     }
 
@@ -177,6 +178,21 @@ fun Route.crashRoutes() {
         requireAppAccess(UUID.fromString(group.appId), user)
 
         call.respond(group)
+    }
+
+    // Get version codes for a crash group
+    get("/crash-groups/{id}/versions") {
+        val user = call.getUser()
+        val id = call.parameters["id"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid crash group ID")
+
+        val group = CrashRepository.findGroupById(id)
+            ?: throw NotFoundException("Crash group not found")
+
+        requireAppAccess(UUID.fromString(group.appId), user)
+
+        val versions = CrashRepository.getVersionCodesByGroup(id)
+        call.respond(versions)
     }
 
     // Update crash group status
@@ -236,10 +252,13 @@ fun Route.crashRoutes() {
 
         requireAppAccess(UUID.fromString(group.appId), user)
 
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val days = call.request.queryParameters["days"]?.toIntOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
 
-        val result = CrashRepository.findCrashesByGroupId(id, page, pageSize)
+        val fromDate = if (days != null) java.time.OffsetDateTime.now().minusDays(days.toLong()) else null
+        val result = CrashRepository.findCrashesByGroupId(id, versionCode, fromDate, page, pageSize)
         call.respond(result)
     }
 

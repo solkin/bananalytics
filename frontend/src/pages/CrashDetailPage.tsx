@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Card,
   Descriptions,
@@ -12,19 +12,23 @@ import {
   Tabs,
   message,
   Alert,
-  DatePicker,
   Modal,
   Segmented,
 } from 'antd'
-import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ReloadOutlined, DeleteOutlined, ArrowLeftOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
 import type { Crash, CrashGroup, PaginatedResponse } from '@/types'
-import { getCrashGroup, getCrashesInGroup, updateCrashGroupStatus, retraceCrash, getCrashStats, deleteCrashGroup, type DailyStat } from '@/api/crashes'
+import { getCrashGroup, getCrashesInGroup, getCrashGroupVersions, updateCrashGroupStatus, retraceCrash, getCrashStats, deleteCrashGroup, type DailyStat, type VersionInfo } from '@/api/crashes'
 import dayjs from 'dayjs'
 
-const { RangePicker } = DatePicker
+const { Text } = Typography
 
-const { Text, Paragraph } = Typography
+const dateRangeOptions = [
+  { label: 'Last 24 hours', value: 1 },
+  { label: 'Last 3 days', value: 3 },
+  { label: 'Last 7 days', value: 7 },
+  { label: 'Last 28 days', value: 28 },
+]
 
 const statusColors: Record<string, string> = {
   open: 'red',
@@ -35,34 +39,63 @@ const statusColors: Record<string, string> = {
 export default function CrashDetailPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  // Read filters from URL
+  const selectedVersion = searchParams.has('version') ? Number(searchParams.get('version')) : undefined
+  const days = searchParams.has('days') ? Number(searchParams.get('days')) : 28
+  
   const [group, setGroup] = useState<CrashGroup | null>(null)
   const [crashes, setCrashes] = useState<PaginatedResponse<Crash> | null>(null)
+  const [versions, setVersions] = useState<VersionInfo[]>([])
   const [selectedCrash, setSelectedCrash] = useState<Crash | null>(null)
   const [loading, setLoading] = useState(true)
   const [retracing, setRetracing] = useState(false)
   const [stats, setStats] = useState<DailyStat[]>([])
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
-    dayjs().subtract(14, 'day'),
-    dayjs(),
-  ])
   const [stacktraceView, setStacktraceView] = useState<'decoded' | 'raw'>('decoded')
+
+  // Update URL params
+  const updateParams = useCallback((updates: Record<string, string | undefined>) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev)
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === '') {
+          newParams.delete(key)
+        } else {
+          newParams.set(key, value)
+        }
+      })
+      return newParams
+    })
+  }, [setSearchParams])
 
   useEffect(() => {
     if (groupId) loadData()
   }, [groupId])
 
   useEffect(() => {
-    if (groupId) loadStats()
-  }, [groupId, dateRange])
+    if (groupId && group) {
+      loadCrashes()
+      loadStats()
+    }
+  }, [groupId, days, selectedVersion])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      const [groupData, crashesData] = await Promise.all([
+      const [groupData, versionsData] = await Promise.all([
         getCrashGroup(groupId!),
-        getCrashesInGroup(groupId!, { pageSize: 50 }),
+        getCrashGroupVersions(groupId!),
       ])
       setGroup(groupData)
+      setVersions(versionsData)
+      
+      // Load crashes with current filters
+      const crashesData = await getCrashesInGroup(groupId!, { 
+        version: selectedVersion, 
+        days, 
+        pageSize: 50 
+      })
       setCrashes(crashesData)
       if (crashesData.items.length > 0) {
         setSelectedCrash(crashesData.items[0])
@@ -74,18 +107,40 @@ export default function CrashDetailPage() {
     }
   }
 
+  const loadCrashes = async () => {
+    try {
+      const crashesData = await getCrashesInGroup(groupId!, { 
+        version: selectedVersion, 
+        days, 
+        pageSize: 50 
+      })
+      setCrashes(crashesData)
+      if (crashesData.items.length > 0) {
+        setSelectedCrash(crashesData.items[0])
+      } else {
+        setSelectedCrash(null)
+      }
+    } catch (error) {
+      console.error('Failed to load crashes', error)
+    }
+  }
+
   const loadStats = async () => {
     try {
+      const fromDate = dayjs().subtract(days, 'day').startOf('day')
+      const toDate = dayjs().endOf('day')
+      
       const statsData = await getCrashStats(groupId!, {
-        from: dateRange[0].startOf('day').toISOString(),
-        to: dateRange[1].endOf('day').toISOString(),
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        version: selectedVersion,
       })
       
       // Fill all dates in range with zeros where no data
       const statsMap = new Map(statsData.map(s => [s.date, s.count]))
       const filledStats: DailyStat[] = []
-      let current = dateRange[0].startOf('day')
-      const end = dateRange[1].startOf('day')
+      let current = fromDate
+      const end = toDate.startOf('day')
       
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         const dateStr = current.format('YYYY-MM-DD')
@@ -159,8 +214,39 @@ export default function CrashDetailPage() {
 
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      {/* Header with back button and filters */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Button 
+          type="text" 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('..')}
+        >
+          Back to Crashes
+        </Button>
+        <Space>
+          <Select
+            placeholder="All versions"
+            allowClear
+            style={{ width: 180 }}
+            value={selectedVersion}
+            onChange={(v) => updateParams({ version: v?.toString() })}
+            options={versions.map((v) => ({
+              label: v.version_name ? `${v.version_name} (${v.version_code})` : `Version ${v.version_code}`,
+              value: v.version_code,
+            }))}
+          />
+          <Select
+            style={{ width: 140 }}
+            value={days}
+            onChange={(v) => updateParams({ days: v !== 28 ? v.toString() : undefined })}
+            options={dateRangeOptions}
+          />
+        </Space>
+      </div>
+
       <Card>
         <Descriptions
+          column={4}
           title={
             <Space>
               <span>{group.exception_class || 'Unknown Exception'}</span>
@@ -185,10 +271,11 @@ export default function CrashDetailPage() {
             </Space>
           }
         >
-          <Descriptions.Item label="Message" span={3}>
+          <Descriptions.Item label="Message" span={4}>
             {group.exception_message || 'No message'}
           </Descriptions.Item>
           <Descriptions.Item label="Occurrences">{group.occurrences}</Descriptions.Item>
+          <Descriptions.Item label="Devices">{group.affected_devices}</Descriptions.Item>
           <Descriptions.Item label="First Seen">
             {dayjs(group.first_seen).format('YYYY-MM-DD HH:mm:ss')}
           </Descriptions.Item>
@@ -200,18 +287,8 @@ export default function CrashDetailPage() {
 
       <Card
         title="Crash Timeline"
-        styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { padding: '8px 0 0 0' } }}
-        extra={
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => {
-              if (dates && dates[0] && dates[1]) {
-                setDateRange([dates[0], dates[1]])
-              }
-            }}
-            allowClear={false}
-          />
-        }
+        size="small"
+        styles={{ body: { padding: '12px' } }}
       >
         <Column
           data={stats}
@@ -248,17 +325,37 @@ export default function CrashDetailPage() {
           styles={{ header: { borderBottom: '1px solid #f0f0f0' }, body: { paddingTop: 8, paddingBottom: 8 } }}
           extra={
             <Space>
+              <Button
+                icon={<LeftOutlined />}
+                disabled={!crashes?.items.length || crashes.items[0].id === selectedCrash.id}
+                onClick={() => {
+                  const currentIndex = crashes?.items.findIndex((c) => c.id === selectedCrash.id) ?? -1
+                  if (currentIndex > 0) {
+                    setSelectedCrash(crashes!.items[currentIndex - 1])
+                  }
+                }}
+              />
               <Select
                 value={selectedCrash.id}
-                style={{ width: 300 }}
+                style={{ width: 280 }}
                 onChange={(id) => {
                   const crash = crashes?.items.find((c) => c.id === id)
                   if (crash) setSelectedCrash(crash)
                 }}
                 options={crashes?.items.map((c) => ({
-                  label: `${dayjs(c.created_at).format('YYYY-MM-DD HH:mm')} - ${c.device_info?.model || 'Unknown'}`,
+                  label: `${dayjs(c.created_at).format('MMM D, HH:mm')} – ${c.device_info?.model || 'Unknown'}`,
                   value: c.id,
                 }))}
+              />
+              <Button
+                icon={<RightOutlined />}
+                disabled={!crashes?.items.length || crashes.items[crashes.items.length - 1].id === selectedCrash.id}
+                onClick={() => {
+                  const currentIndex = crashes?.items.findIndex((c) => c.id === selectedCrash.id) ?? -1
+                  if (currentIndex >= 0 && currentIndex < (crashes?.items.length ?? 0) - 1) {
+                    setSelectedCrash(crashes!.items[currentIndex + 1])
+                  }
+                }}
               />
               <Button
                 icon={<ReloadOutlined />}
@@ -296,13 +393,11 @@ export default function CrashDetailPage() {
                         ]}
                       />
                     )}
-                    <Paragraph>
-                      <pre className="stacktrace">
-                        {stacktraceView === 'raw' || !selectedCrash.stacktrace_decoded
-                          ? selectedCrash.stacktrace_raw
-                          : selectedCrash.stacktrace_decoded}
-                      </pre>
-                    </Paragraph>
+                    <pre className="stacktrace" style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      {stacktraceView === 'raw' || !selectedCrash.stacktrace_decoded
+                        ? selectedCrash.stacktrace_raw
+                        : selectedCrash.stacktrace_decoded}
+                    </pre>
                   </Space>
                 ),
               },

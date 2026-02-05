@@ -26,6 +26,11 @@ export async function getCrashGroup(id: string): Promise<CrashGroup> {
   return response.data
 }
 
+export async function getCrashGroupVersions(groupId: string): Promise<VersionInfo[]> {
+  const response = await api.get<VersionInfo[]>(`/crash-groups/${groupId}/versions`)
+  return response.data
+}
+
 export async function updateCrashGroupStatus(
   id: string,
   status: 'open' | 'resolved' | 'ignored'
@@ -40,7 +45,7 @@ export async function deleteCrashGroup(id: string): Promise<void> {
 
 export async function getCrashesInGroup(
   groupId: string,
-  options?: { page?: number; pageSize?: number }
+  options?: { version?: number; days?: number; page?: number; pageSize?: number }
 ): Promise<PaginatedResponse<Crash>> {
   const response = await api.get<PaginatedResponse<Crash>>(`/crash-groups/${groupId}/crashes`, {
     params: options,
@@ -65,7 +70,7 @@ export interface DailyStat {
 
 export async function getCrashStats(
   groupId: string,
-  options?: { from?: string; to?: string }
+  options?: { from?: string; to?: string; version?: number }
 ): Promise<DailyStat[]> {
   const response = await api.get<DailyStat[]>(`/crash-groups/${groupId}/stats`, {
     params: options,

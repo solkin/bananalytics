@@ -145,6 +145,30 @@ object CrashRepository {
             .sortedByDescending { it.versionCode }
     }
 
+    fun getVersionCodesByGroup(groupId: UUID): List<VersionInfo> = transaction {
+        val crashVersionCodes = Crashes
+            .select(Crashes.versionCode)
+            .where { (Crashes.groupId eq groupId) and Crashes.versionCode.isNotNull() }
+            .withDistinct()
+            .mapNotNull { it[Crashes.versionCode] }
+            .toSet()
+
+        if (crashVersionCodes.isEmpty()) return@transaction emptyList()
+
+        // Get version names from AppVersions
+        val versionNames = AppVersions
+            .select(AppVersions.versionCode, AppVersions.versionName)
+            .where { AppVersions.versionCode inList crashVersionCodes }
+            .associate { it[AppVersions.versionCode] to it[AppVersions.versionName] }
+
+        crashVersionCodes.map { code ->
+            VersionInfo(
+                versionCode = code,
+                versionName = versionNames[code]
+            )
+        }.sortedByDescending { it.versionCode }
+    }
+
     fun findGroupById(id: UUID): CrashGroupResponse? = transaction {
         val group = CrashGroups.selectAll()
             .where { CrashGroups.id eq id }
@@ -171,10 +195,21 @@ object CrashRepository {
 
     fun findCrashesByGroupId(
         groupId: UUID,
+        versionCode: Long? = null,
+        fromDate: OffsetDateTime? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): PaginatedResponse<CrashResponse> = transaction {
-        val baseQuery = Crashes.selectAll().where { Crashes.groupId eq groupId }
+        var baseQuery = Crashes.selectAll().where { Crashes.groupId eq groupId }
+        
+        if (versionCode != null) {
+            baseQuery = baseQuery.andWhere { Crashes.versionCode eq versionCode }
+        }
+        
+        if (fromDate != null) {
+            baseQuery = baseQuery.andWhere { Crashes.createdAt greaterEq fromDate }
+        }
+        
         val total = baseQuery.count()
         val items = baseQuery
             .orderBy(Crashes.createdAt, SortOrder.DESC)
@@ -391,15 +426,22 @@ object CrashRepository {
     fun getCrashStatsByGroupId(
         groupId: UUID,
         fromDate: OffsetDateTime,
-        toDate: OffsetDateTime
+        toDate: OffsetDateTime,
+        versionCode: Long? = null
     ): List<DailyStat> = transaction {
-        Crashes
+        var query = Crashes
             .select(Crashes.createdAt)
             .where { 
                 (Crashes.groupId eq groupId) and 
                 (Crashes.createdAt greaterEq fromDate) and 
                 (Crashes.createdAt lessEq toDate) 
             }
+        
+        if (versionCode != null) {
+            query = query.andWhere { Crashes.versionCode eq versionCode }
+        }
+        
+        query
             .map { it[Crashes.createdAt].toLocalDate() }
             .groupingBy { it }
             .eachCount()

@@ -444,7 +444,13 @@ export default function CrashesPage() {
         loading={loading}
         size="small"
         onRow={(record) => ({
-          onClick: () => navigate(record.id),
+          onClick: () => {
+            const params = new URLSearchParams()
+            if (selectedVersion) params.set('version', selectedVersion.toString())
+            if (days !== 28) params.set('days', days.toString())
+            const queryString = params.toString()
+            navigate(queryString ? `${record.id}?${queryString}` : record.id)
+          },
           style: { cursor: 'pointer' },
         })}
         onChange={(_pagination, _filters, sorter) => {
