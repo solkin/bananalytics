@@ -20,23 +20,26 @@ object CrashRepository {
         page: Int = 1,
         pageSize: Int = 20
     ): PaginatedResponse<CrashGroupResponse> = transaction {
-        // If filtering by version, get group IDs that have crashes with this version
-        val groupIdsWithVersion = if (versionCode != null) {
-            Crashes.select(Crashes.groupId)
-                .where { (Crashes.appId eq appId) and (Crashes.versionCode eq versionCode) }
-                .mapNotNull { it[Crashes.groupId]?.value }
-                .toSet()
-        } else null
+        if (versionCode != null) {
+            // When filtering by version, calculate stats from Crashes table for this version only
+            findGroupsByAppIdWithVersionStats(appId, status, versionCode, page, pageSize)
+        } else {
+            // Without version filter, use pre-aggregated stats from CrashGroups
+            findGroupsByAppIdAllVersions(appId, status, page, pageSize)
+        }
+    }
 
+    private fun findGroupsByAppIdAllVersions(
+        appId: UUID,
+        status: String?,
+        page: Int,
+        pageSize: Int
+    ): PaginatedResponse<CrashGroupResponse> {
         var baseQuery = CrashGroups.selectAll()
             .where { CrashGroups.appId eq appId }
 
         if (status != null) {
             baseQuery = baseQuery.andWhere { CrashGroups.status eq status }
-        }
-
-        if (groupIdsWithVersion != null) {
-            baseQuery = baseQuery.andWhere { CrashGroups.id inList groupIdsWithVersion }
         }
 
         val total = baseQuery.count()
@@ -45,8 +48,79 @@ object CrashRepository {
             .limit(pageSize).offset(((page - 1) * pageSize).toLong())
             .map { it.toCrashGroupResponse() }
 
-        PaginatedResponse(items, total, page, pageSize)
+        return PaginatedResponse(items, total, page, pageSize)
     }
+
+    private fun findGroupsByAppIdWithVersionStats(
+        appId: UUID,
+        status: String?,
+        versionCode: Long,
+        page: Int,
+        pageSize: Int
+    ): PaginatedResponse<CrashGroupResponse> {
+        // Define aggregate expressions
+        val minCreatedAt = Crashes.createdAt.min()
+        val maxCreatedAt = Crashes.createdAt.max()
+        val countCrashes = Crashes.id.count()
+        
+        // Calculate stats per group for this specific version
+        val versionStats = Crashes
+            .select(Crashes.groupId, minCreatedAt, maxCreatedAt, countCrashes)
+            .where { (Crashes.appId eq appId) and (Crashes.versionCode eq versionCode) and Crashes.groupId.isNotNull() }
+            .groupBy(Crashes.groupId)
+            .associate { row ->
+                val groupId = row[Crashes.groupId]!!.value
+                groupId to VersionCrashStats(
+                    count = row[countCrashes].toInt(),
+                    firstSeen = row[minCreatedAt]!!,
+                    lastSeen = row[maxCreatedAt]!!
+                )
+            }
+
+        if (versionStats.isEmpty()) {
+            return PaginatedResponse(emptyList(), 0, page, pageSize)
+        }
+
+        // Query crash groups that have crashes with this version
+        var baseQuery = CrashGroups.selectAll()
+            .where { (CrashGroups.appId eq appId) and (CrashGroups.id inList versionStats.keys) }
+
+        if (status != null) {
+            baseQuery = baseQuery.andWhere { CrashGroups.status eq status }
+        }
+
+        val total = baseQuery.count()
+        
+        // We need to sort by version-specific occurrences, so fetch all matching groups first
+        val allGroups = baseQuery.map { row ->
+            val groupId = row[CrashGroups.id].value
+            val stats = versionStats[groupId]!!
+            CrashGroupResponse(
+                id = groupId.toString(),
+                appId = row[CrashGroups.appId].value.toString(),
+                exceptionClass = row[CrashGroups.exceptionClass],
+                exceptionMessage = row[CrashGroups.exceptionMessage],
+                firstSeen = stats.firstSeen.toString(),
+                lastSeen = stats.lastSeen.toString(),
+                occurrences = stats.count,
+                status = row[CrashGroups.status]
+            )
+        }
+        
+        // Sort by version-specific occurrences and paginate
+        val items = allGroups
+            .sortedByDescending { it.occurrences }
+            .drop((page - 1) * pageSize)
+            .take(pageSize)
+
+        return PaginatedResponse(items, total, page, pageSize)
+    }
+
+    private data class VersionCrashStats(
+        val count: Int,
+        val firstSeen: OffsetDateTime,
+        val lastSeen: OffsetDateTime
+    )
 
     fun getVersionCodes(appId: UUID): List<VersionInfo> = transaction {
         val crashVersionCodes = Crashes
