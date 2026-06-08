@@ -1,0 +1,102 @@
+/* Documentation page — sticky TOC + content sections (App Center style). */
+.docs-body {
+  display: flex;
+  align-items: flex-start;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.docs-toc {
+  position: sticky;
+  top: 72px;
+  flex-shrink: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 28px 8px 24px 0;
+}
+.docs-toc a {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: var(--bnn-radius);
+  font-size: var(--bnn-fs-md);
+  color: var(--bnn-text-secondary);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.docs-toc a:hover {
+  background: var(--bnn-surface-hover);
+  color: var(--bnn-text);
+}
+.docs-toc a.is-active {
+  background: var(--bnn-primary-soft);
+  color: var(--bnn-primary);
+  font-weight: 500;
+}
+.docs-toc a.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: var(--bnn-radius-pill);
+  background: var(--bnn-primary);
+}
+.docs-main {
+  flex: 1;
+  min-width: 0;
+  /* trailing room so the short final sections can scroll up to the
+     scroll-spy line and get highlighted */
+  padding: 28px 0 85vh 24px;
+}
+.docs-intro {
+  margin-bottom: 28px;
+}
+.docs-intro .bnn-title {
+  margin: 0 0 8px;
+}
+.docs-section {
+  margin-bottom: 36px;
+  scroll-margin-top: 70px;
+}
+.docs-section h2 {
+  margin: 0 0 10px;
+  font-size: var(--bnn-fs-xl);
+  font-weight: 600;
+}
+.docs-section p {
+  margin: 0 0 10px;
+  font-size: var(--bnn-fs-base);
+  line-height: 1.6;
+  color: var(--bnn-text-secondary);
+}
+.docs-section ul {
+  margin: 8px 0;
+  padding-left: 18px;
+  color: var(--bnn-text-secondary);
+  line-height: 1.7;
+}
+.docs-section strong {
+  color: var(--bnn-text);
+  font-weight: 600;
+}
+.docs-section code {
+  font-family: var(--bnn-font-mono);
+  font-size: 12px;
+  background: var(--bnn-surface-alt);
+  border: 1px solid var(--bnn-border);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--bnn-text);
+}
+
+@media (max-width: 860px) {
+  .docs-toc {
+    display: none;
+  }
+  .docs-main {
+    padding-left: 0;
+  }
+}

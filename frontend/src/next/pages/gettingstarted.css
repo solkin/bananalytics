@@ -51,31 +51,4 @@
   margin-bottom: 8px;
 }
 
-.gs-code {
-  position: relative;
-  margin-top: 10px;
-}
-.gs-code .stacktrace {
-  margin: 0;
-  padding-right: 84px;
-}
-.gs-code__copy {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border: 1px solid var(--bnn-border-strong);
-  border-radius: var(--bnn-radius);
-  background: var(--bnn-surface);
-  color: var(--bnn-text-secondary);
-  font-size: var(--bnn-fs-sm);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.gs-code__copy:hover {
-  color: var(--bnn-primary);
-  border-color: var(--bnn-primary);
-}
+/* Code blocks now use the shared <CodeBlock> (next/codeblock.css). */

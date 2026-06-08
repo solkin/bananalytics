@@ -22,10 +22,10 @@ export default function AppsHome() {
           <span>Bananalytics</span>
         </Link>
         <div className="home-top__right">
-          <a className="home-docs" href="#" onClick={(e) => e.preventDefault()}>
+          <Link className="home-docs" to="/next/docs">
             <Icons.IconBook size={15} />
             <span>Go to docs</span>
-          </a>
+          </Link>
           <button className="home-iconbtn" type="button" aria-label="Help">
             <Icons.IconHelp size={17} />
           </button>

@@ -17,6 +17,7 @@ import NextSettings from './next/pages/SettingsPage'
 import NextPeople from './next/pages/PeoplePage'
 import AppsHome from './next/pages/AppsHome'
 import AccountPage from './next/pages/AccountPage'
+import DocsPage from './next/pages/DocsPage'
 import GettingStarted from './next/pages/GettingStarted'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -86,6 +87,7 @@ function AppRoutes() {
       {/* New App Center–style UI (mocks, built alongside the old site) */}
       <Route path="/next" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
       <Route path="/next/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+      <Route path="/next/docs" element={<ProtectedRoute><DocsPage /></ProtectedRoute>} />
       <Route path="/next/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<Navigate to="analytics/overview" replace />} />
         <Route path="getting-started" element={<GettingStarted />} />

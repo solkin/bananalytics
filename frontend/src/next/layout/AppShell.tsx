@@ -124,10 +124,10 @@ export default function AppShell() {
           <Breadcrumb items={crumbs} />
         </div>
         <div className="ac-top__right">
-          <a className="ac-top__docs" href="#" onClick={(e) => e.preventDefault()}>
+          <Link className="ac-top__docs" to="/next/docs">
             <Icons.IconBook size={15} />
             <span>Go to docs</span>
-          </a>
+          </Link>
           <button className="ac-iconbtn" type="button" aria-label="Help">
             <Icons.IconHelp size={17} />
           </button>
