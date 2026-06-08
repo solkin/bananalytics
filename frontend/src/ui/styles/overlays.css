@@ -374,3 +374,45 @@
   font-size: 12px;
   font-weight: 600;
 }
+.bnn-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.bnn-chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--bnn-text-secondary);
+}
+.bnn-chart-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.bnn-chart__tip--multi {
+  align-items: stretch;
+  gap: 2px;
+}
+.bnn-chart__tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bnn-chart__tip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.bnn-chart__tip-name {
+  font-size: 10px;
+  opacity: 0.75;
+  margin-right: auto;
+}
+.bnn-chart__tip-row .bnn-chart__tip-value {
+  font-size: 11px;
+}

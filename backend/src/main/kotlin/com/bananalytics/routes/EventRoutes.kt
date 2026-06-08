@@ -1,6 +1,7 @@
 package com.bananalytics.routes
 
 import com.bananalytics.config.*
+import com.bananalytics.models.DailyActivityResponse
 import com.bananalytics.models.SessionVersionStats
 import com.bananalytics.models.UserResponse
 import com.bananalytics.repositories.AppAccessRepository
@@ -38,6 +39,26 @@ fun Route.eventRoutes() {
 
         val stats = AppSessionRepository.getUniqueSessionsByVersion(appId, fromDate, toDate)
             .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
+        call.respond(stats)
+    }
+
+    // Get daily activity: total sessions vs distinct active users
+    get("/apps/{appId}/sessions/activity") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+
+        requireAppAccess(appId, user)
+
+        val fromParam = call.request.queryParameters["from"]
+        val toParam = call.request.queryParameters["to"]
+
+        val now = OffsetDateTime.now()
+        val toDate = if (toParam != null) OffsetDateTime.parse(toParam) else now
+        val fromDate = if (fromParam != null) OffsetDateTime.parse(fromParam) else now.minusDays(14)
+
+        val stats = AppSessionRepository.getDailyActivity(appId, fromDate, toDate)
+            .map { DailyActivityResponse(it.date, it.sessions, it.users) }
         call.respond(stats)
     }
 

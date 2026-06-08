@@ -68,8 +68,8 @@ export type { MenuItem, TabItem } from './overlays'
 
 export { toast, message, ToastViewport } from './toast'
 
-export { AreaChart, LineChart, BarChart } from './charts'
-export type { ChartPoint } from './charts'
+export { AreaChart, MultiAreaChart, LineChart, BarChart } from './charts'
+export type { ChartPoint, ChartSeries } from './charts'
 
 export { BarList } from './barlist'
 export type { BarListItem } from './barlist'

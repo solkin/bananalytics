@@ -12,6 +12,11 @@
   align-items: center;
   gap: 10px;
 }
+.ov-card-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
 .ov-toolbar__select {
   width: 168px;
 }

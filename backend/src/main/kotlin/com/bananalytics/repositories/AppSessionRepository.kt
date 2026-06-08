@@ -23,6 +23,12 @@ data class UniqueSessionStats(
     val count: Long
 )
 
+data class DailyActivityStats(
+    val date: String,
+    val sessions: Long,
+    val users: Long
+)
+
 object AppSessionRepository {
 
     /**
@@ -168,6 +174,42 @@ object AppSessionRepository {
                 )
             }
             .sortedWith(compareBy({ it.date }, { it.versionCode }))
+    }
+
+    /**
+     * Get daily activity by day: total sessions and distinct active users (devices).
+     * Mirrors the "Active users" chart — only counts sessions that produced events.
+     */
+    fun getDailyActivity(
+        appId: UUID,
+        fromDate: OffsetDateTime,
+        toDate: OffsetDateTime
+    ): List<DailyActivityStats> = transaction {
+        val rows = AppSessions.selectAll()
+            .where {
+                (AppSessions.appId eq appId) and
+                (AppSessions.firstSeen greaterEq fromDate) and
+                (AppSessions.firstSeen lessEq toDate) and
+                (AppSessions.hasEvent eq true)
+            }
+            .map {
+                Pair(
+                    it[AppSessions.firstSeen].toLocalDate(),
+                    it[AppSessions.deviceId]
+                )
+            }
+
+        // Group by date: count sessions and distinct devices (= active users)
+        rows
+            .groupBy { it.first }
+            .map { (date, dayRows) ->
+                DailyActivityStats(
+                    date = date.toString(),
+                    sessions = dayRows.size.toLong(),
+                    users = dayRows.mapNotNull { it.second }.distinct().size.toLong()
+                )
+            }
+            .sortedBy { it.date }
     }
 
     /**

@@ -115,6 +115,22 @@ export async function getUniqueSessionsByVersion(
   return response.data
 }
 
+export interface DailyActivityStat {
+  date: string
+  sessions: number
+  users: number
+}
+
+export async function getDailyActivity(
+  appId: string,
+  options?: { from?: string; to?: string }
+): Promise<DailyActivityStat[]> {
+  const response = await api.get<DailyActivityStat[]>(`/apps/${appId}/sessions/activity`, {
+    params: options,
+  })
+  return response.data
+}
+
 // Device statistics
 export interface DeviceStatItem {
   name: string

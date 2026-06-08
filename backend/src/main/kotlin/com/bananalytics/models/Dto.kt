@@ -239,6 +239,13 @@ data class SessionVersionStats(
     val count: Long
 )
 
+@Serializable
+data class DailyActivityResponse(
+    val date: String,
+    val sessions: Long,
+    val users: Long
+)
+
 // ============ Download Token DTOs ============
 
 @Serializable

@@ -245,6 +245,146 @@ export function AreaChart({
   )
 }
 
+/* ------------------------------------------------------ MultiAreaChart */
+export interface ChartSeries {
+  label: string
+  color: string
+  data: ChartPoint[]
+}
+
+function MultiHover({
+  g,
+  series,
+  scale,
+  len,
+}: {
+  g: Geometry
+  series: ChartSeries[]
+  scale: Scales
+  len: number
+}) {
+  const [idx, setIdx] = useState<number | null>(null)
+  const slot = g.innerW / Math.max(1, len)
+  const tipH = 18 + series.length * 16
+  return (
+    <>
+      {idx != null && (
+        <g pointerEvents="none">
+          <line x1={scale.x(idx)} x2={scale.x(idx)} y1={g.padT} y2={g.h - g.padB} className="bnn-chart__cursor" />
+          {series.map((s) =>
+            s.data[idx] != null ? (
+              <circle key={s.label} cx={scale.x(idx)} cy={scale.y(s.data[idx].value)} r={4} fill={s.color} stroke="#fff" strokeWidth={2} />
+            ) : null,
+          )}
+        </g>
+      )}
+      {Array.from({ length: len }).map((_, i) => (
+        <rect
+          key={i}
+          x={scale.x(i) - slot / 2}
+          y={g.padT}
+          width={slot}
+          height={g.innerH}
+          fill="transparent"
+          onMouseEnter={() => setIdx(i)}
+          onMouseLeave={() => setIdx(null)}
+        />
+      ))}
+      {idx != null && (
+        <foreignObject
+          x={Math.min(Math.max(scale.x(idx) - 60, 0), g.w - 124)}
+          y={g.padT}
+          width={124}
+          height={tipH}
+          pointerEvents="none"
+        >
+          <div className="bnn-chart__tip bnn-chart__tip--multi">
+            <div className="bnn-chart__tip-label">{series[0]?.data[idx]?.label}</div>
+            {series.map((s) => (
+              <div key={s.label} className="bnn-chart__tip-row">
+                <span className="bnn-chart__tip-dot" style={{ background: s.color }} />
+                <span className="bnn-chart__tip-name">{s.label}</span>
+                <span className="bnn-chart__tip-value">{fmt(s.data[idx]?.value ?? 0)}</span>
+              </div>
+            ))}
+          </div>
+        </foreignObject>
+      )}
+    </>
+  )
+}
+
+export function MultiAreaChart({
+  series,
+  height = 220,
+  className,
+}: {
+  series: ChartSeries[]
+  height?: number
+  className?: string
+}) {
+  const { ref, width } = useMeasure()
+  const g = geometry(width, height)
+  const gid = useId().replace(/:/g, '')
+  const { scale, ticks, len } = useMemo(() => {
+    const all = series.flatMap((s) => s.data.map((d) => d.value))
+    const max = Math.max(1, ...all)
+    const min = Math.min(0, ...all)
+    const count = Math.max(0, ...series.map((s) => s.data.length))
+    const x = (i: number) =>
+      count <= 1 ? g.padL + g.innerW / 2 : g.padL + (i / (count - 1)) * g.innerW
+    const xBand = (i: number) => g.padL + (i + 0.5) * (g.innerW / Math.max(1, count))
+    const y = (v: number) => g.padT + g.innerH - ((v - min) / (max - min || 1)) * g.innerH
+    return { scale: { max, min, x, xBand, y }, ticks: niceTicks(max), len: count }
+  }, [series, g])
+
+  const labelData = series.reduce<ChartPoint[]>(
+    (longest, s) => (s.data.length > longest.length ? s.data : longest),
+    [],
+  )
+
+  return (
+    <div className={cn('bnn-chart-multi', className)}>
+      <div className="bnn-chart-legend">
+        {series.map((s) => (
+          <span key={s.label} className="bnn-chart-legend__item">
+            <span className="bnn-chart-legend__swatch" style={{ background: s.color }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+      <Svg width={width} height={height} innerRef={ref}>
+        <defs>
+          {series.map((s, si) => (
+            <linearGradient key={si} id={`fill-${gid}-${si}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.20" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0.02" />
+            </linearGradient>
+          ))}
+        </defs>
+        <ChartFrame g={g} ticks={ticks} scale={scale} data={labelData}>
+          {series.map((s, si) => {
+            const line = s.data.map((d, i) => `${scale.x(i)},${scale.y(d.value)}`).join(' ')
+            const area =
+              s.data.length > 0
+                ? `M ${scale.x(0)},${scale.y(scale.min)} L ${s.data
+                    .map((d, i) => `${scale.x(i)},${scale.y(d.value)}`)
+                    .join(' L ')} L ${scale.x(s.data.length - 1)},${scale.y(scale.min)} Z`
+                : ''
+            return (
+              <g key={s.label}>
+                <path d={area} fill={`url(#fill-${gid}-${si})`} />
+                <polyline points={line} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" />
+              </g>
+            )
+          })}
+          <MultiHover g={g} series={series} scale={scale} len={len} />
+        </ChartFrame>
+      </Svg>
+    </div>
+  )
+}
+
 /* ----------------------------------------------------------- LineChart */
 export function LineChart({
   data,
