@@ -55,6 +55,10 @@ object UserRepository {
         } > 0
     }
 
+    fun updatePassword(id: UUID, passwordHash: String): Boolean = transaction {
+        Users.update({ Users.id eq id }) { it[Users.passwordHash] = passwordHash } > 0
+    }
+
     private fun ResultRow.toUserResponse() = UserResponse(
         id = this[Users.id].value.toString(),
         email = this[Users.email],

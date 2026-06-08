@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Avatar, Button, Dropdown, Icons, Input, Tag, Text, Title } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { getApps } from '@/api/apps'
@@ -9,6 +9,7 @@ import './appshome.css'
 
 export default function AppsHome() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const state = useAsync(() => getApps(), [])
   const accountName = user?.name || user?.email || 'Account'
@@ -30,7 +31,7 @@ export default function AppsHome() {
           </button>
           <Dropdown
             items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} /> },
+              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/next/account') },
               { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => void logout() },
             ]}
           >

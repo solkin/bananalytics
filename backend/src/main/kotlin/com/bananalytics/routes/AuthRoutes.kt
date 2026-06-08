@@ -9,6 +9,7 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.util.*
 
 fun Route.authRoutes() {
     route("/auth") {
@@ -103,6 +104,35 @@ fun Route.authRoutes() {
                 ?: throw UnauthorizedException("Session expired")
 
             call.respond(AuthResponse(user = user))
+        }
+
+        // Update current user's profile (name)
+        put("/me") {
+            val sessionId = call.getSessionId()
+                ?: throw UnauthorizedException("Not authenticated")
+            val user = AuthService.getUserBySession(sessionId)
+                ?: throw UnauthorizedException("Session expired")
+
+            val request = call.receive<UpdateProfileRequest>()
+            val updated = AuthService.updateProfile(UUID.fromString(user.id), request.name)
+            call.respond(AuthResponse(user = updated))
+        }
+
+        // Change current user's password
+        post("/change-password") {
+            val sessionId = call.getSessionId()
+                ?: throw UnauthorizedException("Not authenticated")
+            val user = AuthService.getUserBySession(sessionId)
+                ?: throw UnauthorizedException("Session expired")
+
+            val request = call.receive<ChangePasswordRequest>()
+            AuthService.changePassword(
+                UUID.fromString(user.id),
+                user.email,
+                request.currentPassword,
+                request.newPassword,
+            )
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 }

@@ -116,4 +116,22 @@ object AuthService {
     fun extendSession(sessionId: UUID) {
         SessionRepository.extend(sessionId)
     }
+
+    fun updateProfile(userId: UUID, name: String?): UserResponse {
+        UserRepository.update(userId, name?.trim())
+        return UserRepository.findById(userId)
+            ?: throw UnauthorizedException("User not found")
+    }
+
+    fun changePassword(userId: UUID, email: String, currentPassword: String, newPassword: String) {
+        if (newPassword.length < 6) {
+            throw BadRequestException("Password must be at least 6 characters")
+        }
+        val hash = UserRepository.getPasswordHash(email)
+            ?: throw UnauthorizedException("User not found")
+        if (!bcryptVerifier.verify(currentPassword.toCharArray(), hash).verified) {
+            throw BadRequestException("Current password is incorrect")
+        }
+        UserRepository.updatePassword(userId, bcryptHasher.hashToString(12, newPassword.toCharArray()))
+    }
 }

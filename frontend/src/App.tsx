@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
+import { ToastViewport } from '@/ui'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AppLayout from './components/AppLayout'
 import UiKitPage from './pages/UiKitPage'
@@ -15,6 +16,7 @@ import NextReleases from './next/pages/ReleasesPage'
 import NextSettings from './next/pages/SettingsPage'
 import NextPeople from './next/pages/PeoplePage'
 import AppsHome from './next/pages/AppsHome'
+import AccountPage from './next/pages/AccountPage'
 import GettingStarted from './next/pages/GettingStarted'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -83,6 +85,7 @@ function AppRoutes() {
 
       {/* New App Center–style UI (mocks, built alongside the old site) */}
       <Route path="/next" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
+      <Route path="/next/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       <Route path="/next/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<Navigate to="analytics/overview" replace />} />
         <Route path="getting-started" element={<GettingStarted />} />
@@ -123,6 +126,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
+      <ToastViewport />
     </AuthProvider>
   )
 }

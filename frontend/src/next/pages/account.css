@@ -1,0 +1,33 @@
+/* Account / profile page (top-level, own chrome). */
+.acct {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.acct-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: var(--bnn-text-secondary);
+  text-decoration: none;
+  font-size: var(--bnn-fs-md);
+}
+.acct-back:hover {
+  color: var(--bnn-primary);
+}
+.acct-title {
+  margin: 2px 0;
+  font-size: var(--bnn-fs-2xl);
+  font-weight: 600;
+}
+.acct-signout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}

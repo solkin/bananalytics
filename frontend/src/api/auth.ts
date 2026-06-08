@@ -45,6 +45,18 @@ export async function getCurrentUser(): Promise<User> {
   return response.data.user
 }
 
+export async function updateProfile(name: string): Promise<User> {
+  const response = await api.put<AuthResponse>('/auth/me', { name })
+  return response.data.user
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await api.post('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+}
+
 // App access
 export async function getAppAccess(appId: string): Promise<AppAccess[]> {
   const response = await api.get<AppAccess[]>(`/apps/${appId}/access`)

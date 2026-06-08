@@ -89,3 +89,14 @@ data class CheckEmailResponse(
     val exists: Boolean,
     @SerialName("smtp_configured") val smtpConfigured: Boolean
 )
+
+@Serializable
+data class UpdateProfileRequest(
+    val name: String? = null
+)
+
+@Serializable
+data class ChangePasswordRequest(
+    @SerialName("current_password") val currentPassword: String,
+    @SerialName("new_password") val newPassword: String
+)

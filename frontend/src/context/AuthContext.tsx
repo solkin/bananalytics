@@ -1,6 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { User, ConfigResponse } from '@/types/auth'
-import { getCurrentUser, login as apiLogin, logout as apiLogout, register as apiRegister, getConfig } from '@/api/auth'
+import {
+  getCurrentUser,
+  login as apiLogin,
+  logout as apiLogout,
+  register as apiRegister,
+  updateProfile as apiUpdateProfile,
+  getConfig,
+} from '@/api/auth'
 
 interface AuthContextType {
   user: User | null
@@ -9,6 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name?: string, inviteToken?: string) => Promise<void>
   logout: () => Promise<void>
+  updateProfile: (name: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -50,8 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const updateProfile = async (name: string) => {
+    const userData = await apiUpdateProfile(name)
+    setUser(userData)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, config, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, config, loading, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   )

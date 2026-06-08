@@ -83,6 +83,25 @@
   background: var(--bnn-surface-hover);
   color: var(--bnn-text);
 }
+.ac-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 2px;
+  border: none;
+  border-radius: var(--bnn-radius);
+  background: transparent;
+  color: var(--bnn-text);
+  cursor: pointer;
+}
+.ac-burger:hover {
+  background: var(--bnn-surface-hover);
+}
+.ac-drawer-nav .ac-nav__top {
+  margin-top: 0;
+}
 .ac-user {
   display: inline-flex;
   align-items: center;
@@ -263,6 +282,13 @@
 }
 
 @media (max-width: 760px) {
+  .ac-burger {
+    display: inline-flex;
+  }
+  .ac-top__sep,
+  .ac-top__left .bnn-breadcrumb {
+    display: none;
+  }
   .ac-side {
     display: none;
   }
