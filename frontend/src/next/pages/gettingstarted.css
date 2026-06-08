@@ -1,0 +1,81 @@
+/* Getting started — SDK integration steps with copyable code blocks. */
+.gs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gs-intro .bnn-title {
+  margin: 0 0 6px;
+}
+.gs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--bnn-primary);
+  text-decoration: none;
+}
+.gs-link:hover {
+  text-decoration: underline;
+}
+
+.gs-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 22px;
+}
+.gs-step {
+  display: flex;
+  gap: 14px;
+}
+.gs-step__num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--bnn-radius-pill);
+  background: var(--bnn-primary-soft);
+  color: var(--bnn-primary);
+  font-weight: 700;
+  font-size: var(--bnn-fs-sm);
+}
+.gs-step__body {
+  flex: 1;
+  min-width: 0;
+}
+.gs-step__title {
+  font-size: var(--bnn-fs-base);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.gs-code {
+  position: relative;
+  margin-top: 10px;
+}
+.gs-code .stacktrace {
+  margin: 0;
+  padding-right: 84px;
+}
+.gs-code__copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--bnn-border-strong);
+  border-radius: var(--bnn-radius);
+  background: var(--bnn-surface);
+  color: var(--bnn-text-secondary);
+  font-size: var(--bnn-fs-sm);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.gs-code__copy:hover {
+  color: var(--bnn-primary);
+  border-color: var(--bnn-primary);
+}

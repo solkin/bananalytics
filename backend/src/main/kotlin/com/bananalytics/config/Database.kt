@@ -7,6 +7,8 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("Database")
 
@@ -28,9 +30,46 @@ fun Application.configureDatabase() {
     }
 
     Database.connect(HikariDataSource(config))
-    
+
     runMigrations()
+    ensureEventPartitions()
 }
+
+/**
+ * Self-healing partition maintenance for the month-partitioned `events` table.
+ * Runs on every startup: ensures named monthly partitions for the recent past
+ * and near future, plus a DEFAULT catch-all so event ingestion never fails for
+ * a date with no explicit partition. Idempotent.
+ */
+private fun ensureEventPartitions() {
+    transaction {
+        val fmt = DateTimeFormatter.ofPattern("yyyy_MM")
+        val firstOfMonth = LocalDate.now().withDayOfMonth(1)
+        for (i in -1..3) {
+            val start = firstOfMonth.plusMonths(i.toLong())
+            val end = start.plusMonths(1)
+            val name = "events_" + start.format(fmt)
+            if (!tableExists(name)) {
+                try {
+                    exec("CREATE TABLE $name PARTITION OF events FOR VALUES FROM ('$start') TO ('$end')")
+                } catch (e: Exception) {
+                    logger.warn("Skipped event partition $name: ${e.message}")
+                }
+            }
+        }
+        if (!tableExists("events_default")) {
+            try {
+                exec("CREATE TABLE events_default PARTITION OF events DEFAULT")
+            } catch (e: Exception) {
+                logger.warn("Skipped events_default partition: ${e.message}")
+            }
+        }
+        logger.info("Event partitions ensured")
+    }
+}
+
+private fun org.jetbrains.exposed.sql.Transaction.tableExists(name: String): Boolean =
+    exec("SELECT 1 FROM pg_tables WHERE tablename = '$name'") { it.next() } ?: false
 
 private fun runMigrations() {
     transaction {

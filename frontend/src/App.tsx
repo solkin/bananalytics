@@ -2,6 +2,20 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AppLayout from './components/AppLayout'
+import UiKitPage from './pages/UiKitPage'
+import AppShell from './next/layout/AppShell'
+import OverviewPage from './next/pages/OverviewPage'
+import NextEvents from './next/pages/EventsPage'
+import NextEventDetail from './next/pages/EventDetailPage'
+import NextIssues from './next/pages/IssuesPage'
+import NextIssueDetail from './next/pages/IssueDetailPage'
+import NextDevices from './next/pages/DevicesPage'
+import NextMappings from './next/pages/MappingsPage'
+import NextReleases from './next/pages/ReleasesPage'
+import NextSettings from './next/pages/SettingsPage'
+import NextPeople from './next/pages/PeoplePage'
+import AppsHome from './next/pages/AppsHome'
+import GettingStarted from './next/pages/GettingStarted'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AppsPage from './pages/AppsPage'
@@ -65,6 +79,24 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/ui-kit" element={<UiKitPage />} />
+
+      {/* New App Center–style UI (mocks, built alongside the old site) */}
+      <Route path="/next" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
+      <Route path="/next/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route index element={<Navigate to="analytics/overview" replace />} />
+        <Route path="getting-started" element={<GettingStarted />} />
+        <Route path="analytics/overview" element={<OverviewPage />} />
+        <Route path="analytics/events" element={<NextEvents />} />
+        <Route path="analytics/events/:name" element={<NextEventDetail />} />
+        <Route path="analytics/devices" element={<NextDevices />} />
+        <Route path="diagnostics/issues" element={<NextIssues />} />
+        <Route path="diagnostics/issues/:issueId" element={<NextIssueDetail />} />
+        <Route path="diagnostics/mappings" element={<NextMappings />} />
+        <Route path="distribution/releases" element={<NextReleases />} />
+        <Route path="settings/general" element={<NextSettings />} />
+        <Route path="settings/people" element={<NextPeople />} />
+      </Route>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       

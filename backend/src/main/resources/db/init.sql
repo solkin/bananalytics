@@ -143,7 +143,7 @@ BEGIN
         end_date := partition_date + INTERVAL '1 month';
         
         IF NOT EXISTS (
-            SELECT 1 FROM pg_tables 
+            SELECT 1 FROM pg_tables
             WHERE tablename = partition_name
         ) THEN
             EXECUTE format(
@@ -153,6 +153,10 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
+
+-- Catch-all partition so event ingestion never fails for a date with no
+-- explicit monthly partition (e.g. once the pre-created months elapse).
+CREATE TABLE IF NOT EXISTS events_default PARTITION OF events DEFAULT;
 
 -- App sessions (SDK sessions for crash-free tracking)
 CREATE TABLE IF NOT EXISTS app_sessions (

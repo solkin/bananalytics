@@ -1,0 +1,136 @@
+/* ============================================================
+   Bananalytics UI Kit — design tokens & base styles
+   App Center inspired: light, dense, fast.
+   Zero runtime deps. All components are className-driven.
+   ============================================================ */
+
+:root {
+  /* Typography */
+  --bnn-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --bnn-font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono',
+    'Droid Sans Mono', monospace;
+
+  --bnn-fs-xs: 11px;
+  --bnn-fs-sm: 12px;
+  --bnn-fs-md: 13px;
+  --bnn-fs-base: 14px;
+  --bnn-fs-lg: 16px;
+  --bnn-fs-xl: 20px;
+  --bnn-fs-2xl: 26px;
+
+  /* Surfaces */
+  --bnn-bg: #f4f5f7;
+  --bnn-surface: #ffffff;
+  --bnn-surface-alt: #fafbfc;
+  --bnn-surface-hover: #f6f8fa;
+
+  /* Borders */
+  --bnn-border: #e7e9ed;
+  --bnn-border-strong: #d6dae0;
+
+  /* Text */
+  --bnn-text: #1b1f24;
+  --bnn-text-secondary: #5c6470;
+  --bnn-text-tertiary: #9aa1ab;
+  --bnn-text-inverse: #ffffff;
+
+  /* Brand / semantic */
+  --bnn-primary: #1f6feb;
+  --bnn-primary-hover: #387bff;
+  --bnn-primary-active: #1858c4;
+  --bnn-primary-soft: #eaf2ff;
+  --bnn-primary-soft-strong: #d4e3ff;
+  --bnn-primary-border: #bcd5ff;
+
+  --bnn-success: #1a8c46;
+  --bnn-success-soft: #e7f6ec;
+  --bnn-warning: #b87503;
+  --bnn-warning-soft: #fdf3e2;
+  --bnn-danger: #d92d3a;
+  --bnn-danger-hover: #e23b47;
+  --bnn-danger-active: #b3232e;
+  --bnn-danger-soft: #fdeaec;
+  --bnn-danger-soft-strong: #f9d5d9;
+
+  /* Chart palette */
+  --bnn-chart-1: #1f6feb;
+  --bnn-chart-2: #16b8c4;
+  --bnn-chart-3: #d92d3a;
+  --bnn-chart-4: #7c5cff;
+  --bnn-chart-grid: #eef0f3;
+
+  /* Radii */
+  --bnn-radius-sm: 4px;
+  --bnn-radius: 6px;
+  --bnn-radius-lg: 8px;
+  --bnn-radius-pill: 999px;
+
+  /* Shadows */
+  --bnn-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --bnn-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08),
+    0 1px 2px rgba(16, 24, 40, 0.04);
+  --bnn-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
+  --bnn-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.16);
+
+  /* Spacing scale */
+  --bnn-sp-1: 4px;
+  --bnn-sp-2: 8px;
+  --bnn-sp-3: 12px;
+  --bnn-sp-4: 16px;
+  --bnn-sp-5: 20px;
+  --bnn-sp-6: 24px;
+  --bnn-sp-8: 32px;
+
+  /* Control heights */
+  --bnn-control-sm: 26px;
+  --bnn-control: 34px;
+  --bnn-control-lg: 40px;
+
+  /* Motion */
+  --bnn-ease: cubic-bezier(0.2, 0, 0, 1);
+  --bnn-z-overlay: 1000;
+  --bnn-z-toast: 1100;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--bnn-font);
+  font-size: var(--bnn-fs-base);
+  color: var(--bnn-text);
+  background: var(--bnn-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Utility helpers used across the kit */
+.bnn-stack {
+  display: flex;
+  flex-direction: column;
+}
+.bnn-row {
+  display: flex;
+  align-items: center;
+}
+.bnn-spacer {
+  flex: 1;
+}
+.bnn-mono {
+  font-family: var(--bnn-font-mono);
+}
+
+::selection {
+  background: var(--bnn-primary);
+  color: #fff;
+}

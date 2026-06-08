@@ -1,0 +1,149 @@
+/* Analytics → Overview dashboard layout. */
+
+.ov {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ov-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+.ov-toolbar__select {
+  width: 168px;
+}
+
+/* Chart + right stat rail */
+.ov-split {
+  display: flex;
+  align-items: stretch;
+}
+.ov-split__chart {
+  flex: 1;
+  min-width: 0;
+}
+.ov-rail {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  width: 150px;
+  flex-shrink: 0;
+  padding-left: 24px;
+  margin-left: 24px;
+  border-left: 1px solid var(--bnn-border);
+}
+.ov-rail .bnn-stat__title,
+.ov-substats .bnn-stat__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bnn-text-tertiary);
+}
+.ov-rail .bnn-stat__value {
+  font-size: var(--bnn-fs-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--bnn-primary);
+}
+.ov-rail .bnn-stat__trend {
+  color: var(--bnn-text-tertiary);
+}
+
+/* Card grids */
+.ov-grid3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+.ov-grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* Stats below a chart */
+.ov-substats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--bnn-border);
+}
+.ov-substats .bnn-stat__value {
+  font-size: var(--bnn-fs-xl);
+  font-weight: 600;
+  color: var(--bnn-text);
+}
+
+.ov-pct {
+  color: var(--bnn-primary);
+}
+
+/* OS distribution stacked bar */
+.ov-stacked {
+  margin-top: 4px;
+}
+.ov-stacked__head {
+  margin-bottom: 8px;
+}
+.ov-stacked__bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+}
+.ov-stacked__seg {
+  height: 100%;
+  border-radius: 2px;
+}
+.ov-stacked__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+.ov-stacked__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--bnn-fs-xs);
+  color: var(--bnn-text-tertiary);
+}
+.ov-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* Help affordance on card headers */
+.ov-help {
+  display: inline-flex;
+  color: var(--bnn-text-tertiary);
+  cursor: help;
+  transition: color 0.15s;
+}
+.ov-help:hover {
+  color: var(--bnn-primary);
+}
+
+@media (max-width: 640px) {
+  .ov-split {
+    flex-direction: column;
+  }
+  .ov-rail {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 24px;
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--bnn-border);
+  }
+}
