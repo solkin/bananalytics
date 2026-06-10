@@ -247,3 +247,177 @@
     border-top: 1px solid var(--bnn-border);
   }
 }
+
+/* Releases */
+.rel-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rel-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rel-toggles__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rel-link .bnn-input {
+  width: 100%;
+}
+.rel-notify {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rel-notify__bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rel-notify__list {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+}
+.rel-notify__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.rel-notify__row + .rel-notify__row {
+  border-top: 1px solid var(--bnn-border);
+}
+.rel-notify__who {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* Tester install view */
+.rel-install {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.rel-install__info {
+  flex: 1;
+  min-width: 0;
+}
+.rel-install__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rel-install__notes {
+  margin-top: 10px;
+}
+.rel-install__notes-body {
+  margin-top: 4px;
+  white-space: pre-wrap;
+  color: var(--bnn-text-secondary);
+  font-size: var(--bnn-fs-md);
+}
+.rel-install__action {
+  flex-shrink: 0;
+}
+@media (max-width: 576px) {
+  .rel-install {
+    flex-direction: column;
+  }
+  .rel-install__action {
+    width: 100%;
+  }
+  .rel-install__action .bnn-btn {
+    width: 100%;
+  }
+}
+
+/* Inline row actions */
+.pg-rowactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pg-person__tag {
+  margin-left: 8px;
+}
+
+.pg-charttotal__num--ok {
+  color: var(--bnn-success);
+}
+
+/* Issue detail */
+.iss-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.iss-stack__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.iss-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Search row embedded in an unpadded table card */
+.pg-tablesearch {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bnn-border);
+}
+.pg-tablesearch .bnn-input {
+  display: flex;
+  width: 100%;
+}
+
+.evd-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Settings maintenance */
+.set-maint {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.set-maint__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.set-maint__row + .set-maint__row {
+  border-top: 1px solid var(--bnn-border);
+  padding-top: 16px;
+}
+.set-maint__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 10px 12px;
+  background: var(--bnn-surface-alt);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+}

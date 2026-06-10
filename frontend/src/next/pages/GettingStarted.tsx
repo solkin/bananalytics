@@ -97,7 +97,7 @@ bananalytics.trackEvent(
             <Title level={3}>Set up the Bananalytics Android SDK</Title>
             <Text type="secondary">
               Send crashes and analytics from {name} (Android). Full guide:{' '}
-              <Link className="gs-link" to="/next/docs">
+              <Link className="gs-link" to="/docs">
                 Documentation
                 <Icons.IconExternalLink size={12} />
               </Link>

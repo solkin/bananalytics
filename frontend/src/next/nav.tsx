@@ -55,6 +55,18 @@ export const NAV: NavGroup[] = [
   },
 ]
 
+/* Role-based visibility, mirroring App Center: testers only install
+   builds; viewers see everything except app administration. */
+export function navForRole(role: string | null): { top: NavLeaf[]; groups: NavGroup[] } {
+  if (role === 'tester') {
+    return { top: [], groups: NAV.filter((g) => g.label === 'Distribution') }
+  }
+  if (role === 'viewer') {
+    return { top: TOP, groups: NAV.filter((g) => g.label !== 'Settings') }
+  }
+  return { top: TOP, groups: NAV }
+}
+
 export interface ActiveMatch {
   group?: string
   leaf: NavLeaf

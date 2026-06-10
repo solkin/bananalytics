@@ -122,7 +122,7 @@ export default function DocsPage() {
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/next" className="home-brand">
+        <Link to="/" className="home-brand">
           <img src="/banana.svg" width={22} height={22} alt="" />
           <span>Bananalytics</span>
         </Link>
@@ -132,7 +132,7 @@ export default function DocsPage() {
           </button>
           <Dropdown
             items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/next/account') },
+              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
               { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
             ]}
           >

@@ -334,6 +334,34 @@ export function Alert({
   )
 }
 
+/* ----------------------------------------------------------- Timeline */
+export interface TimelineItem {
+  content: ReactNode
+  meta?: ReactNode
+}
+
+export function Timeline({
+  items,
+  className,
+}: {
+  items: TimelineItem[]
+  className?: string
+}) {
+  return (
+    <div className={cn('bnn-timeline', className)}>
+      {items.map((it, i) => (
+        <div className="bnn-timeline__item" key={i}>
+          <span className="bnn-timeline__dot" />
+          <div className="bnn-timeline__body">
+            <div className="bnn-timeline__content">{it.content}</div>
+            {it.meta != null && <div className="bnn-timeline__meta">{it.meta}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* --------------------------------------------------------- Typography */
 export function Title({
   level = 4,

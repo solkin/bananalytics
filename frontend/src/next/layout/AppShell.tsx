@@ -1,19 +1,36 @@
 import { useState } from 'react'
-import { Outlet, NavLink, Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Avatar, Breadcrumb, Drawer, Dropdown, Icons, cn } from '@/ui'
+import { Navigate, Outlet, NavLink, Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Avatar, Breadcrumb, Drawer, Dropdown, Icons, Spin, cn } from '@/ui'
 import type { BreadcrumbItem } from '@/ui'
+import type { App } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import { getApp } from '@/api/apps'
+import { getMyRole } from '@/api/auth'
 import { useAsync } from '../async'
 import { accentFor } from '../colors'
-import { NAV, TOP, findActive } from '../nav'
+import { findActive, navForRole, type NavGroup, type NavLeaf } from '../nav'
 import './appshell.css'
+
+export interface ShellContext {
+  setDetail: (label: string | null) => void
+  role: string | null
+  app: App | null
+}
+
+/* Lands on the right start page for the viewer's role. */
+export function IndexRedirect() {
+  const { role } = useOutletContext<ShellContext>()
+  if (!role) return <Spin tip="Loading…" />
+  return <Navigate to={role === 'tester' ? 'distribution/releases' : 'analytics/overview'} replace />
+}
 
 function SidebarContent({
   base,
   appName,
   initial,
   accent,
+  top,
+  groups,
   hideApp,
   onNavigate,
 }: {
@@ -21,6 +38,8 @@ function SidebarContent({
   appName: string
   initial: string
   accent: string
+  top: NavLeaf[]
+  groups: NavGroup[]
   hideApp?: boolean
   onNavigate?: () => void
 }) {
@@ -37,7 +56,7 @@ function SidebarContent({
       )}
       <nav className="ac-nav">
         <div className="ac-nav__top">
-          {TOP.map((leaf) => (
+          {top.map((leaf) => (
             <NavLink
               key={leaf.path}
               to={`${base}/${leaf.path}`}
@@ -49,7 +68,7 @@ function SidebarContent({
             </NavLink>
           ))}
         </div>
-        {NAV.map((group) => (
+        {groups.map((group) => (
           <div className="ac-nav__group" key={group.label}>
             <div className="ac-nav__group-head">
               <span className="ac-nav__group-icon">{group.icon}</span>
@@ -82,12 +101,18 @@ export default function AppShell() {
   const [detail, setDetail] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
 
-  const appState = useAsync(() => getApp(appId!), [appId])
-  const appName = appState.data?.name ?? '…'
-  const initial = (appState.data?.name?.charAt(0) ?? '?').toUpperCase()
-  const accent = accentFor(appState.data?.name ?? '?')
+  const appState = useAsync(
+    () => Promise.all([getApp(appId!), getMyRole(appId!).catch(() => 'viewer')]),
+    [appId],
+  )
+  const app = appState.data?.[0] ?? null
+  const role = appState.data?.[1] ?? null
+  const appName = app?.name ?? '…'
+  const initial = (app?.name?.charAt(0) ?? '?').toUpperCase()
+  const accent = accentFor(app?.name ?? '?')
+  const { top, groups } = navForRole(role)
 
-  const base = `/next/apps/${appId}`
+  const base = `/apps/${appId}`
   const accountName = user?.name || user?.email || 'Account'
 
   const rel = pathname.startsWith(base + '/') ? pathname.slice(base.length + 1) : ''
@@ -107,7 +132,7 @@ export default function AppShell() {
   }
   if (detail) crumbs.push({ label: detail })
 
-  const sidebar = { base, appName, initial, accent }
+  const sidebar = { base, appName, initial, accent, top, groups }
 
   return (
     <div className="ac">
@@ -116,7 +141,7 @@ export default function AppShell() {
           <button className="ac-burger" type="button" aria-label="Open menu" onClick={() => setNavOpen(true)}>
             <Icons.IconMenu size={18} />
           </button>
-          <Link to="/next" className="ac-brand">
+          <Link to="/" className="ac-brand">
             <img className="ac-brand__logo" src="/banana.svg" width={22} height={22} alt="" />
             <span className="ac-brand__name">Bananalytics</span>
           </Link>
@@ -124,7 +149,7 @@ export default function AppShell() {
           <Breadcrumb items={crumbs} />
         </div>
         <div className="ac-top__right">
-          <Link className="ac-top__docs" to="/next/docs">
+          <Link className="ac-top__docs" to="/docs">
             <Icons.IconBook size={15} />
             <span>Go to docs</span>
           </Link>
@@ -133,7 +158,7 @@ export default function AppShell() {
           </button>
           <Dropdown
             items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/next/account') },
+              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
               { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
             ]}
           >
@@ -152,7 +177,7 @@ export default function AppShell() {
           <SidebarContent {...sidebar} />
         </aside>
         <main className="ac-main">
-          <Outlet context={{ setDetail }} />
+          <Outlet context={{ setDetail, role, app } satisfies ShellContext} />
         </main>
       </div>
 

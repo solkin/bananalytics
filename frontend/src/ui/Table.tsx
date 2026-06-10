@@ -13,6 +13,13 @@ export interface Column<T> {
   sorter?: (a: T, b: T) => number
 }
 
+export interface TablePagination {
+  page: number
+  pageSize: number
+  total: number
+  onChange: (page: number) => void
+}
+
 export interface TableProps<T> {
   columns: Column<T>[]
   data: T[]
@@ -21,6 +28,8 @@ export interface TableProps<T> {
   loading?: boolean
   size?: 'sm' | 'md'
   pageSize?: number
+  /* Server-side mode: data is already one page; the pager reflects `total`. */
+  pagination?: TablePagination
   emptyText?: ReactNode
   className?: string
 }
@@ -33,12 +42,13 @@ export function Table<T>({
   loading,
   size = 'md',
   pageSize,
+  pagination,
   emptyText = 'No data',
   className,
 }: TableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  const [page, setPage] = useState(1)
+  const [innerPage, setInnerPage] = useState(1)
 
   const sorted = useMemo(() => {
     if (!sortKey) return data
@@ -48,14 +58,17 @@ export function Table<T>({
     return sortDir === 'asc' ? arr : arr.reverse()
   }, [data, sortKey, sortDir, columns])
 
-  const total = sorted.length
+  const page = pagination ? pagination.page : innerPage
+  const setPage = pagination ? pagination.onChange : setInnerPage
+  const effPageSize = pagination ? pagination.pageSize : pageSize
+  const total = pagination ? pagination.total : sorted.length
   const paged = useMemo(() => {
-    if (!pageSize) return sorted
+    if (pagination || !pageSize) return sorted
     const start = (page - 1) * pageSize
     return sorted.slice(start, start + pageSize)
-  }, [sorted, page, pageSize])
+  }, [sorted, page, pageSize, pagination])
 
-  const pageCount = pageSize ? Math.ceil(total / pageSize) : 1
+  const pageCount = effPageSize ? Math.max(1, Math.ceil(total / effPageSize)) : 1
 
   const toggleSort = (col: Column<T>) => {
     if (!col.sorter) return
@@ -137,16 +150,16 @@ export function Table<T>({
           </tbody>
         </table>
       </div>
-      {pageSize && pageCount > 1 && (
+      {effPageSize != null && pageCount > 1 && (
         <div className="bnn-table__pagination">
           <span className="bnn-table__page-info">
-            {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+            {(page - 1) * effPageSize + 1}–{Math.min(page * effPageSize, total)} of {total}
           </span>
           <div className="bnn-pagination">
             <button
               className="bnn-pagination__btn"
               disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage(page - 1)}
             >
               <IconChevronLeft size={15} />
             </button>
@@ -156,7 +169,7 @@ export function Table<T>({
             <button
               className="bnn-pagination__btn"
               disabled={page >= pageCount}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               <IconChevronRight size={15} />
             </button>

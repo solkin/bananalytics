@@ -1,34 +1,12 @@
 import {
-  useEffect,
+  useCallback,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { cn, Button } from './primitives'
 import { IconClose } from './Icon'
-
-/* --------------------------------------------------------- usePortal */
-function Portal({ children }: { children: ReactNode }) {
-  const [el] = useState(() => document.createElement('div'))
-  useEffect(() => {
-    el.className = 'bnn-portal'
-    document.body.appendChild(el)
-    return () => {
-      document.body.removeChild(el)
-    }
-  }, [el])
-  return createPortal(children, el)
-}
-
-function useEsc(active: boolean, onClose?: () => void) {
-  useEffect(() => {
-    if (!active) return
-    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose?.()
-    document.addEventListener('keydown', h)
-    return () => document.removeEventListener('keydown', h)
-  }, [active, onClose])
-}
+import { Portal, useDismiss, useEsc } from './portal'
 
 /* -------------------------------------------------------------- Modal */
 export function Modal({
@@ -183,45 +161,56 @@ export function Dropdown({
   children: ReactNode
   placement?: 'bottomLeft' | 'bottomRight'
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const open = rect != null
+  const close = useCallback(() => setRect(null), [])
+  useDismiss(open, [triggerRef, menuRef], close)
+  useEsc(open, close)
   return (
-    <div className="bnn-dropdown" ref={ref}>
+    <div className="bnn-dropdown" ref={triggerRef}>
       <div
         className={cn('bnn-dropdown__trigger', open && 'is-open')}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() =>
+          setRect((r) => (r ? null : triggerRef.current!.getBoundingClientRect()))
+        }
       >
         {children}
       </div>
       {open && (
-        <div className={cn('bnn-menu', `bnn-menu--${placement}`)}>
-          {items.map((it) => (
-            <button
-              key={it.key}
-              className={cn(
-                'bnn-menu__item',
-                it.danger && 'is-danger',
-                it.disabled && 'is-disabled',
-              )}
-              disabled={it.disabled}
-              onClick={() => {
-                it.onClick?.()
-                setOpen(false)
-              }}
-            >
-              {it.icon && <span className="bnn-menu__icon">{it.icon}</span>}
-              {it.label}
-            </button>
-          ))}
-        </div>
+        <Portal>
+          <div
+            ref={menuRef}
+            className="bnn-menu"
+            style={{
+              position: 'fixed',
+              top: rect.bottom + 6,
+              ...(placement === 'bottomLeft'
+                ? { left: Math.max(8, rect.left) }
+                : { right: Math.max(8, window.innerWidth - rect.right) }),
+            }}
+          >
+            {items.map((it) => (
+              <button
+                key={it.key}
+                className={cn(
+                  'bnn-menu__item',
+                  it.danger && 'is-danger',
+                  it.disabled && 'is-disabled',
+                )}
+                disabled={it.disabled}
+                onClick={() => {
+                  it.onClick?.()
+                  close()
+                }}
+              >
+                {it.icon && <span className="bnn-menu__icon">{it.icon}</span>}
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </Portal>
       )}
     </div>
   )
@@ -245,41 +234,59 @@ export function Popconfirm({
   onConfirm?: () => void
   children: ReactNode
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+  const open = rect != null
+  const close = useCallback(() => setRect(null), [])
+  useDismiss(open, [triggerRef, popRef], close)
+  useEsc(open, close)
+  const width = 240
   return (
-    <span className="bnn-popconfirm" ref={ref}>
-      <span onClick={() => setOpen((o) => !o)}>{children}</span>
+    <span className="bnn-popconfirm" ref={triggerRef}>
+      <span
+        onClick={() =>
+          setRect((r) => (r ? null : triggerRef.current!.getBoundingClientRect()))
+        }
+      >
+        {children}
+      </span>
       {open && (
-        <div className="bnn-popconfirm__pop" role="dialog">
-          <div className="bnn-popconfirm__title">{title}</div>
-          {description && (
-            <div className="bnn-popconfirm__desc">{description}</div>
-          )}
-          <div className="bnn-popconfirm__actions">
-            <Button size="sm" onClick={() => setOpen(false)}>
-              {cancelText}
-            </Button>
-            <Button
-              size="sm"
-              variant={okDanger ? 'danger' : 'primary'}
-              onClick={() => {
-                onConfirm?.()
-                setOpen(false)
-              }}
-            >
-              {okText}
-            </Button>
+        <Portal>
+          <div
+            ref={popRef}
+            className="bnn-popconfirm__pop"
+            role="dialog"
+            style={{
+              position: 'fixed',
+              top: rect.bottom + 8,
+              left: Math.min(
+                Math.max(rect.left + rect.width / 2, width / 2 + 8),
+                window.innerWidth - width / 2 - 8,
+              ),
+            }}
+          >
+            <div className="bnn-popconfirm__title">{title}</div>
+            {description && (
+              <div className="bnn-popconfirm__desc">{description}</div>
+            )}
+            <div className="bnn-popconfirm__actions">
+              <Button size="sm" onClick={close}>
+                {cancelText}
+              </Button>
+              <Button
+                size="sm"
+                variant={okDanger ? 'danger' : 'primary'}
+                onClick={() => {
+                  onConfirm?.()
+                  close()
+                }}
+              >
+                {okText}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
     </span>
   )

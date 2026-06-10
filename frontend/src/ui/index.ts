@@ -21,10 +21,11 @@ export {
   Statistic,
   Empty,
   Alert,
+  Timeline,
   Title,
   Text,
 } from './primitives'
-export type { ButtonProps } from './primitives'
+export type { ButtonProps, TimelineItem } from './primitives'
 
 export { Card, Breadcrumb, PageHeader } from './Card'
 export type { CardProps, BreadcrumbItem } from './Card'
@@ -53,7 +54,7 @@ export type {
 } from './forms'
 
 export { Table, Descriptions } from './Table'
-export type { Column, TableProps, DescItem } from './Table'
+export type { Column, TableProps, TablePagination, DescItem } from './Table'
 
 export {
   Modal,

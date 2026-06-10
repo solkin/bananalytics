@@ -1,7 +1,7 @@
 import {
   createContext,
+  useCallback,
   useContext,
-  useEffect,
   useId,
   useRef,
   useState,
@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { cn } from './primitives'
 import { IconCheck, IconChevronDown, IconClose, IconUpload } from './Icon'
+import { Portal, useDismiss } from './portal'
 
 /* -------------------------------------------------------------- Input */
 export interface InputProps
@@ -139,18 +140,13 @@ export function Select({
   style,
   className,
 }: SelectProps) {
-  const [open, setOpen] = useState(false)
+  const [rect, setRect] = useState<DOMRect | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const open = rect != null
+  const close = useCallback(() => setRect(null), [])
+  useDismiss(open, [ref, menuRef], close)
   const selected = options.find((o) => o.value === value)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
 
   return (
     <div
@@ -169,7 +165,9 @@ export function Select({
         type="button"
         className="bnn-select__control"
         disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() =>
+          setRect((r) => (r ? null : ref.current!.getBoundingClientRect()))
+        }
       >
         <span className={cn('bnn-select__value', !selected && 'is-placeholder')}>
           {selected ? selected.label : placeholder}
@@ -189,30 +187,43 @@ export function Select({
         )}
       </button>
       {open && (
-        <div className="bnn-select__menu">
-          {options.length === 0 && (
-            <div className="bnn-select__empty">No options</div>
-          )}
-          {options.map((o) => (
-            <button
-              type="button"
-              key={String(o.value)}
-              className={cn(
-                'bnn-select__option',
-                o.value === value && 'is-selected',
-                o.disabled && 'is-disabled',
-              )}
-              disabled={o.disabled}
-              onClick={() => {
-                onChange?.(o.value)
-                setOpen(false)
-              }}
-            >
-              <span>{o.label}</span>
-              {o.value === value && <IconCheck size={14} />}
-            </button>
-          ))}
-        </div>
+        <Portal>
+          <div
+            ref={menuRef}
+            className="bnn-select__menu"
+            style={{
+              position: 'fixed',
+              top: rect.bottom + 4,
+              left: rect.left,
+              right: 'auto',
+              minWidth: rect.width,
+              maxWidth: Math.max(rect.width, 360),
+            }}
+          >
+            {options.length === 0 && (
+              <div className="bnn-select__empty">No options</div>
+            )}
+            {options.map((o) => (
+              <button
+                type="button"
+                key={String(o.value)}
+                className={cn(
+                  'bnn-select__option',
+                  o.value === value && 'is-selected',
+                  o.disabled && 'is-disabled',
+                )}
+                disabled={o.disabled}
+                onClick={() => {
+                  onChange?.(o.value)
+                  close()
+                }}
+              >
+                <span>{o.label}</span>
+                {o.value === value && <IconCheck size={14} />}
+              </button>
+            ))}
+          </div>
+        </Portal>
       )}
     </div>
   )

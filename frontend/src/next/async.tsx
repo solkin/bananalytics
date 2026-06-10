@@ -36,6 +36,12 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   return { ...state, reload: () => setNonce((n) => n + 1) }
 }
 
+export function errorText(e: unknown, fallback: string): string {
+  const m = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+  if (m) return m
+  return e instanceof Error && e.message ? e.message : fallback
+}
+
 export function Loaded<T>({
   state,
   emptyText = 'No data',

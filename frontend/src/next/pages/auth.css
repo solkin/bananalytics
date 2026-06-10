@@ -1,0 +1,52 @@
+/* Sign in / sign up — centered card on the app background. */
+.auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--bnn-bg);
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.auth-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+}
+.auth-head__logo {
+  width: 44px;
+  height: 44px;
+}
+.auth-head__name {
+  font-size: var(--bnn-fs-xl);
+  font-weight: 700;
+}
+.auth-head__sub {
+  color: var(--bnn-text-secondary);
+  font-size: var(--bnn-fs-md);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.auth-foot {
+  text-align: center;
+  font-size: var(--bnn-fs-md);
+  color: var(--bnn-text-secondary);
+}
+.auth-foot a {
+  color: var(--bnn-primary);
+  text-decoration: none;
+}
+.auth-foot a:hover {
+  text-decoration: underline;
+}

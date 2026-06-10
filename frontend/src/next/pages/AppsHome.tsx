@@ -1,28 +1,76 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Dropdown, Icons, Input, Tag, Text, Title } from '@/ui'
+import { Avatar, Button, Dropdown, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
-import { getApps } from '@/api/apps'
-import { useAsync, Loaded } from '../async'
+import { createApp, getApps } from '@/api/apps'
+import { useAsync, Loaded, errorText } from '../async'
 import { accentFor } from '../colors'
 import './appshome.css'
+
+const PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/i
+
+function CreateAppModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [name, setName] = useState('')
+  const [pkg, setPkg] = useState('')
+  const [creating, setCreating] = useState(false)
+  const pkgInvalid = pkg.trim() !== '' && !PACKAGE_RE.test(pkg.trim())
+
+  const create = async () => {
+    if (!name.trim()) return toast.error('Enter an app name')
+    if (!PACKAGE_RE.test(pkg.trim())) return toast.error('Enter a valid package name, e.g. com.example.app')
+    setCreating(true)
+    try {
+      const app = await createApp(name.trim(), pkg.trim())
+      toast.success('App created')
+      onClose()
+      navigate(`/apps/${app.id}/getting-started`)
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to create app'))
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Add new app" width={480} okText="Add new app" onOk={create} confirmLoading={creating}>
+      <Form>
+        <FormItem label="App name" required>
+          <Input placeholder="My Android App" value={name} onChange={(e) => setName(e.target.value)} />
+        </FormItem>
+        <FormItem
+          label="Package name"
+          required
+          error={pkgInvalid ? 'Lowercase segments separated by dots, e.g. com.example.app' : undefined}
+          help={pkgInvalid ? undefined : 'Immutable after creation — must match the applicationId of your app.'}
+        >
+          <Input placeholder="com.example.app" status={pkgInvalid ? 'error' : undefined} value={pkg} onChange={(e) => setPkg(e.target.value)} />
+        </FormItem>
+        <FormItem label="Platform">
+          <Input value="Android" disabled />
+        </FormItem>
+      </Form>
+    </Modal>
+  )
+}
 
 export default function AppsHome() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
   const state = useAsync(() => getApps(), [])
   const accountName = user?.name || user?.email || 'Account'
 
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/next" className="home-brand">
+        <Link to="/" className="home-brand">
           <img src="/banana.svg" width={22} height={22} alt="" />
           <span>Bananalytics</span>
         </Link>
         <div className="home-top__right">
-          <Link className="home-docs" to="/next/docs">
+          <Link className="home-docs" to="/docs">
             <Icons.IconBook size={15} />
             <span>Go to docs</span>
           </Link>
@@ -31,7 +79,7 @@ export default function AppsHome() {
           </button>
           <Dropdown
             items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/next/account') },
+              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
               { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => void logout() },
             ]}
           >
@@ -60,7 +108,9 @@ export default function AppsHome() {
                 onClear={() => setQuery('')}
               />
             </span>
-            <Button variant="primary" icon={<Icons.IconPlus size={15} />}>Add new app</Button>
+            <Button variant="primary" icon={<Icons.IconPlus size={15} />} onClick={() => setCreateOpen(true)}>
+              Add new app
+            </Button>
           </div>
         </div>
 
@@ -78,7 +128,7 @@ export default function AppsHome() {
                 </div>
                 <div className="home-grid">
                   {list.map((a) => (
-                    <Link key={a.id} to={`/next/apps/${a.id}`} className="home-card">
+                    <Link key={a.id} to={`/apps/${a.id}`} className="home-card">
                       <span className="home-card__icon" style={{ background: accentFor(a.name) }}>
                         {a.name.charAt(0).toUpperCase()}
                       </span>
@@ -98,6 +148,8 @@ export default function AppsHome() {
           }}
         </Loaded>
       </main>
+
+      <CreateAppModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

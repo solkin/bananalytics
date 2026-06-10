@@ -1,5 +1,7 @@
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
+  Alert,
   AreaChart,
   BarList,
   Button,
@@ -7,18 +9,38 @@ import {
   Descriptions,
   Divider,
   Icons,
+  Popconfirm,
+  Segmented,
+  Select,
   Tabs,
   Tag,
   Text,
+  Timeline,
+  toast,
   type BarListItem,
   type ChartPoint,
 } from '@/ui'
 import type { Crash } from '@/types'
-import { getCrashGroup, getCrashStats, getCrashesInGroup, updateCrashGroupStatus } from '@/api/crashes'
-import { useAsync, Loaded } from '../async'
-import { cap, fmtK, fromTo, relTime, shortDate } from '../format'
+import {
+  deleteCrashGroup,
+  getCrashGroup,
+  getCrashGroupVersions,
+  getCrashStats,
+  getCrashesInGroup,
+  retraceCrash,
+  updateCrashGroupStatus,
+} from '@/api/crashes'
+import { useAsync, Loaded, errorText } from '../async'
+import { cap, fillDaily, fmtDateTime, fmtK, fromTo, relTime, versionLabel } from '../format'
 import { useDetailCrumb } from '../layout/useDetailCrumb'
 import './pages.css'
+
+const DAY_OPTIONS = [
+  { label: 'Last 24 hours', value: '1' },
+  { label: 'Last 7 days', value: '7' },
+  { label: 'Last 28 days', value: '28' },
+  { label: 'Last 90 days', value: '90' },
+]
 
 function rank(items: Crash[], keyFn: (c: Crash) => string | null, topN = 5): BarListItem[] {
   const m = new Map<string, number>()
@@ -33,81 +55,197 @@ function rank(items: Crash[], keyFn: (c: Crash) => string | null, topN = 5): Bar
     .map(([label, count]) => ({ label, value: count, display: `${Math.round((count / total) * 100)}%` }))
 }
 
+function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Crash) => void }) {
+  const [view, setView] = useState<'decoded' | 'raw'>('decoded')
+  const [retracing, setRetracing] = useState(false)
+  const stack = view === 'raw' || !crash.stacktrace_decoded ? crash.stacktrace_raw : crash.stacktrace_decoded
+
+  const retrace = async () => {
+    setRetracing(true)
+    try {
+      const updated = await retraceCrash(crash.id)
+      onRetraced(updated)
+      toast.success('Stack trace retraced')
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to retrace'))
+    } finally {
+      setRetracing(false)
+    }
+  }
+
+  const stacktraceTab = (
+    <div className="iss-stack">
+      {crash.decode_error && <Alert type="warning" message="Retrace failed" description={crash.decode_error} />}
+      <div className="iss-stack__bar">
+        {crash.stacktrace_decoded ? (
+          <Segmented<'decoded' | 'raw'>
+            size="sm"
+            value={view}
+            onChange={setView}
+            options={[
+              { label: 'Deobfuscated', value: 'decoded' },
+              { label: 'Original', value: 'raw' },
+            ]}
+          />
+        ) : <span />}
+        <span className="pg-rowactions">
+          <Button
+            size="sm"
+            icon={<Icons.IconReload size={14} />}
+            loading={retracing}
+            disabled={crash.version_code == null}
+            onClick={retrace}
+          >
+            Retrace
+          </Button>
+          <Button
+            size="sm"
+            icon={<Icons.IconCopy size={14} />}
+            onClick={() => {
+              navigator.clipboard?.writeText(stack)
+              toast.success('Copied to clipboard')
+            }}
+          >
+            Copy
+          </Button>
+        </span>
+      </div>
+      <pre className="stacktrace">{stack || 'No stack trace available.'}</pre>
+    </div>
+  )
+
+  const deviceTab = crash.device_info ? (
+    <Descriptions
+      column={2}
+      items={[
+        { label: 'Model', value: `${crash.device_info.manufacturer} ${crash.device_info.model}` },
+        { label: 'OS version', value: `Android ${crash.device_info.os_version}` },
+        { label: 'Country', value: crash.device_info.country || '—' },
+        { label: 'Language', value: crash.device_info.language || '—' },
+        { label: 'Thread', value: crash.thread || 'main' },
+        { label: 'App version', value: crash.version_code ?? '—' },
+        { label: 'Fatal', value: crash.is_fatal ? 'Yes' : 'No' },
+        { label: 'When', value: fmtDateTime(crash.created_at) },
+      ]}
+    />
+  ) : (
+    <Text type="tertiary">No device information captured.</Text>
+  )
+
+  const breadcrumbsTab = crash.breadcrumbs?.length ? (
+    <Timeline
+      items={crash.breadcrumbs.map((b) => ({
+        content: b.message,
+        meta: `${b.category} • ${new Date(b.timestamp).toLocaleTimeString()}`,
+      }))}
+    />
+  ) : (
+    <Text type="tertiary">No breadcrumbs captured before this crash.</Text>
+  )
+
+  const contextTab = crash.context && Object.keys(crash.context).length > 0 ? (
+    <Descriptions
+      column={1}
+      items={Object.entries(crash.context).map(([label, value]) => ({ label, value }))}
+    />
+  ) : (
+    <Text type="tertiary">No context data attached.</Text>
+  )
+
+  return (
+    <Tabs
+      items={[
+        { key: 'stack', label: 'Stack trace', children: stacktraceTab },
+        { key: 'device', label: 'Device', children: deviceTab },
+        { key: 'breadcrumbs', label: 'Breadcrumbs', children: breadcrumbsTab },
+        { key: 'context', label: 'Context', children: contextTab },
+      ]}
+    />
+  )
+}
+
 export default function IssueDetailPage() {
-  const { issueId = '' } = useParams()
+  const { appId, issueId = '' } = useParams()
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const days = Number(params.get('days') ?? '28') || 28
+  const version = params.get('version') ? Number(params.get('version')) : undefined
+
+  const setFilter = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(params)
+    for (const [k, v] of Object.entries(updates)) {
+      if (v == null || v === '') next.delete(k)
+      else next.set(k, v)
+    }
+    setParams(next, { replace: true })
+  }
+
+  const versions = useAsync(() => getCrashGroupVersions(issueId), [issueId])
   const state = useAsync(async () => {
     const [group, stats, crashes] = await Promise.all([
       getCrashGroup(issueId),
-      getCrashStats(issueId, fromTo(28)),
-      getCrashesInGroup(issueId, { pageSize: 50 }),
+      getCrashStats(issueId, { ...fromTo(days), version }),
+      getCrashesInGroup(issueId, { days, version, pageSize: 50 }),
     ])
-    return { group, stats, crashes: crashes.items }
-  }, [issueId])
+    return { group, stats, crashes: crashes.items, total: crashes.total }
+  }, [issueId, days, version])
+
+  const [selId, setSelId] = useState<string | null>(null)
+  const [patch, setPatch] = useState<Record<string, Crash>>({})
+  useEffect(() => {
+    setSelId(state.data?.crashes[0]?.id ?? null)
+  }, [state.data])
 
   const cls = state.data?.group.exception_class
   useDetailCrumb(state.data ? (cls ? cls.split('.').pop() || cls : 'Issue') : null)
 
   const setStatus = async (s: 'resolved' | 'ignored' | 'open') => {
-    await updateCrashGroupStatus(issueId, s)
-    state.reload()
+    try {
+      await updateCrashGroupStatus(issueId, s)
+      toast.success(`Issue ${s === 'open' ? 'reopened' : s}`)
+      state.reload()
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to update status'))
+    }
+  }
+
+  const removeGroup = async () => {
+    try {
+      await deleteCrashGroup(issueId)
+      toast.success('Issue deleted')
+      navigate(`/apps/${appId}/diagnostics/issues`)
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to delete issue'))
+    }
   }
 
   return (
     <div className="pg">
+      <div className="pg-toolbar">
+        <div className="pg-filter">
+          <span className="pg-filter__label">Version</span>
+          <Select
+            style={{ width: 180 }}
+            placeholder="All versions"
+            allowClear
+            value={version ?? null}
+            onChange={(v) => setFilter({ version: v === '' ? undefined : String(v) })}
+            options={(versions.data ?? []).map((v) => ({ label: versionLabel(v), value: v.version_code }))}
+          />
+        </div>
+        <div className="pg-filter">
+          <span className="pg-filter__label">Time</span>
+          <Select style={{ width: 150 }} value={String(days)} onChange={(v) => setFilter({ days: String(v) })} options={DAY_OPTIONS} />
+        </div>
+      </div>
+
       <Loaded state={state}>
-        {({ group, stats, crashes }) => {
-          const rep: Crash | undefined = crashes[0]
-          const series: ChartPoint[] = stats.map((d) => ({ label: shortDate(d.date), value: d.count }))
+        {({ group, stats, crashes, total }) => {
+          const series: ChartPoint[] = fillDaily(stats, days)
           const devices = rank(crashes, (c) => c.device_info?.model ?? null)
           const oses = rank(crashes, (c) => (c.device_info ? `Android ${c.device_info.os_version}` : null))
-          const stack = rep?.stacktrace_decoded || rep?.stacktrace_raw || 'No stack trace available.'
-          const version = rep?.version_code != null ? String(rep.version_code) : '—'
-
-          const overview = (
-            <div className="pg">
-              <Card title="Stack trace" extra={<Button size="sm" icon={<Icons.IconCopy size={14} />} onClick={() => navigator.clipboard?.writeText(stack)}>Copy</Button>}>
-                <pre className="stacktrace">{stack}</pre>
-              </Card>
-              <Card title="Reports" extra={<Text type="danger" strong>{fmtK(group.occurrences)}</Text>}>
-                <AreaChart data={series} color="var(--bnn-danger)" height={160} />
-              </Card>
-              <div className="pg-affected">
-                <Card title="Most affected devices">
-                  {devices.length ? <BarList items={devices} /> : <Text type="tertiary">No device data.</Text>}
-                </Card>
-                <Card title="Most affected OS">
-                  {oses.length ? <BarList items={oses} /> : <Text type="tertiary">No OS data.</Text>}
-                </Card>
-              </div>
-            </div>
-          )
-
-          const threads = (
-            <div className="pg">
-              <Card title="Occurrence">
-                {rep ? (
-                  <Descriptions
-                    column={4}
-                    items={[
-                      { label: 'Device', value: rep.device_info?.model ?? '—' },
-                      { label: 'OS', value: rep.device_info ? `Android ${rep.device_info.os_version}` : '—' },
-                      { label: 'App version', value: version },
-                      { label: 'When', value: relTime(rep.created_at) },
-                      { label: 'Country', value: rep.device_info?.country ?? '—' },
-                      { label: 'Language', value: rep.device_info?.language ?? '—' },
-                      { label: 'Thread', value: rep.thread ?? 'main' },
-                      { label: 'Fatal', value: rep.is_fatal ? 'Yes' : 'No' },
-                    ]}
-                  />
-                ) : (
-                  <Text type="tertiary">No occurrences captured.</Text>
-                )}
-              </Card>
-              <Card title="Stack trace">
-                <pre className="stacktrace">{stack}</pre>
-              </Card>
-            </div>
-          )
+          const selIndex = Math.max(0, crashes.findIndex((c) => c.id === selId))
+          const selected = crashes[selIndex] ? patch[crashes[selIndex].id] ?? crashes[selIndex] : null
 
           return (
             <>
@@ -119,18 +257,23 @@ export default function IssueDetailPage() {
                       <Tag tone={group.status === 'open' ? 'success' : group.status === 'ignored' ? 'warning' : 'neutral'}>{cap(group.status)}</Tag>
                     </div>
                     <div className="pg-detailhead__msg">{group.exception_message || '—'}</div>
-                    <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Tag tone="primary">v{version}</Tag>
-                      <Tag tone="danger">crash</Tag>
-                    </div>
                   </div>
                   <div className="pg-detailhead__actions">
-                    {group.status !== 'ignored' && <Button onClick={() => setStatus('ignored')}>Ignore</Button>}
+                    {group.status !== 'ignored' && <Button onClick={() => void setStatus('ignored')}>Ignore</Button>}
                     {group.status === 'open' ? (
-                      <Button variant="primary" onClick={() => setStatus('resolved')}>Close issue</Button>
+                      <Button variant="primary" onClick={() => void setStatus('resolved')}>Close issue</Button>
                     ) : (
-                      <Button onClick={() => setStatus('open')}>Reopen</Button>
+                      <Button onClick={() => void setStatus('open')}>Reopen</Button>
                     )}
+                    <Popconfirm
+                      title="Delete this issue?"
+                      description={`All ${fmtK(group.occurrences)} crash reports in this group will be permanently removed.`}
+                      okText="Delete"
+                      okDanger
+                      onConfirm={() => void removeGroup()}
+                    >
+                      <Button variant="danger" icon={<Icons.IconTrash size={14} />} />
+                    </Popconfirm>
                   </div>
                 </div>
                 <Divider />
@@ -142,13 +285,60 @@ export default function IssueDetailPage() {
                 </div>
               </Card>
 
-              <Tabs
-                items={[
-                  { key: 'overview', label: 'Overview', children: overview },
-                  { key: 'threads', label: 'Threads', children: threads },
-                  { key: 'events', label: 'Events', children: <Card><Text type="secondary">No breadcrumb events captured for this issue.</Text></Card> },
-                ]}
-              />
+              <Card title="Reports" extra={<Text type="danger" strong>{fmtK(group.occurrences)}</Text>}>
+                <AreaChart data={series} color="var(--bnn-danger)" height={160} />
+              </Card>
+
+              <div className="pg-affected">
+                <Card title="Most affected devices">
+                  {devices.length ? <BarList items={devices} /> : <Text type="tertiary">No device data.</Text>}
+                </Card>
+                <Card title="Most affected OS">
+                  {oses.length ? <BarList items={oses} /> : <Text type="tertiary">No OS data.</Text>}
+                </Card>
+              </div>
+
+              <Card
+                title="Crash report"
+                extra={
+                  crashes.length > 0 && (
+                    <span className="iss-picker">
+                      <Button
+                        size="sm"
+                        icon={<Icons.IconChevronLeft size={14} />}
+                        disabled={selIndex <= 0}
+                        onClick={() => setSelId(crashes[selIndex - 1].id)}
+                      />
+                      <Select
+                        size="sm"
+                        style={{ width: 250 }}
+                        value={selected?.id ?? null}
+                        onChange={(id) => setSelId(String(id))}
+                        options={crashes.map((c) => ({
+                          label: `${fmtDateTime(c.created_at)} — ${c.device_info?.model || 'Unknown'}`,
+                          value: c.id,
+                        }))}
+                      />
+                      <Button
+                        size="sm"
+                        icon={<Icons.IconChevronRight size={14} />}
+                        disabled={selIndex >= crashes.length - 1}
+                        onClick={() => setSelId(crashes[selIndex + 1].id)}
+                      />
+                      <Text type="tertiary" size="sm">{selIndex + 1} of {fmtK(total)}</Text>
+                    </span>
+                  )
+                }
+              >
+                {selected ? (
+                  <CrashDetail
+                    crash={selected}
+                    onRetraced={(c) => setPatch((p) => ({ ...p, [c.id]: c }))}
+                  />
+                ) : (
+                  <Text type="tertiary">No crash reports in the selected period.</Text>
+                )}
+              </Card>
             </>
           )
         }}

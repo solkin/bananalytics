@@ -1,10 +1,94 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Card, Form, FormItem, Icons, Input, Popconfirm, Text, toast } from '@/ui'
+import { Button, Card, Form, FormItem, Icons, Input, Popconfirm, Statistic, Text, toast } from '@/ui'
 import type { App } from '@/types'
 import { deleteApp, getApp, regenerateApiKey, updateApp } from '@/api/apps'
-import { useAsync, Loaded } from '../async'
+import {
+  cleanupOrphanedCrashes,
+  migrateCrashFingerprints,
+  type CleanupResult,
+  type MigrationResult,
+} from '@/api/crashes'
+import { useAsync, Loaded, errorText } from '../async'
 import './pages.css'
+
+function MaintenanceCard({ appId }: { appId: string }) {
+  const [migrating, setMigrating] = useState(false)
+  const [migration, setMigration] = useState<MigrationResult | null>(null)
+  const [cleaning, setCleaning] = useState(false)
+  const [cleanup, setCleanup] = useState<CleanupResult | null>(null)
+
+  const migrate = async () => {
+    setMigrating(true)
+    setMigration(null)
+    try {
+      const result = await migrateCrashFingerprints(appId)
+      setMigration(result)
+      toast.success(result.groups_merged > 0 ? `${result.groups_merged} groups merged` : 'No groups needed merging')
+    } catch (e) {
+      toast.error(errorText(e, 'Migration failed'))
+    } finally {
+      setMigrating(false)
+    }
+  }
+
+  const clean = async () => {
+    setCleaning(true)
+    setCleanup(null)
+    try {
+      const result = await cleanupOrphanedCrashes(appId)
+      setCleanup(result)
+      toast.success(result.crashes_deleted > 0 ? `${result.crashes_deleted} crashes deleted` : 'No orphaned crashes found')
+    } catch (e) {
+      toast.error(errorText(e, 'Cleanup failed'))
+    } finally {
+      setCleaning(false)
+    }
+  }
+
+  return (
+    <Card title="Maintenance" subtitle="One-off housekeeping for crash data.">
+      <div className="set-maint">
+        <div className="set-maint__row">
+          <div>
+            <Text strong>Regroup crashes</Text>
+            <div>
+              <Text type="secondary" size="sm">
+                Merge crash groups that differ only by variable data in the exception message (memory sizes, file paths, timestamps).
+              </Text>
+            </div>
+          </div>
+          <Button icon={<Icons.IconLayers size={15} />} loading={migrating} onClick={migrate}>Run</Button>
+        </div>
+        {migration && (
+          <div className="set-maint__stats">
+            <Statistic title="Groups processed" value={migration.groups_processed} />
+            <Statistic title="Groups merged" value={migration.groups_merged} />
+            <Statistic title="Crashes reassigned" value={migration.crashes_reassigned} />
+          </div>
+        )}
+        <div className="set-maint__row">
+          <div>
+            <Text strong>Cleanup orphaned crashes</Text>
+            <div>
+              <Text type="secondary" size="sm">
+                Delete crash reports left behind by removed versions and recalculate group counters.
+              </Text>
+            </div>
+          </div>
+          <Button icon={<Icons.IconReload size={15} />} loading={cleaning} onClick={clean}>Run</Button>
+        </div>
+        {cleanup && (
+          <div className="set-maint__stats">
+            <Statistic title="Crashes deleted" value={cleanup.crashes_deleted} />
+            <Statistic title="Groups recalculated" value={cleanup.groups_recalculated} />
+            <Statistic title="Groups deleted" value={cleanup.groups_deleted} />
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
 
 function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
   const navigate = useNavigate()
@@ -23,7 +107,7 @@ function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
   const remove = async () => {
     await deleteApp(app.id)
     toast.success('Application deleted')
-    navigate('/next')
+    navigate('/')
   }
 
   return (
@@ -54,6 +138,8 @@ function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
           </Popconfirm>
         </div>
       </Card>
+
+      <MaintenanceCard appId={app.id} />
 
       <Card title="Danger zone" className="pg-danger">
         <div className="pg-danger__row">

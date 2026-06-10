@@ -1,33 +1,41 @@
-import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Alert, AreaChart, Card, Segmented, Select, Table, Text, type ChartPoint, type Column } from '@/ui'
+import { AreaChart, Card, Select, Table, Text, type ChartPoint, type Column } from '@/ui'
 import type { CrashGroup } from '@/types'
-import { getAppCrashStats, getCrashGroups } from '@/api/crashes'
+import { getAppCrashStats, getCrashFreeStats, getCrashGroups, getCrashVersions } from '@/api/crashes'
 import { useAsync, Loaded } from '../async'
-import { cap, fmtK, fromTo, relTime, shortDate } from '../format'
+import { cap, fillDaily, fmtK, fromTo, relTime, shortDate, versionLabel } from '../format'
+import { useStickyFilters } from '../filters'
 import './pages.css'
 
-type IssueTab = 'all' | 'crash' | 'error'
-const DAYS: Record<string, number> = { '7d': 7, '28d': 28, '90d': 90 }
+const DAY_OPTIONS = [
+  { label: 'Last 24 hours', value: '1' },
+  { label: 'Last 7 days', value: '7' },
+  { label: 'Last 28 days', value: '28' },
+  { label: 'Last 90 days', value: '90' },
+]
 
 export default function IssuesPage() {
   const navigate = useNavigate()
   const { appId } = useParams()
-  const [tab, setTab] = useState<IssueTab>('all')
-  const [range, setRange] = useState<string | number>('28d')
-  const [status, setStatus] = useState<string | number>('open')
-  const days = DAYS[String(range)] ?? 28
+  const { get, set } = useStickyFilters(`issues_filters_${appId}`)
+  const days = Number(get('days', '28')) || 28
+  const status = get('status', 'open')
+  const version = get('version') ? Number(get('version')) : undefined
 
+  const versions = useAsync(() => getCrashVersions(appId!), [appId])
   const groups = useAsync(
-    () => getCrashGroups(appId!, { days, status: status === 'all' ? undefined : String(status), page: 1, pageSize: 100 }),
-    [appId, days, status],
+    () => getCrashGroups(appId!, { days, version, status: status === 'all' ? undefined : status, page: 1, pageSize: 100 }),
+    [appId, days, status, version],
   )
-  const stats = useAsync(() => getAppCrashStats(appId!, fromTo(days)), [appId, days])
+  const stats = useAsync(() => getAppCrashStats(appId!, { ...fromTo(days), version }), [appId, days, version])
+  const crashFree = useAsync(() => getCrashFreeStats(appId!, fromTo(days)), [appId, days])
 
-  const series: ChartPoint[] = (stats.data ?? []).map((d) => ({ label: shortDate(d.date), value: d.count }))
+  const series: ChartPoint[] = fillDaily(stats.data ?? [], days)
   const total = (stats.data ?? []).reduce((s, d) => s + d.count, 0)
-
-  const rows = useMemo(() => (tab === 'error' ? [] : groups.data?.items ?? []), [groups.data, tab])
+  /* No zero-fill here: a day without sessions is not a 0% crash-free day. */
+  const cfRows = crashFree.data ?? []
+  const cfSeries: ChartPoint[] = cfRows.map((r) => ({ label: shortDate(r.date), value: Math.round(r.crash_free_rate * 10) / 10 }))
+  const cfLast = cfRows.length ? `${cfRows[cfRows.length - 1].crash_free_rate.toFixed(1)}%` : '—'
 
   const columns: Column<CrashGroup>[] = [
     {
@@ -45,49 +53,66 @@ export default function IssuesPage() {
       key: 'status', title: 'Status', align: 'right',
       render: (r) => <Text type={r.status === 'open' ? 'success' : r.status === 'ignored' ? 'warning' : 'tertiary'}>{cap(r.status)}</Text>,
     },
-    { key: 'lastReport', title: 'Last report', align: 'right', render: (r) => <Text type="tertiary">{relTime(r.last_seen)}</Text> },
+    {
+      key: 'lastReport', title: 'Last report', align: 'right',
+      sorter: (a, b) => a.last_seen.localeCompare(b.last_seen),
+      render: (r) => <Text type="tertiary">{relTime(r.last_seen)}</Text>,
+    },
   ]
 
   return (
     <div className="pg">
       <div className="pg-toolbar">
         <div className="pg-filter">
+          <span className="pg-filter__label">Version</span>
+          <Select
+            style={{ width: 180 }}
+            placeholder="All versions"
+            allowClear
+            value={version ?? null}
+            onChange={(v) => set({ version: v === '' ? undefined : String(v) })}
+            options={(versions.data ?? []).map((v) => ({ label: versionLabel(v), value: v.version_code }))}
+          />
+        </div>
+        <div className="pg-filter">
           <span className="pg-filter__label">Time</span>
-          <Select style={{ width: 150 }} value={range} onChange={setRange} options={[{ label: 'Last 7 days', value: '7d' }, { label: 'Last 28 days', value: '28d' }, { label: 'Last 90 days', value: '90d' }]} />
+          <Select style={{ width: 150 }} value={String(days)} onChange={(v) => set({ days: String(v) })} options={DAY_OPTIONS} />
         </div>
         <div className="pg-filter">
           <span className="pg-filter__label">Status</span>
-          <Select style={{ width: 130 }} value={status} onChange={setStatus} options={[{ label: 'Open', value: 'open' }, { label: 'Resolved', value: 'resolved' }, { label: 'Ignored', value: 'ignored' }, { label: 'All', value: 'all' }]} />
+          <Select
+            style={{ width: 130 }}
+            value={status}
+            onChange={(v) => set({ status: String(v) })}
+            options={[
+              { label: 'Open', value: 'open' },
+              { label: 'Resolved', value: 'resolved' },
+              { label: 'Ignored', value: 'ignored' },
+              { label: 'All', value: 'all' },
+            ]}
+          />
         </div>
       </div>
-
-      <Segmented<IssueTab>
-        value={tab}
-        onChange={setTab}
-        options={[{ label: 'All', value: 'all' }, { label: 'Crashes', value: 'crash' }, { label: 'Errors', value: 'error' }]}
-      />
-
-      <Alert type="info" message="Crash groups are clustered by stack trace. Open one to see the trace, affected devices and occurrences." />
 
       <div className="pg-grid2">
         <Card title="Crashes" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--crash">{fmtK(total)}</span><span className="pg-charttotal__label">total</span></span>}>
           <AreaChart data={series} color="var(--bnn-danger)" height={150} />
         </Card>
-        <Card title="Errors" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--error">0</span><span className="pg-charttotal__label">total</span></span>}>
-          <AreaChart data={[]} color="var(--bnn-warning)" height={150} />
+        <Card title="Crash-free sessions" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--ok">{cfLast}</span><span className="pg-charttotal__label">latest</span></span>}>
+          <AreaChart data={cfSeries} color="var(--bnn-success)" height={150} />
         </Card>
       </div>
 
-      <Card title="Groups" padded={false}>
+      <Card title="Issues" padded={false}>
         <Loaded state={groups}>
-          {() => (
+          {(page) => (
             <Table<CrashGroup>
               columns={columns}
-              data={rows}
+              data={page.items}
               rowKey={(r) => r.id}
-              pageSize={10}
+              pageSize={15}
               emptyText="No crashes reported in this period"
-              onRowClick={(r) => navigate(`/next/apps/${appId}/diagnostics/issues/${r.id}`)}
+              onRowClick={(r) => navigate(`/apps/${appId}/diagnostics/issues/${r.id}`)}
             />
           )}
         </Loaded>

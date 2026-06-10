@@ -513,3 +513,49 @@
 .bnn-text--lg {
   font-size: var(--bnn-fs-lg);
 }
+
+/* ----------------------------------------------------------- Timeline */
+.bnn-timeline {
+  display: flex;
+  flex-direction: column;
+}
+.bnn-timeline__item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+.bnn-timeline__item:last-child {
+  padding-bottom: 0;
+}
+.bnn-timeline__item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--bnn-border-strong);
+}
+.bnn-timeline__dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--bnn-primary);
+  background: var(--bnn-surface);
+}
+.bnn-timeline__body {
+  min-width: 0;
+}
+.bnn-timeline__content {
+  font-size: var(--bnn-fs-md);
+  color: var(--bnn-text);
+  word-break: break-word;
+}
+.bnn-timeline__meta {
+  margin-top: 1px;
+  font-size: var(--bnn-fs-sm);
+  color: var(--bnn-text-tertiary);
+}

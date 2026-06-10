@@ -53,12 +53,12 @@ export default function AccountPage() {
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/next" className="home-brand">
+        <Link to="/" className="home-brand">
           <img src="/banana.svg" width={22} height={22} alt="" />
           <span>Bananalytics</span>
         </Link>
         <div className="home-top__right">
-          <Link className="home-docs" to="/next/docs">
+          <Link className="home-docs" to="/docs">
             <Icons.IconBook size={15} />
             <span>Go to docs</span>
           </Link>
@@ -67,7 +67,7 @@ export default function AccountPage() {
           </button>
           <Dropdown
             items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/next/account') },
+              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
               { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
             ]}
           >
@@ -81,7 +81,7 @@ export default function AccountPage() {
       </header>
 
       <main className="acct">
-        <Link to="/next" className="acct-back">
+        <Link to="/" className="acct-back">
           <Icons.IconChevronLeft size={15} />
           <span>All apps</span>
         </Link>
