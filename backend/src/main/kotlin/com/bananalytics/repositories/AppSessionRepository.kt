@@ -1,12 +1,10 @@
 package com.bananalytics.repositories
 
 import com.bananalytics.models.AppSessions
+import com.bananalytics.models.Events
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.*
 
 data class SessionStats(
@@ -43,7 +41,7 @@ object AppSessionRepository {
         hasEvent: Boolean = false
     ): Boolean = transaction {
         val now = OffsetDateTime.now()
-        
+
         val existing = AppSessions.selectAll()
             .where { (AppSessions.appId eq appId) and (AppSessions.sessionId eq sessionId) }
             .singleOrNull()
@@ -83,7 +81,8 @@ object AppSessionRepository {
     }
 
     /**
-     * Get crash-free session statistics by day
+     * Get crash-free session statistics by day. Aggregated in SQL so only
+     * one row per day crosses the wire.
      */
     fun getCrashFreeStats(
         appId: UUID,
@@ -91,42 +90,40 @@ object AppSessionRepository {
         toDate: OffsetDateTime,
         versionCode: Long? = null
     ): List<SessionStats> = transaction {
-        val sessions = AppSessions.selectAll()
-            .where {
-                (AppSessions.appId eq appId) and
-                (AppSessions.firstSeen greaterEq fromDate) and
-                (AppSessions.firstSeen lessEq toDate)
-            }
-            .let { query ->
-                if (versionCode != null) {
-                    query.andWhere { AppSessions.versionCode eq versionCode }
-                } else {
-                    query
-                }
-            }
-            .map {
-                Triple(
-                    it[AppSessions.firstSeen].toLocalDate(),
-                    it[AppSessions.hasCrash],
-                    it[AppSessions.versionCode]
+        val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
+        val args = buildList {
+            add(Events.appId.columnType to appId)
+            add(AppSessions.firstSeen.columnType to fromDate)
+            add(AppSessions.firstSeen.columnType to toDate)
+            if (versionCode != null) add(Events.id.columnType to versionCode)
+        }
+        exec(
+            """
+            SELECT (first_seen AT TIME ZONE 'UTC')::date AS day,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE NOT has_crash) AS crash_free
+            FROM app_sessions
+            WHERE app_id = ? AND first_seen >= ? AND first_seen <= ? $versionFilter
+            GROUP BY 1
+            ORDER BY 1
+            """.trimIndent(),
+            args
+        ) { rs ->
+            val results = mutableListOf<SessionStats>()
+            while (rs.next()) {
+                val total = rs.getLong("total")
+                val crashFree = rs.getLong("crash_free")
+                results.add(
+                    SessionStats(
+                        date = rs.getString("day"),
+                        totalSessions = total,
+                        crashFreeSessions = crashFree,
+                        crashFreeRate = if (total > 0) (crashFree.toDouble() / total * 100) else 100.0
+                    )
                 )
             }
-
-        // Group by date
-        sessions
-            .groupBy { it.first }
-            .map { (date, daySessions) ->
-                val total = daySessions.size.toLong()
-                val crashFree = daySessions.count { !it.second }.toLong()
-                val rate = if (total > 0) (crashFree.toDouble() / total * 100) else 100.0
-                SessionStats(
-                    date = date.toString(),
-                    totalSessions = total,
-                    crashFreeSessions = crashFree,
-                    crashFreeRate = rate
-                )
-            }
-            .sortedBy { it.date }
+            results
+        } ?: emptyList()
     }
 
     /**
@@ -137,43 +134,37 @@ object AppSessionRepository {
         fromDate: OffsetDateTime,
         toDate: OffsetDateTime
     ): List<UniqueSessionStats> = transaction {
-        val sessions = AppSessions.selectAll()
-            .where {
-                (AppSessions.appId eq appId) and
-                (AppSessions.firstSeen greaterEq fromDate) and
-                (AppSessions.firstSeen lessEq toDate) and
-                (AppSessions.hasEvent eq true)
-            }
-            .map {
-                Triple(
-                    it[AppSessions.firstSeen].toLocalDate(),
-                    it[AppSessions.versionCode],
-                    1
+        exec(
+            """
+            SELECT (s.first_seen AT TIME ZONE 'UTC')::date AS day,
+                   s.version_code,
+                   v.version_name,
+                   COUNT(*) AS count
+            FROM app_sessions s
+            LEFT JOIN app_versions v ON v.app_id = s.app_id AND v.version_code = s.version_code
+            WHERE s.app_id = ? AND s.first_seen >= ? AND s.first_seen <= ? AND s.has_event
+            GROUP BY 1, 2, 3
+            ORDER BY 1, 2
+            """.trimIndent(),
+            listOf(
+                Events.appId.columnType to appId,
+                AppSessions.firstSeen.columnType to fromDate,
+                AppSessions.firstSeen.columnType to toDate
+            )
+        ) { rs ->
+            val results = mutableListOf<UniqueSessionStats>()
+            while (rs.next()) {
+                results.add(
+                    UniqueSessionStats(
+                        date = rs.getString("day"),
+                        versionCode = rs.getLong("version_code"),
+                        versionName = rs.getString("version_name"),
+                        count = rs.getLong("count")
+                    )
                 )
             }
-
-        // Get version names
-        val versionCodes = sessions.map { it.second }.distinct()
-        val versionNames = com.bananalytics.models.AppVersions
-            .select(com.bananalytics.models.AppVersions.versionCode, com.bananalytics.models.AppVersions.versionName)
-            .where { 
-                (com.bananalytics.models.AppVersions.appId eq appId) and 
-                (com.bananalytics.models.AppVersions.versionCode inList versionCodes) 
-            }
-            .associate { it[com.bananalytics.models.AppVersions.versionCode] to it[com.bananalytics.models.AppVersions.versionName] }
-
-        // Group by date and version
-        sessions
-            .groupBy { Pair(it.first, it.second) }
-            .map { (key, daySessions) ->
-                UniqueSessionStats(
-                    date = key.first.toString(),
-                    versionCode = key.second,
-                    versionName = versionNames[key.second],
-                    count = daySessions.size.toLong()
-                )
-            }
-            .sortedWith(compareBy({ it.date }, { it.versionCode }))
+            results
+        } ?: emptyList()
     }
 
     /**
@@ -185,31 +176,34 @@ object AppSessionRepository {
         fromDate: OffsetDateTime,
         toDate: OffsetDateTime
     ): List<DailyActivityStats> = transaction {
-        val rows = AppSessions.selectAll()
-            .where {
-                (AppSessions.appId eq appId) and
-                (AppSessions.firstSeen greaterEq fromDate) and
-                (AppSessions.firstSeen lessEq toDate) and
-                (AppSessions.hasEvent eq true)
-            }
-            .map {
-                Pair(
-                    it[AppSessions.firstSeen].toLocalDate(),
-                    it[AppSessions.deviceId]
+        exec(
+            """
+            SELECT (first_seen AT TIME ZONE 'UTC')::date AS day,
+                   COUNT(*) AS sessions,
+                   COUNT(DISTINCT device_id) AS users
+            FROM app_sessions
+            WHERE app_id = ? AND first_seen >= ? AND first_seen <= ? AND has_event
+            GROUP BY 1
+            ORDER BY 1
+            """.trimIndent(),
+            listOf(
+                Events.appId.columnType to appId,
+                AppSessions.firstSeen.columnType to fromDate,
+                AppSessions.firstSeen.columnType to toDate
+            )
+        ) { rs ->
+            val results = mutableListOf<DailyActivityStats>()
+            while (rs.next()) {
+                results.add(
+                    DailyActivityStats(
+                        date = rs.getString("day"),
+                        sessions = rs.getLong("sessions"),
+                        users = rs.getLong("users")
+                    )
                 )
             }
-
-        // Group by date: count sessions and distinct devices (= active users)
-        rows
-            .groupBy { it.first }
-            .map { (date, dayRows) ->
-                DailyActivityStats(
-                    date = date.toString(),
-                    sessions = dayRows.size.toLong(),
-                    users = dayRows.mapNotNull { it.second }.distinct().size.toLong()
-                )
-            }
-            .sortedBy { it.date }
+            results
+        } ?: emptyList()
     }
 
     /**
@@ -221,49 +215,43 @@ object AppSessionRepository {
         toDate: OffsetDateTime,
         versionCode: Long? = null
     ): List<UniqueSessionStats> = transaction {
-        var query = AppSessions.selectAll()
-            .where {
-                (AppSessions.appId eq appId) and
-                (AppSessions.firstSeen greaterEq fromDate) and
-                (AppSessions.firstSeen lessEq toDate)
-            }
-        
-        if (versionCode != null) {
-            query = query.andWhere { AppSessions.versionCode eq versionCode }
+        val versionFilter = if (versionCode != null) "AND s.version_code = ?" else ""
+        val args = buildList {
+            add(Events.appId.columnType to appId)
+            add(AppSessions.firstSeen.columnType to fromDate)
+            add(AppSessions.firstSeen.columnType to toDate)
+            if (versionCode != null) add(Events.id.columnType to versionCode)
         }
-        
-        val sessions = query.map {
-                Triple(
-                    it[AppSessions.firstSeen].toLocalDate(),
-                    it[AppSessions.versionCode],
-                    if (it[AppSessions.hasCrash]) 0 else 1
-                )
-            }
-
-        // Get version names
-        val versionCodes = sessions.map { it.second }.distinct()
-        val versionNames = com.bananalytics.models.AppVersions
-            .select(com.bananalytics.models.AppVersions.versionCode, com.bananalytics.models.AppVersions.versionName)
-            .where { 
-                (com.bananalytics.models.AppVersions.appId eq appId) and 
-                (com.bananalytics.models.AppVersions.versionCode inList versionCodes) 
-            }
-            .associate { it[com.bananalytics.models.AppVersions.versionCode] to it[com.bananalytics.models.AppVersions.versionName] }
-
-        // Group by date and version, count crash-free sessions
-        sessions
-            .groupBy { Pair(it.first, it.second) }
-            .map { (key, daySessions) ->
-                val total = daySessions.size
-                val crashFree = daySessions.sumOf { it.third }
+        exec(
+            """
+            SELECT (s.first_seen AT TIME ZONE 'UTC')::date AS day,
+                   s.version_code,
+                   v.version_name,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE NOT s.has_crash) AS crash_free
+            FROM app_sessions s
+            LEFT JOIN app_versions v ON v.app_id = s.app_id AND v.version_code = s.version_code
+            WHERE s.app_id = ? AND s.first_seen >= ? AND s.first_seen <= ? $versionFilter
+            GROUP BY 1, 2, 3
+            ORDER BY 1, 2
+            """.trimIndent(),
+            args
+        ) { rs ->
+            val results = mutableListOf<UniqueSessionStats>()
+            while (rs.next()) {
+                val total = rs.getLong("total")
+                val crashFree = rs.getLong("crash_free")
                 val rate = if (total > 0) (crashFree.toDouble() / total * 100) else 100.0
-                UniqueSessionStats(
-                    date = key.first.toString(),
-                    versionCode = key.second,
-                    versionName = versionNames[key.second],
-                    count = (rate * 10).toLong() // Store rate * 10 for precision
+                results.add(
+                    UniqueSessionStats(
+                        date = rs.getString("day"),
+                        versionCode = rs.getLong("version_code"),
+                        versionName = rs.getString("version_name"),
+                        count = (rate * 10).toLong() // Store rate * 10 for precision
+                    )
                 )
             }
-            .sortedWith(compareBy({ it.date }, { it.versionCode }))
+            results
+        } ?: emptyList()
     }
 }

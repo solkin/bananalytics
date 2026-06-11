@@ -26,10 +26,10 @@ function byVersion(rows: { version_code: number; version_name: string | null; co
 export default function OverviewPage() {
   const { appId } = useParams()
   const [range, setRange] = useState(28)
-  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(28)), [appId])
-  const act = useAsync(() => getDailyActivity(appId!, fromTo(range)), [appId, range])
-  const dev = useAsync(() => getDeviceStats(appId!, { limit: 6 }), [appId])
-  const cf = useAsync(() => getCrashFreeStats(appId!, fromTo(range)), [appId, range])
+  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(28)), [appId], { key: `sessions-unique:${appId}:28` })
+  const act = useAsync(() => getDailyActivity(appId!, fromTo(range)), [appId, range], { key: `activity:${appId}:${range}` })
+  const dev = useAsync(() => getDeviceStats(appId!, { limit: 6 }), [appId], { key: `device-stats:${appId}:6:all` })
+  const cf = useAsync(() => getCrashFreeStats(appId!, fromTo(range)), [appId, range], { key: `crash-free:${appId}:${range}` })
 
   const sessRows = sess.data ?? []
   const actRows = act.data ?? []

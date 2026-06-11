@@ -6,6 +6,21 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/**
+ * Run a blocking Exposed transaction off the request coroutine so slow
+ * queries don't stall Ktor worker threads.
+ */
+suspend fun <T> dbIO(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+
+/**
+ * Analytics responses tolerate short staleness; let the browser reuse them.
+ */
+fun ApplicationCall.cacheStatsFor(seconds: Int = 60) {
+    response.header(HttpHeaders.CacheControl, "private, max-age=$seconds")
+}
 
 fun Application.configureRouting() {
     install(CORS) {

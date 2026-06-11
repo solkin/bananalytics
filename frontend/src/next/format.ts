@@ -29,7 +29,10 @@ export function relTime(iso: string): string {
 export const cap = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
 export function fromTo(days: number): { from: string; to: string } {
-  const now = Date.now()
+  // Round `to` up to a 5-minute boundary so repeated calls produce identical
+  // URLs — that lets the SWR cache and the browser HTTP cache actually hit.
+  const STEP = 5 * 60 * 1000
+  const now = Math.ceil(Date.now() / STEP) * STEP
   return {
     from: new Date(now - days * 86400000).toISOString(),
     to: new Date(now).toISOString(),

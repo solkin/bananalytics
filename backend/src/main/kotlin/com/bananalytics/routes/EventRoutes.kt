@@ -37,8 +37,9 @@ fun Route.eventRoutes() {
             now.minusDays(14)
         }
 
-        val stats = AppSessionRepository.getUniqueSessionsByVersion(appId, fromDate, toDate)
+        val stats = dbIO { AppSessionRepository.getUniqueSessionsByVersion(appId, fromDate, toDate) }
             .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -57,8 +58,9 @@ fun Route.eventRoutes() {
         val toDate = if (toParam != null) OffsetDateTime.parse(toParam) else now
         val fromDate = if (fromParam != null) OffsetDateTime.parse(fromParam) else now.minusDays(14)
 
-        val stats = AppSessionRepository.getDailyActivity(appId, fromDate, toDate)
+        val stats = dbIO { AppSessionRepository.getDailyActivity(appId, fromDate, toDate) }
             .map { DailyActivityResponse(it.date, it.sessions, it.users) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -71,7 +73,8 @@ fun Route.eventRoutes() {
         requireAppAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
-        val summary = EventRepository.getEventSummary(appId, versionCode)
+        val summary = dbIO { EventRepository.getEventSummary(appId, versionCode) }
+        call.cacheStatsFor()
         call.respond(summary)
     }
 
@@ -83,7 +86,8 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val versions = EventRepository.getVersionCodes(appId)
+        val versions = dbIO { EventRepository.getVersionCodes(appId) }
+        call.cacheStatsFor()
         call.respond(versions)
     }
 
@@ -101,13 +105,15 @@ fun Route.eventRoutes() {
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50
 
-        val result = EventRepository.findByAppIdAndName(
-            appId = appId,
-            eventName = eventName,
-            versionCode = versionCode,
-            page = page,
-            pageSize = pageSize
-        )
+        val result = dbIO {
+            EventRepository.findByAppIdAndName(
+                appId = appId,
+                eventName = eventName,
+                versionCode = versionCode,
+                page = page,
+                pageSize = pageSize
+            )
+        }
 
         call.respond(result)
     }
@@ -137,7 +143,8 @@ fun Route.eventRoutes() {
             now.minusDays(14)
         }
 
-        val stats = EventRepository.getEventStatsByName(appId, eventName, fromDate, toDate)
+        val stats = dbIO { EventRepository.getEventStatsByName(appId, eventName, fromDate, toDate) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -151,7 +158,8 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val versions = EventRepository.getVersionsForEvent(appId, eventName)
+        val versions = dbIO { EventRepository.getVersionsForEvent(appId, eventName) }
+        call.cacheStatsFor()
         call.respond(versions)
     }
 
@@ -170,15 +178,17 @@ fun Route.eventRoutes() {
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50
 
-        val result = EventRepository.findByAppId(
-            appId = appId,
-            eventName = eventName,
-            versionCode = versionCode,
-            fromTime = fromTime,
-            toTime = toTime,
-            page = page,
-            pageSize = pageSize
-        )
+        val result = dbIO {
+            EventRepository.findByAppId(
+                appId = appId,
+                eventName = eventName,
+                versionCode = versionCode,
+                fromTime = fromTime,
+                toTime = toTime,
+                page = page,
+                pageSize = pageSize
+            )
+        }
 
         call.respond(result)
     }
@@ -191,7 +201,7 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val names = EventRepository.getEventNames(appId)
+        val names = dbIO { EventRepository.getEventNames(appId) }
         call.respond(names)
     }
 
@@ -203,7 +213,7 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val count = EventRepository.countByAppId(appId)
+        val count = dbIO { EventRepository.countByAppId(appId) }
         call.respond(mapOf("count" to count))
     }
 
@@ -218,7 +228,8 @@ fun Route.eventRoutes() {
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
 
-        val stats = EventRepository.getDeviceStats(appId, versionCode, limit)
+        val stats = dbIO { EventRepository.getDeviceStats(appId, versionCode, limit) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 }
@@ -235,8 +246,8 @@ private fun String.toOffsetDateTimeOrNull(): OffsetDateTime? = try {
     null
 }
 
-private fun requireAppAccess(appId: UUID, user: UserResponse) {
-    if (!AppAccessRepository.hasAccess(appId, UUID.fromString(user.id))) {
+private suspend fun requireAppAccess(appId: UUID, user: UserResponse) {
+    if (!dbIO { AppAccessRepository.hasAccess(appId, UUID.fromString(user.id)) }) {
         throw NotFoundException("App not found")
     }
 }

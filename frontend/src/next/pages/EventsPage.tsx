@@ -22,9 +22,9 @@ export default function EventsPage() {
   const days = Number(get('days', '28')) || 28
   const version = get('version') ? Number(get('version')) : undefined
 
-  const versions = useAsync(() => getEventVersions(appId!), [appId])
-  const state = useAsync(() => getEventSummary(appId!, version), [appId, version])
-  const sessions = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days])
+  const versions = useAsync(() => getEventVersions(appId!), [appId], { key: `event-versions:${appId}` })
+  const state = useAsync(() => getEventSummary(appId!, version), [appId, version], { key: `event-summary:${appId}:${version ?? 'all'}` })
+  const sessions = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days], { key: `sessions-unique:${appId}:${days}` })
 
   const columns: Column<EventSummary>[] = [
     { key: 'name', title: 'Name', render: (r) => <Text mono>{r.name}</Text> },

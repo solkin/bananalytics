@@ -10,18 +10,53 @@ export interface AsyncState<T> {
   error: string | null
 }
 
-export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
-  const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null })
+export interface AsyncOpts {
+  /** Cache key — same key across pages shares one cached response. */
+  key?: string
+  /** How long a cached value is served without refetching. Default 60s. */
+  ttlMs?: number
+}
+
+/* Module-level stale-while-revalidate cache: a keyed hook renders the cached
+   value instantly on mount/navigation and only hits the network when the
+   entry is stale. In-flight promises are shared so parallel mounts dedupe. */
+const swrCache = new Map<string, { time: number; value: unknown }>()
+const swrInflight = new Map<string, Promise<unknown>>()
+
+export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncOpts) {
+  const key = opts?.key
+  const ttlMs = opts?.ttlMs ?? 60_000
+  const [state, setState] = useState<AsyncState<T>>(() => {
+    const entry = key ? swrCache.get(key) : undefined
+    return entry
+      ? { data: entry.value as T, loading: false, error: null }
+      : { data: null, loading: true, error: null }
+  })
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
     let alive = true
-    setState((s) => ({ ...s, loading: true, error: null }))
-    fn().then(
+    const entry = key ? swrCache.get(key) : undefined
+    if (entry) {
+      setState({ data: entry.value as T, loading: false, error: null })
+      const fresh = Date.now() - entry.time < ttlMs
+      if (fresh && nonce === 0) return // served from cache; reload() still forces a refetch
+    } else {
+      setState((s) => ({ ...s, loading: true, error: null }))
+    }
+    const pending = key ? (swrInflight.get(key) as Promise<T> | undefined) : undefined
+    const run = pending ?? fn()
+    if (key && !pending) swrInflight.set(key, run)
+    run.then(
       (data) => {
+        if (key) {
+          swrCache.set(key, { time: Date.now(), value: data })
+          swrInflight.delete(key)
+        }
         if (alive) setState({ data, loading: false, error: null })
       },
       (err: unknown) => {
+        if (key) swrInflight.delete(key)
         if (alive) {
           setState({ data: null, loading: false, error: err instanceof Error ? err.message : 'Failed to load' })
         }

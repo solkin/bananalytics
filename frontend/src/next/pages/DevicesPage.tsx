@@ -24,9 +24,9 @@ export default function DevicesPage() {
   const days = Number(get('days', '28')) || 28
   const version = get('version') ? Number(get('version')) : undefined
 
-  const versions = useAsync(() => getEventVersions(appId!), [appId])
-  const dev = useAsync(() => getDeviceStats(appId!, { limit: 8, version }), [appId, version])
-  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days])
+  const versions = useAsync(() => getEventVersions(appId!), [appId], { key: `event-versions:${appId}` })
+  const dev = useAsync(() => getDeviceStats(appId!, { limit: 8, version }), [appId, version], { key: `device-stats:${appId}:8:${version ?? 'all'}` })
+  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days], { key: `sessions-unique:${appId}:${days}` })
 
   return (
     <div className="pg">

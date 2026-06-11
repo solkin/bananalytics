@@ -40,8 +40,9 @@ fun Route.crashRoutes() {
             now.minusDays(14)
         }
 
-        val stats = AppSessionRepository.getCrashFreeStats(appId, fromDate, toDate)
+        val stats = dbIO { AppSessionRepository.getCrashFreeStats(appId, fromDate, toDate) }
             .map { CrashFreeStatsResponse(it.date, it.totalSessions, it.crashFreeSessions, it.crashFreeRate) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -69,8 +70,9 @@ fun Route.crashRoutes() {
             now.minusDays(14)
         }
 
-        val stats = AppSessionRepository.getCrashFreeStatsByVersion(appId, fromDate, toDate, versionCode)
+        val stats = dbIO { AppSessionRepository.getCrashFreeStatsByVersion(appId, fromDate, toDate, versionCode) }
             .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -98,7 +100,8 @@ fun Route.crashRoutes() {
             now.minusDays(14)
         }
 
-        val stats = CrashRepository.getCrashStatsByAppId(appId, fromDate, toDate, versionCode)
+        val stats = dbIO { CrashRepository.getCrashStatsByAppId(appId, fromDate, toDate, versionCode) }
+        call.cacheStatsFor()
         call.respond(stats)
     }
 
@@ -322,8 +325,8 @@ private fun String.toUUIDOrNull(): UUID? = try {
     null
 }
 
-private fun requireAppAccess(appId: UUID, user: UserResponse) {
-    if (!AppAccessRepository.hasAccess(appId, UUID.fromString(user.id))) {
+private suspend fun requireAppAccess(appId: UUID, user: UserResponse) {
+    if (!dbIO { AppAccessRepository.hasAccess(appId, UUID.fromString(user.id)) }) {
         throw NotFoundException("App not found")
     }
 }

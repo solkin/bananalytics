@@ -84,19 +84,27 @@ object EventRepository {
         fromDate: OffsetDateTime,
         toDate: OffsetDateTime
     ): List<DailyStat> = transaction {
-        Events
-            .select(Events.createdAt)
-            .where { 
-                (Events.appId eq appId) and 
-                (Events.name eq eventName) and
-                (Events.createdAt greaterEq fromDate) and 
-                (Events.createdAt lessEq toDate) 
+        exec(
+            """
+            SELECT (created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*) AS count
+            FROM events
+            WHERE app_id = ? AND name = ? AND created_at >= ? AND created_at <= ?
+            GROUP BY 1
+            ORDER BY 1
+            """.trimIndent(),
+            listOf(
+                Events.appId.columnType to appId,
+                Events.name.columnType to eventName,
+                Events.createdAt.columnType to fromDate,
+                Events.createdAt.columnType to toDate
+            )
+        ) { rs ->
+            val results = mutableListOf<DailyStat>()
+            while (rs.next()) {
+                results.add(DailyStat(rs.getString("day"), rs.getLong("count")))
             }
-            .map { it[Events.createdAt].toLocalDate() }
-            .groupingBy { it }
-            .eachCount()
-            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
-            .sortedBy { it.date }
+            results
+        } ?: emptyList()
     }
 
     fun getVersionsForEvent(appId: UUID, eventName: String): List<EventVersionStats> = transaction {
@@ -123,24 +131,13 @@ object EventRepository {
     }
 
     fun getVersionCodes(appId: UUID): List<VersionInfo> = transaction {
-        val eventVersionCodes = Events
-            .select(Events.versionCode)
-            .where { (Events.appId eq appId) and Events.versionCode.isNotNull() }
-            .withDistinct()
-            .mapNotNull { it[Events.versionCode] }
-            .toSet()
-
-        val versionNames = AppVersions
+        // app_versions is auto-populated at ingest, so it covers every version that
+        // has events — no need for a DISTINCT scan over the events table.
+        AppVersions
             .select(AppVersions.versionCode, AppVersions.versionName)
-            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode inList eventVersionCodes) }
-            .associate { it[AppVersions.versionCode] to it[AppVersions.versionName] }
-
-        eventVersionCodes.map { code ->
-            VersionInfo(
-                versionCode = code,
-                versionName = versionNames[code]
-            )
-        }.sortedByDescending { it.versionCode }
+            .where { AppVersions.appId eq appId }
+            .orderBy(AppVersions.versionCode, SortOrder.DESC)
+            .map { VersionInfo(it[AppVersions.versionCode], it[AppVersions.versionName]) }
     }
 
     fun findByAppId(
@@ -182,7 +179,7 @@ object EventRepository {
         events: List<EventData>,
         deviceInfo: DeviceInfo
     ): Int = transaction {
-        Events.batchInsert(events) { event ->
+        val inserted = Events.batchInsert(events) { event ->
             this[Events.appId] = appId
             this[Events.versionCode] = versionCode
             this[Events.name] = event.name
@@ -194,6 +191,40 @@ object EventRepository {
                 ZoneOffset.UTC
             )
         }.size
+
+        // Maintain the device_stats_daily rollup: the whole batch shares one device,
+        // so it is at most 4 upserts per day covered by the batch.
+        val dimensions = listOf(
+            "model" to "${deviceInfo.manufacturer} ${deviceInfo.model}".trim().ifEmpty { "Unknown" },
+            "os" to deviceInfo.osVersion.toString(),
+            "country" to deviceInfo.country.uppercase().ifEmpty { "Unknown" },
+            "language" to deviceInfo.language.ifEmpty { "Unknown" }
+        )
+        events
+            .groupingBy { Instant.ofEpochMilli(it.time).atOffset(ZoneOffset.UTC).toLocalDate() }
+            .eachCount()
+            .forEach { (day, count) ->
+                dimensions.forEach { (dimension, name) ->
+                    exec(
+                        """
+                        INSERT INTO device_stats_daily (app_id, dimension, version_code, day, name, count)
+                        VALUES (?, ?, ?, ?::date, ?, ?)
+                        ON CONFLICT (app_id, dimension, version_code, day, name)
+                        DO UPDATE SET count = device_stats_daily.count + EXCLUDED.count
+                        """.trimIndent(),
+                        listOf(
+                            Events.appId.columnType to appId,
+                            Events.name.columnType to dimension,
+                            Events.id.columnType to versionCode,
+                            Events.name.columnType to day.toString(),
+                            Events.name.columnType to name,
+                            Events.id.columnType to count.toLong()
+                        )
+                    )
+                }
+            }
+
+        inserted
     }
 
     fun countByAppId(appId: UUID): Long = transaction {
@@ -205,86 +236,47 @@ object EventRepository {
         versionCode: Long? = null,
         limit: Int = 10
     ): DeviceStatsResponse = transaction {
-        val versionFilter = if (versionCode != null) "AND version_code = $versionCode" else ""
-        
-        // Aggregate by model (manufacturer + model) using SQL
-        val modelCounts = exec("""
-            SELECT 
-                CONCAT(device_info->>'manufacturer', ' ', device_info->>'model') as name,
-                COUNT(*) as count
-            FROM events
-            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
-            GROUP BY device_info->>'manufacturer', device_info->>'model'
-            ORDER BY count DESC
-            LIMIT $limit
-        """.trimIndent()) { rs ->
-            val results = mutableListOf<DeviceStatItem>()
-            while (rs.next()) {
-                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
-            }
-            results
-        } ?: emptyList()
-
-        // Aggregate by OS version using SQL
-        val osCounts = exec("""
-            SELECT 
-                CONCAT('Android ', device_info->>'os_version') as name,
-                COUNT(*) as count
-            FROM events
-            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
-            GROUP BY device_info->>'os_version'
-            ORDER BY count DESC
-            LIMIT $limit
-        """.trimIndent()) { rs ->
-            val results = mutableListOf<DeviceStatItem>()
-            while (rs.next()) {
-                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
-            }
-            results
-        } ?: emptyList()
-
-        // Aggregate by country using SQL
-        val countryCounts = exec("""
-            SELECT 
-                UPPER(device_info->>'country') as name,
-                COUNT(*) as count
-            FROM events
-            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
-            GROUP BY device_info->>'country'
-            ORDER BY count DESC
-            LIMIT $limit
-        """.trimIndent()) { rs ->
-            val results = mutableListOf<DeviceStatItem>()
-            while (rs.next()) {
-                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
-            }
-            results
-        } ?: emptyList()
-
-        // Aggregate by language using SQL
-        val languageCounts = exec("""
-            SELECT 
-                device_info->>'language' as name,
-                COUNT(*) as count
-            FROM events
-            WHERE app_id = '$appId' AND device_info IS NOT NULL $versionFilter
-            GROUP BY device_info->>'language'
-            ORDER BY count DESC
-            LIMIT $limit
-        """.trimIndent()) { rs ->
-            val results = mutableListOf<DeviceStatItem>()
-            while (rs.next()) {
-                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
-            }
-            results
-        } ?: emptyList()
-
         DeviceStatsResponse(
-            models = modelCounts,
-            osVersions = osCounts,
-            countries = countryCounts,
-            languages = languageCounts
+            models = topDeviceStats(appId, "model", versionCode, limit),
+            osVersions = topDeviceStats(appId, "os", versionCode, limit) { name ->
+                if (name == "Unknown") name else "Android $name"
+            },
+            countries = topDeviceStats(appId, "country", versionCode, limit),
+            languages = topDeviceStats(appId, "language", versionCode, limit)
         )
+    }
+
+    private fun Transaction.topDeviceStats(
+        appId: UUID,
+        dimension: String,
+        versionCode: Long?,
+        limit: Int,
+        display: (String) -> String = { it }
+    ): List<DeviceStatItem> {
+        val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
+        val args = buildList {
+            add(Events.appId.columnType to appId)
+            add(Events.name.columnType to dimension)
+            if (versionCode != null) add(Events.id.columnType to versionCode)
+            add(Events.id.columnType to limit.toLong())
+        }
+        return exec(
+            """
+            SELECT name, SUM(count) AS count
+            FROM device_stats_daily
+            WHERE app_id = ? AND dimension = ? $versionFilter
+            GROUP BY name
+            ORDER BY count DESC
+            LIMIT ?
+            """.trimIndent(),
+            args
+        ) { rs ->
+            val results = mutableListOf<DeviceStatItem>()
+            while (rs.next()) {
+                results.add(DeviceStatItem(display(rs.getString("name") ?: "Unknown"), rs.getLong("count")))
+            }
+            results
+        } ?: emptyList()
     }
 
     private fun ResultRow.toEventResponse() = EventResponse(
