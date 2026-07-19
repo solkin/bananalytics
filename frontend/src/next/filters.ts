@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 /* Sticky page filters: the URL is the source of truth (shareable links),
@@ -7,13 +7,18 @@ export function useStickyFilters(storageKey: string) {
   const [params, setParams] = useSearchParams()
   const hasUrl = [...params.keys()].length > 0
 
-  const stored = useMemo<Record<string, string>>(() => {
+  const initialStored = useMemo<Record<string, string>>(() => {
     try {
       return JSON.parse(localStorage.getItem(storageKey) || '{}')
     } catch {
       return {}
     }
   }, [storageKey])
+  const [storedOverride, setStoredOverride] = useState<{
+    key: string
+    values: Record<string, string>
+  } | null>(null)
+  const stored = storedOverride?.key === storageKey ? storedOverride.values : initialStored
 
   const get = (key: string, fallback = ''): string =>
     params.get(key) ?? (hasUrl ? fallback : stored[key] ?? fallback)
@@ -27,11 +32,12 @@ export function useStickyFilters(storageKey: string) {
       else next.set(k, v)
     }
     setParams(next, { replace: true })
+    const merged: Record<string, string> = {}
+    next.forEach((v, k) => {
+      merged[k] = v
+    })
+    setStoredOverride({ key: storageKey, values: merged })
     try {
-      const merged: Record<string, string> = {}
-      next.forEach((v, k) => {
-        merged[k] = v
-      })
       localStorage.setItem(storageKey, JSON.stringify(merged))
     } catch {
       /* storage unavailable — filters just won't persist */
