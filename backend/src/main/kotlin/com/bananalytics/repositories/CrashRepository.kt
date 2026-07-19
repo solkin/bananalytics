@@ -295,18 +295,49 @@ object CrashRepository {
      * @return Number of crashes deleted
      */
     fun deleteCrashesByVersionId(versionId: UUID): Int = transaction {
-        // Find affected group IDs before deletion
-        val affectedGroupIds = Crashes
-            .select(Crashes.groupId)
-            .where { Crashes.versionId eq versionId }
-            .mapNotNull { it[Crashes.groupId]?.value }
-            .toSet()
+        // Keep the affected groups transaction-locally. This lets PostgreSQL
+        // recalculate all of them with set-based statements after the delete,
+        // instead of issuing COUNT/UPDATE queries once per group.
+        exec(
+            """
+            CREATE TEMP TABLE affected_crash_groups ON COMMIT DROP AS
+            SELECT DISTINCT group_id
+            FROM crashes
+            WHERE version_id = '$versionId'::uuid AND group_id IS NOT NULL
+            """.trimIndent()
+        )
 
-        // Delete crashes
         val deletedCount = Crashes.deleteWhere { Crashes.versionId eq versionId }
 
-        // Recalculate stats for affected groups
-        recalculateGroupStats(affectedGroupIds)
+        exec(
+            """
+            UPDATE crash_groups AS crash_group
+            SET occurrences = stats.occurrences,
+                first_seen = stats.first_seen,
+                last_seen = stats.last_seen
+            FROM (
+                SELECT crash.group_id,
+                       COUNT(*)::integer AS occurrences,
+                       MIN(crash.created_at) AS first_seen,
+                       MAX(crash.created_at) AS last_seen
+                FROM crashes AS crash
+                JOIN affected_crash_groups AS affected ON affected.group_id = crash.group_id
+                GROUP BY crash.group_id
+            ) AS stats
+            WHERE crash_group.id = stats.group_id
+            """.trimIndent()
+        )
+
+        exec(
+            """
+            DELETE FROM crash_groups AS crash_group
+            USING affected_crash_groups AS affected
+            WHERE crash_group.id = affected.group_id
+              AND NOT EXISTS (
+                  SELECT 1 FROM crashes AS crash WHERE crash.group_id = crash_group.id
+              )
+            """.trimIndent()
+        )
 
         deletedCount
     }

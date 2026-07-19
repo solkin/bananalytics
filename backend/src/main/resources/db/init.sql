@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS crashes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_crashes_app_id ON crashes(app_id);
+CREATE INDEX IF NOT EXISTS idx_crashes_version_id ON crashes(version_id);
 CREATE INDEX IF NOT EXISTS idx_crashes_group_id ON crashes(group_id);
 CREATE INDEX IF NOT EXISTS idx_crashes_created_at ON crashes(created_at DESC);
 
@@ -125,6 +126,7 @@ CREATE TABLE IF NOT EXISTS events (
 ) PARTITION BY RANGE (created_at);
 
 CREATE INDEX IF NOT EXISTS idx_events_app_id ON events(app_id);
+CREATE INDEX IF NOT EXISTS idx_events_app_version ON events(app_id, version_code);
 CREATE INDEX IF NOT EXISTS idx_events_name ON events(app_id, name);
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 

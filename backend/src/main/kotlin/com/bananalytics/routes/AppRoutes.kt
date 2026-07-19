@@ -527,7 +527,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val deleted = VersionRepository.delete(versionId)
+            val deleted = dbIO { VersionRepository.delete(appId, versionId) }
             if (!deleted) {
                 throw NotFoundException("Version not found")
             }

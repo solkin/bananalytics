@@ -10,10 +10,12 @@ import com.bananalytics.services.StorageService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.util.*
 
 object VersionRepository {
+    private val logger = LoggerFactory.getLogger(VersionRepository::class.java)
 
     fun findByAppId(appId: UUID): List<AppVersionResponse> = transaction {
         AppVersions.selectAll()
@@ -166,22 +168,26 @@ object VersionRepository {
         }
     }
 
-    fun delete(id: UUID): Boolean {
+    fun delete(appId: UUID, id: UUID): Boolean {
         // First get the version info
         val version = transaction {
             AppVersions.selectAll()
-                .where { AppVersions.id eq id }
+                .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
                 .singleOrNull()
         } ?: return false
 
-        val appId = version[AppVersions.appId].value
         val versionCode = version[AppVersions.versionCode]
+        val storageKeys = listOfNotNull(
+            version[AppVersions.mappingPath],
+            version[AppVersions.apkPath]
+        )
 
-        // Delete files from storage
-        StorageService.deleteMapping(appId.toString(), versionCode)
-        StorageService.deleteApk(appId.toString(), versionCode)
+        val storageStartedAt = System.nanoTime()
+        StorageService.deleteFiles(storageKeys)
+        val storageDurationMs = (System.nanoTime() - storageStartedAt) / 1_000_000
 
-        return transaction {
+        val databaseStartedAt = System.nanoTime()
+        val deleted = transaction {
             // Delete download tokens for this version
             DownloadTokens.deleteWhere { DownloadTokens.versionId eq id }
 
@@ -191,12 +197,25 @@ object VersionRepository {
             // Delete events for this app and version_code
             Events.deleteWhere { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
 
+            // Keep pre-aggregated device statistics consistent with raw events.
+            exec(
+                "DELETE FROM device_stats_daily " +
+                    "WHERE app_id = '$appId'::uuid AND version_code = $versionCode"
+            )
+
             // Delete app sessions for this app and version_code
             AppSessions.deleteWhere { (AppSessions.appId eq appId) and (AppSessions.versionCode eq versionCode) }
 
             // Delete the version record
             AppVersions.deleteWhere { AppVersions.id eq id } > 0
         }
+        val databaseDurationMs = (System.nanoTime() - databaseStartedAt) / 1_000_000
+
+        logger.info(
+            "Deleted version {} (app={}, code={}): storage={}ms, database={}ms",
+            id, appId, versionCode, storageDurationMs, databaseDurationMs
+        )
+        return deleted
     }
 
     fun updateMuteSettings(id: UUID, muteCrashes: Boolean?, muteEvents: Boolean?): Boolean = transaction {

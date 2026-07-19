@@ -13,6 +13,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Spin,
   Switch,
   Table,
   Tag,
@@ -239,6 +240,8 @@ function ReleaseDrawer({
   const [notes, setNotes] = useState(version.release_notes ?? '')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<'apk' | 'mapping' | null>(null)
+  const [removingApk, setRemovingApk] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [link, setLink] = useState<string | null>(null)
   const [notifyOpen, setNotifyOpen] = useState(false)
 
@@ -281,6 +284,8 @@ function ReleaseDrawer({
   }
 
   const removeApk = async () => {
+    setRemovingApk(true)
+    const dismiss = toast.loading('Deleting APK…')
     try {
       await deleteApk(appId, version.id)
       onUpdated({ ...version, has_apk: false, apk_size: null, apk_filename: null, apk_uploaded_at: null })
@@ -288,10 +293,15 @@ function ReleaseDrawer({
       toast.success('APK deleted')
     } catch (e) {
       toast.error(errorText(e, 'Failed to delete APK'))
+    } finally {
+      dismiss()
+      setRemovingApk(false)
     }
   }
 
   const removeVersion = async () => {
+    setDeleting(true)
+    const dismiss = toast.loading('Deleting release and related data…')
     try {
       await deleteVersion(appId, version.id)
       toast.success('Release deleted')
@@ -299,6 +309,9 @@ function ReleaseDrawer({
       onChanged()
     } catch (e) {
       toast.error(errorText(e, 'Failed to delete release'))
+      setDeleting(false)
+    } finally {
+      dismiss()
     }
   }
 
@@ -312,8 +325,9 @@ function ReleaseDrawer({
   }
 
   return (
-    <Drawer open onClose={onClose} title={versionTitle(version)} width={480}>
-      <div className="rel-drawer">
+    <Drawer open onClose={deleting ? undefined : onClose} title={versionTitle(version)} width={480}>
+      <Spin spinning={deleting} tip="Deleting release and related data…">
+      <div className="rel-drawer" aria-busy={deleting}>
         <Descriptions
           column={1}
           size="sm"
@@ -378,7 +392,7 @@ function ReleaseDrawer({
               </Button>
               <Button icon={<Icons.IconExternalLink size={14} />} onClick={createLink}>Share link</Button>
               <Popconfirm title="Delete APK?" okText="Delete" okDanger onConfirm={removeApk}>
-                <Button variant="danger" icon={<Icons.IconTrash size={14} />}>Delete</Button>
+                <Button variant="danger" icon={<Icons.IconTrash size={14} />} loading={removingApk}>Delete</Button>
               </Popconfirm>
             </div>
             {link && (
@@ -432,14 +446,17 @@ function ReleaseDrawer({
         <Divider>Danger zone</Divider>
         <Popconfirm
           title="Delete this release?"
-          description="Events and sessions of this version are removed; crashes are unlinked but preserved."
+          description="Crashes, events, sessions, APK, and mapping for this version will be removed."
           okText="Delete"
           okDanger
           onConfirm={removeVersion}
         >
-          <Button variant="danger" icon={<Icons.IconTrash size={14} />} block>Delete release</Button>
+          <Button variant="danger" icon={<Icons.IconTrash size={14} />} loading={deleting} block>
+            {deleting ? 'Deleting release…' : 'Delete release'}
+          </Button>
         </Popconfirm>
       </div>
+      </Spin>
 
       {notifyOpen && (
         <NotifyTestersModal
