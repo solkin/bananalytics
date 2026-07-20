@@ -356,6 +356,35 @@
 .pg-person__tag {
   margin-left: 8px;
 }
+.people-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.people-detail__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.people-detail__identity > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.people-detail__name {
+  font-size: var(--bnn-fs-lg);
+  font-weight: 600;
+}
+.people-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.people-detail__danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 
 .pg-charttotal__num--ok {
   color: var(--bnn-success);
@@ -377,7 +406,21 @@
 .iss-picker {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+}
+.iss-picker__controls {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.iss-picker__controls .bnn-btn {
+  width: var(--bnn-control-sm);
+  padding: 0;
+}
+.iss-picker__count {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* Search row embedded in an unpadded table card */
@@ -408,7 +451,7 @@
   justify-content: space-between;
   gap: 16px;
 }
-.set-maint__row + .set-maint__row {
+.set-maint__row:not(:first-child) {
   border-top: 1px solid var(--bnn-border);
   padding-top: 16px;
 }
@@ -420,4 +463,53 @@
   background: var(--bnn-surface-alt);
   border: 1px solid var(--bnn-border);
   border-radius: var(--bnn-radius);
+}
+.set-trim {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.set-trim__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.set-trim__preview-head,
+.set-trim__progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.set-trim__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bnn-surface-alt);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+}
+.set-trim__track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--bnn-border);
+  border-radius: 999px;
+}
+.set-trim__bar {
+  height: 100%;
+  background: var(--bnn-primary);
+  border-radius: inherit;
+  transition: width 0.25s var(--bnn-ease);
+}
+@media (max-width: 576px) {
+  .people-detail__danger,
+  .set-maint__row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .iss-picker {
+    align-items: flex-end;
+    flex-direction: column;
+  }
 }

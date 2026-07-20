@@ -4,6 +4,7 @@ import com.bananalytics.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.security.MessageDigest
 import java.time.Instant
@@ -332,6 +333,78 @@ object CrashRepository {
             """
             DELETE FROM crash_groups AS crash_group
             USING affected_crash_groups AS affected
+            WHERE crash_group.id = affected.group_id
+              AND NOT EXISTS (
+                  SELECT 1 FROM crashes AS crash WHERE crash.group_id = crash_group.id
+              )
+            """.trimIndent()
+        )
+
+        deletedCount
+    }
+
+    /** Delete one batch of old crash reports and update every affected group in bulk. */
+    fun deleteOlderThan(appId: UUID, cutoff: OffsetDateTime, limit: Int): Long = transaction {
+        exec(
+            """
+            CREATE TEMP TABLE old_crash_batch ON COMMIT DROP AS
+            SELECT id, group_id
+            FROM crashes
+            WHERE app_id = '$appId'::uuid
+              AND created_at < '$cutoff'::timestamptz
+            ORDER BY created_at
+            LIMIT $limit
+            """.trimIndent()
+        )
+
+        exec(
+            """
+            CREATE TEMP TABLE affected_old_crash_groups ON COMMIT DROP AS
+            SELECT DISTINCT group_id
+            FROM old_crash_batch
+            WHERE group_id IS NOT NULL
+            """.trimIndent()
+        )
+
+        val deletedCount = exec(
+            """
+            WITH deleted AS (
+                DELETE FROM crashes AS crash
+                USING old_crash_batch AS batch
+                WHERE crash.id = batch.id
+                RETURNING 1
+            )
+            SELECT COUNT(*) AS deleted FROM deleted
+            """.trimIndent(),
+            emptyList(),
+            StatementType.SELECT
+        ) { result ->
+            if (result.next()) result.getLong("deleted") else 0L
+        } ?: 0L
+
+        exec(
+            """
+            UPDATE crash_groups AS crash_group
+            SET occurrences = stats.occurrences,
+                first_seen = stats.first_seen,
+                last_seen = stats.last_seen
+            FROM (
+                SELECT crash.group_id,
+                       COUNT(*)::integer AS occurrences,
+                       MIN(crash.created_at) AS first_seen,
+                       MAX(crash.created_at) AS last_seen
+                FROM crashes AS crash
+                JOIN affected_old_crash_groups AS affected ON affected.group_id = crash.group_id
+                GROUP BY crash.group_id
+            ) AS stats
+            WHERE crash_group.id = stats.group_id
+            """.trimIndent()
+        )
+
+        exec(
+            """
+            DELETE FROM crash_groups AS crash_group
+            USING affected_old_crash_groups AS affected
             WHERE crash_group.id = affected.group_id
               AND NOT EXISTS (
                   SELECT 1 FROM crashes AS crash WHERE crash.group_id = crash_group.id

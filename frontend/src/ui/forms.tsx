@@ -153,7 +153,7 @@ export function Select({
       ref={ref}
       className={cn(
         'bnn-select',
-        `bnn-input--${size}`,
+        `bnn-select--${size}`,
         open && 'is-open',
         disabled && 'is-disabled',
         status === 'error' && 'is-error',

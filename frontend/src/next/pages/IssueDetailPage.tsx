@@ -303,29 +303,35 @@ export default function IssueDetailPage() {
                 extra={
                   crashes.length > 0 && (
                     <span className="iss-picker">
-                      <Button
-                        size="sm"
-                        icon={<Icons.IconChevronLeft size={14} />}
-                        disabled={selIndex <= 0}
-                        onClick={() => setSelId(crashes[selIndex - 1].id)}
-                      />
-                      <Select
-                        size="sm"
-                        style={{ width: 250 }}
-                        value={selected?.id ?? null}
-                        onChange={(id) => setSelId(String(id))}
-                        options={crashes.map((c) => ({
-                          label: `${fmtDateTime(c.created_at)} — ${c.device_info?.model || 'Unknown'}`,
-                          value: c.id,
-                        }))}
-                      />
-                      <Button
-                        size="sm"
-                        icon={<Icons.IconChevronRight size={14} />}
-                        disabled={selIndex >= crashes.length - 1}
-                        onClick={() => setSelId(crashes[selIndex + 1].id)}
-                      />
-                      <Text type="tertiary" size="sm">{selIndex + 1} of {fmtK(total)}</Text>
+                      <span className="iss-picker__controls">
+                        <Button
+                          size="sm"
+                          icon={<Icons.IconChevronLeft size={14} />}
+                          disabled={selIndex <= 0}
+                          aria-label="Previous crash report"
+                          onClick={() => setSelId(crashes[selIndex - 1].id)}
+                        />
+                        <Select
+                          size="sm"
+                          style={{ width: 250 }}
+                          value={selected?.id ?? null}
+                          onChange={(id) => setSelId(String(id))}
+                          options={crashes.map((c) => ({
+                            label: `${fmtDateTime(c.created_at)} — ${c.device_info?.model || 'Unknown'}`,
+                            value: c.id,
+                          }))}
+                        />
+                        <Button
+                          size="sm"
+                          icon={<Icons.IconChevronRight size={14} />}
+                          disabled={selIndex >= crashes.length - 1}
+                          aria-label="Next crash report"
+                          onClick={() => setSelId(crashes[selIndex + 1].id)}
+                        />
+                      </span>
+                      <Text className="iss-picker__count" type="tertiary" size="sm">
+                        {selIndex + 1} of {fmtK(total)}
+                      </Text>
                     </span>
                   )
                 }

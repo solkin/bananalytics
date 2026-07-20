@@ -5,7 +5,8 @@ import {
   Avatar,
   Button,
   Card,
-  Dropdown,
+  Descriptions,
+  Divider,
   Form,
   FormItem,
   Icons,
@@ -31,7 +32,7 @@ import {
 } from '@/api/auth'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync, Loaded, errorText } from '../async'
-import { cap, shortDate } from '../format'
+import { cap, fmtDateTime, shortDate } from '../format'
 import './pages.css'
 
 const ROLE_TONE: Record<string, 'primary' | 'purple' | 'success' | 'neutral'> = {
@@ -135,53 +136,191 @@ function InviteModal({
   )
 }
 
+function MemberModal({
+  appId,
+  access,
+  isAdmin,
+  isSelf,
+  smtpConfigured,
+  onClose,
+  onChanged,
+}: {
+  appId: string
+  access: AppAccess
+  isAdmin: boolean
+  isSelf: boolean
+  smtpConfigured: boolean
+  onClose: () => void
+  onChanged: () => void
+}) {
+  const [role, setRole] = useState<string | number>(access.role)
+  const [working, setWorking] = useState<'save' | 'remove' | 'copy' | 'resend' | null>(null)
+  const canManage = isAdmin && !isSelf
+  const invited = access.status === 'invited'
+  const displayName = access.user_name || access.user_email
+
+  const save = async () => {
+    setWorking('save')
+    try {
+      await updateAccess(appId, access.id, String(role))
+      toast.success('Role updated')
+      onChanged()
+      onClose()
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to update role'))
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  const remove = async () => {
+    setWorking('remove')
+    try {
+      await revokeAccess(appId, access.id)
+      toast.success(invited ? 'Invitation cancelled' : 'Access revoked')
+      onChanged()
+      onClose()
+    } catch (e) {
+      toast.error(errorText(e, invited ? 'Failed to cancel invitation' : 'Failed to revoke access'))
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  const copyLink = async () => {
+    setWorking('copy')
+    try {
+      const url = await getInvitationLink(appId, access.id)
+      await navigator.clipboard?.writeText(url)
+      toast.success('Invitation link copied')
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to copy link'))
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  const resend = async () => {
+    setWorking('resend')
+    try {
+      await resendInvitation(appId, access.id)
+      toast.success('Invitation email sent')
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to resend invitation'))
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={working ? undefined : onClose}
+      title={invited ? 'Invitation details' : 'Member details'}
+      width={520}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={working != null}>Close</Button>
+          {canManage && (
+            <Button
+              variant="primary"
+              loading={working === 'save'}
+              disabled={role === access.role || working != null}
+              onClick={save}
+            >
+              Save changes
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="people-detail">
+        <div className="people-detail__identity">
+          <Avatar size={44}>{displayName.charAt(0).toUpperCase()}</Avatar>
+          <div>
+            <div className="people-detail__name">{displayName}</div>
+            {access.user_name && <Text type="secondary">{access.user_email}</Text>}
+          </div>
+          <Tag tone={invited ? 'warning' : 'success'}>{invited ? 'Invited' : 'Active'}</Tag>
+        </div>
+
+        <Descriptions
+          column={1}
+          size="sm"
+          items={[
+            { label: 'Email', value: access.user_email },
+            { label: invited ? 'Invited' : 'Added', value: fmtDateTime(access.created_at) },
+          ]}
+        />
+
+        <Divider>Permissions</Divider>
+        {canManage ? (
+          <FormItem label="Role" help="Controls which areas and actions are available to this person.">
+            <Select options={ROLE_OPTIONS} value={role} onChange={setRole} />
+          </FormItem>
+        ) : (
+          <Descriptions
+            column={1}
+            size="sm"
+            items={[{ label: 'Role', value: <Tag tone={ROLE_TONE[access.role] ?? 'neutral'}>{cap(access.role)}</Tag> }]}
+          />
+        )}
+
+        {canManage && invited && (
+          <>
+            <Divider>Invitation</Divider>
+            <div className="people-detail__actions">
+              <Button icon={<Icons.IconCopy size={14} />} loading={working === 'copy'} onClick={copyLink}>
+                Copy invitation link
+              </Button>
+              {smtpConfigured && (
+                <Button icon={<Icons.IconSend size={14} />} loading={working === 'resend'} onClick={resend}>
+                  Resend email
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+
+        {canManage && (
+          <>
+            <Divider>Danger zone</Divider>
+            <div className="people-detail__danger">
+              <div>
+                <Text strong>{invited ? 'Cancel invitation' : 'Revoke access'}</Text>
+                <div>
+                  <Text type="tertiary" size="sm">
+                    {invited ? 'The invitation link will stop working.' : 'This person will immediately lose access to the application.'}
+                  </Text>
+                </div>
+              </div>
+              <Popconfirm
+                title={invited ? 'Cancel this invitation?' : 'Revoke access?'}
+                okText={invited ? 'Cancel invitation' : 'Revoke'}
+                okDanger
+                onConfirm={remove}
+              >
+                <Button variant="danger" icon={<Icons.IconTrash size={14} />} loading={working === 'remove'}>
+                  {invited ? 'Cancel' : 'Revoke'}
+                </Button>
+              </Popconfirm>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 export default function PeoplePage() {
   const { appId } = useParams()
   const { user, config } = useAuth()
   const state = useAsync(() => getAppAccess(appId!), [appId])
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [selected, setSelected] = useState<AppAccess | null>(null)
 
   const me = (state.data ?? []).find((a) => a.user_id === user?.id)
   const isAdmin = me?.role === 'admin'
-
-  const changeRole = async (access: AppAccess, role: string) => {
-    try {
-      await updateAccess(appId!, access.id, role)
-      toast.success('Role updated')
-      state.reload()
-    } catch (e) {
-      toast.error(errorText(e, 'Failed to update role'))
-    }
-  }
-
-  const revoke = async (access: AppAccess) => {
-    try {
-      await revokeAccess(appId!, access.id)
-      toast.success(access.status === 'invited' ? 'Invitation cancelled' : 'Access revoked')
-      state.reload()
-    } catch (e) {
-      toast.error(errorText(e, 'Failed to revoke access'))
-    }
-  }
-
-  const copyLink = async (access: AppAccess) => {
-    try {
-      const url = await getInvitationLink(appId!, access.id)
-      await navigator.clipboard?.writeText(url)
-      toast.success('Invitation link copied')
-    } catch (e) {
-      toast.error(errorText(e, 'Failed to copy link'))
-    }
-  }
-
-  const resend = async (access: AppAccess) => {
-    try {
-      await resendInvitation(appId!, access.id)
-      toast.success('Invitation email sent')
-    } catch (e) {
-      toast.error(errorText(e, 'Failed to resend invitation'))
-    }
-  }
 
   const columns: Column<AppAccess>[] = [
     {
@@ -195,62 +334,16 @@ export default function PeoplePage() {
               {r.user_id === user?.id && <Tag className="pg-person__tag">You</Tag>}
               {r.status === 'invited' && <Tag tone="warning" className="pg-person__tag">Invited</Tag>}
             </div>
-            <Text type="tertiary" size="sm">{r.user_email}</Text>
+            {r.user_name && <Text type="tertiary" size="sm">{r.user_email}</Text>}
           </div>
         </div>
       ),
     },
     {
-      key: 'role', title: 'Role', width: 200,
-      render: (r) =>
-        isAdmin && r.user_id !== user?.id ? (
-          <Select
-            size="sm"
-            style={{ width: 120 }}
-            value={r.role}
-            onChange={(role) => void changeRole(r, String(role))}
-            options={[
-              { label: 'Admin', value: 'admin' },
-              { label: 'Viewer', value: 'viewer' },
-              { label: 'Tester', value: 'tester' },
-            ]}
-          />
-        ) : (
-          <Tag tone={ROLE_TONE[r.role] ?? 'neutral'}>{cap(r.role)}</Tag>
-        ),
+      key: 'role', title: 'Role', width: 140,
+      render: (r) => <Tag tone={ROLE_TONE[r.role] ?? 'neutral'}>{cap(r.role)}</Tag>,
     },
     { key: 'added', title: 'Added', align: 'right', render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
-    ...(isAdmin
-      ? [{
-          key: 'actions', title: '', align: 'right' as const, width: 90,
-          render: (r: AppAccess) =>
-            r.user_id !== user?.id ? (
-              <span className="pg-rowactions">
-                {r.status === 'invited' && (
-                  <Dropdown
-                    items={[
-                      { key: 'copy', label: 'Copy invitation link', icon: <Icons.IconCopy size={14} />, onClick: () => void copyLink(r) },
-                      ...(config?.smtp_configured
-                        ? [{ key: 'resend', label: 'Resend invitation email', icon: <Icons.IconSend size={14} />, onClick: () => void resend(r) }]
-                        : []),
-                    ]}
-                  >
-                    <Button size="sm" icon={<Icons.IconMail size={14} />} />
-                  </Dropdown>
-                )}
-                <Popconfirm
-                  title={r.status === 'invited' ? 'Cancel this invitation?' : 'Revoke access?'}
-                  description={r.status === 'invited' ? undefined : `${r.user_email} will lose access to this app.`}
-                  okText={r.status === 'invited' ? 'Cancel invitation' : 'Revoke'}
-                  okDanger
-                  onConfirm={() => void revoke(r)}
-                >
-                  <Button size="sm" variant="danger" icon={<Icons.IconTrash size={14} />} />
-                </Popconfirm>
-              </span>
-            ) : null,
-        }]
-      : []),
   ]
 
   return (
@@ -264,7 +357,15 @@ export default function PeoplePage() {
       )}
       <Card title="People" padded={false}>
         <Loaded state={state} emptyText="No members yet">
-          {(members) => <Table<AppAccess> columns={columns} data={members} rowKey={(r) => r.id} emptyText="No members yet" />}
+          {(members) => (
+            <Table<AppAccess>
+              columns={columns}
+              data={members}
+              rowKey={(r) => r.id}
+              emptyText="No members yet"
+              onRowClick={setSelected}
+            />
+          )}
         </Loaded>
       </Card>
 
@@ -275,6 +376,18 @@ export default function PeoplePage() {
         onClose={() => setInviteOpen(false)}
         onInvited={state.reload}
       />
+      {selected && (
+        <MemberModal
+          key={selected.id}
+          appId={appId!}
+          access={selected}
+          isAdmin={isAdmin}
+          isSelf={selected.user_id === user?.id}
+          smtpConfigured={!!config?.smtp_configured}
+          onClose={() => setSelected(null)}
+          onChanged={state.reload}
+        />
+      )}
     </div>
   )
 }

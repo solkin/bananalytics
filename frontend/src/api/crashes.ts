@@ -146,3 +146,32 @@ export async function cleanupOrphanedCrashes(appId: string): Promise<CleanupResu
   const response = await api.post<CleanupResult>(`/apps/${appId}/maintenance/cleanup-orphaned-crashes`)
   return response.data
 }
+
+export interface RetentionPreview {
+  cutoff: string
+  crashes: number
+  events: number
+  sessions: number
+  total: number
+}
+
+export type TrimTarget = 'crashes' | 'events' | 'sessions'
+
+export async function getRetentionPreview(appId: string, retentionDays: number): Promise<RetentionPreview> {
+  const response = await api.get<RetentionPreview>(`/apps/${appId}/maintenance/trim-preview`, {
+    params: { retentionDays },
+  })
+  return response.data
+}
+
+export async function trimOldData(
+  appId: string,
+  target: TrimTarget,
+  cutoff: string
+): Promise<{ target: TrimTarget; deleted: number; done: boolean }> {
+  const response = await api.post<{ target: TrimTarget; deleted: number; done: boolean }>(
+    `/apps/${appId}/maintenance/trim/${target}`,
+    { cutoff }
+  )
+  return response.data
+}

@@ -78,6 +78,10 @@ object InvitationRepository {
         Invitations.deleteWhere { Invitations.id eq id } > 0
     }
 
+    fun delete(id: UUID, appId: UUID): Boolean = transaction {
+        Invitations.deleteWhere { (Invitations.id eq id) and (Invitations.appId eq appId) } > 0
+    }
+
     fun deleteByToken(token: String): Boolean = transaction {
         Invitations.deleteWhere { Invitations.token eq token } > 0
     }
@@ -99,9 +103,22 @@ object InvitationRepository {
         } > 0
     }
 
+    fun updateRole(id: UUID, appId: UUID, role: String): Boolean = transaction {
+        Invitations.update({ (Invitations.id eq id) and (Invitations.appId eq appId) }) {
+            it[Invitations.role] = role
+        } > 0
+    }
+
     fun findById(id: UUID): InvitationInfo? = transaction {
         Invitations.selectAll()
             .where { Invitations.id eq id }
+            .singleOrNull()
+            ?.toInvitationInfo()
+    }
+
+    fun findById(id: UUID, appId: UUID): InvitationInfo? = transaction {
+        Invitations.selectAll()
+            .where { (Invitations.id eq id) and (Invitations.appId eq appId) }
             .singleOrNull()
             ?.toInvitationInfo()
     }

@@ -5,6 +5,8 @@ import com.bananalytics.models.*
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
 import com.bananalytics.repositories.DownloadTokenRepository
+import com.bananalytics.repositories.DataRetentionRepository
+import com.bananalytics.repositories.CrashRepository
 import com.bananalytics.repositories.InvitationRepository
 import com.bananalytics.repositories.UserRepository
 import com.bananalytics.repositories.VersionRepository
@@ -15,6 +17,9 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.util.*
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 fun Route.appRoutes() {
     route("/apps") {
@@ -243,7 +248,7 @@ fun Route.appRoutes() {
             }
 
             // First try to update invitation
-            val invitationUpdated = InvitationRepository.updateRole(accessId, request.role)
+            val invitationUpdated = InvitationRepository.updateRole(accessId, appId, request.role)
             if (invitationUpdated) {
                 call.respond(HttpStatusCode.NoContent)
                 return@put
@@ -252,7 +257,7 @@ fun Route.appRoutes() {
             // If not an invitation, update user access role
             // Prevent removing the last admin
             if (request.role != "admin") {
-                val currentRole = AppAccessRepository.getUserRole(appId, accessId)
+                val currentRole = AppAccessRepository.getAccessRole(appId, accessId)
                 if (currentRole == "admin" && AppAccessRepository.countAdmins(appId) <= 1) {
                     throw BadRequestException("Cannot remove the last admin")
                 }
@@ -277,15 +282,14 @@ fun Route.appRoutes() {
             call.requireAppAdmin(appId, user)
 
             // First try to find and delete invitation
-            val deletedInvitation = InvitationRepository.delete(accessId)
+            val deletedInvitation = InvitationRepository.delete(accessId, appId)
             if (deletedInvitation) {
                 call.respond(HttpStatusCode.NoContent)
                 return@delete
             }
 
-            // If not an invitation, try to revoke user access
-            // The accessId might be user ID for existing users
-            val currentRole = AppAccessRepository.getUserRole(appId, accessId)
+            // If not an invitation, revoke the matching access record.
+            val currentRole = AppAccessRepository.getAccessRole(appId, accessId)
             if (currentRole == "admin" && AppAccessRepository.countAdmins(appId) <= 1) {
                 throw BadRequestException("Cannot remove the last admin")
             }
@@ -308,7 +312,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val invitation = InvitationRepository.findById(invitationId)
+            val invitation = InvitationRepository.findById(invitationId, appId)
                 ?: throw NotFoundException("Invitation not found")
 
             val baseUrl = System.getenv("BASE_URL") ?: "http://localhost:5173"
@@ -327,7 +331,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val invitation = InvitationRepository.findById(invitationId)
+            val invitation = InvitationRepository.findById(invitationId, appId)
                 ?: throw NotFoundException("Invitation not found")
 
             if (!EmailService.isConfigured) {
@@ -363,6 +367,75 @@ fun Route.appRoutes() {
                 ?: throw NotFoundException("Access not found")
 
             call.respond(mapOf("role" to role))
+        }
+
+        // --- Data retention ---
+
+        get("/{id}/maintenance/trim-preview") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val retentionDays = call.request.queryParameters["retentionDays"]?.toIntOrNull()
+                ?: throw BadRequestException("retentionDays is required")
+
+            call.requireAppAdmin(appId, user)
+            if (retentionDays !in 1..3650) {
+                throw BadRequestException("retentionDays must be between 1 and 3650")
+            }
+
+            val cutoff = OffsetDateTime.now(ZoneOffset.UTC)
+                .minusDays(retentionDays.toLong())
+                .truncatedTo(ChronoUnit.DAYS)
+            val counts = dbIO { DataRetentionRepository.preview(appId, cutoff) }
+            call.respond(
+                RetentionPreviewResponse(
+                    cutoff = cutoff.toString(),
+                    crashes = counts.crashes,
+                    events = counts.events,
+                    sessions = counts.sessions,
+                    total = counts.total
+                )
+            )
+        }
+
+        post("/{id}/maintenance/trim/{target}") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val target = call.parameters["target"]
+                ?: throw BadRequestException("Trim target is required")
+            val request = call.receive<TrimDataRequest>()
+
+            call.requireAppAdmin(appId, user)
+            val cutoff = try {
+                OffsetDateTime.parse(request.cutoff)
+                    .withOffsetSameInstant(ZoneOffset.UTC)
+                    .truncatedTo(ChronoUnit.DAYS)
+            } catch (_: Exception) {
+                throw BadRequestException("Invalid cutoff")
+            }
+            if (cutoff.isAfter(OffsetDateTime.now(ZoneOffset.UTC))) {
+                throw BadRequestException("Cutoff cannot be in the future")
+            }
+            if (target !in setOf("crashes", "events", "sessions")) {
+                throw BadRequestException("Unknown trim target")
+            }
+
+            val deleted = dbIO {
+                when (target) {
+                    "crashes" -> CrashRepository.deleteOlderThan(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
+                    "events" -> DataRetentionRepository.deleteEvents(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
+                    "sessions" -> DataRetentionRepository.deleteSessions(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
+                    else -> error("Validated trim target became invalid")
+                }
+            }
+            call.respond(
+                TrimDataResponse(
+                    target = target,
+                    deleted = deleted,
+                    done = deleted < DataRetentionRepository.TRIM_BATCH_SIZE
+                )
+            )
         }
 
         // --- Versions ---

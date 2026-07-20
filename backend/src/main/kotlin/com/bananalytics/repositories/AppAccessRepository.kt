@@ -47,6 +47,13 @@ object AppAccessRepository {
             ?.get(AppAccess.role)
     }
 
+    fun getAccessRole(appId: UUID, accessId: UUID): String? = transaction {
+        AppAccess.select(AppAccess.role)
+            .where { (AppAccess.appId eq appId) and (AppAccess.id eq accessId) }
+            .singleOrNull()
+            ?.get(AppAccess.role)
+    }
+
     fun hasAccess(appId: UUID, userId: UUID): Boolean = transaction {
         AppAccess.selectAll()
             .where { (AppAccess.appId eq appId) and (AppAccess.userId eq userId) }
@@ -91,15 +98,15 @@ object AppAccessRepository {
             .toAppAccessResponse()
     }
 
-    fun updateRole(appId: UUID, userId: UUID, role: String): Boolean = transaction {
-        AppAccess.update({ (AppAccess.appId eq appId) and (AppAccess.userId eq userId) }) {
+    fun updateRole(appId: UUID, accessId: UUID, role: String): Boolean = transaction {
+        AppAccess.update({ (AppAccess.appId eq appId) and (AppAccess.id eq accessId) }) {
             it[AppAccess.role] = role
         } > 0
     }
 
-    fun revokeAccess(appId: UUID, userId: UUID): Boolean = transaction {
+    fun revokeAccess(appId: UUID, accessId: UUID): Boolean = transaction {
         AppAccess.deleteWhere { 
-            (AppAccess.appId eq appId) and (AppAccess.userId eq userId) 
+            (AppAccess.appId eq appId) and (AppAccess.id eq accessId)
         } > 0
     }
 

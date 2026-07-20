@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS crashes (
 
 CREATE INDEX IF NOT EXISTS idx_crashes_app_id ON crashes(app_id);
 CREATE INDEX IF NOT EXISTS idx_crashes_version_id ON crashes(version_id);
+CREATE INDEX IF NOT EXISTS idx_crashes_app_created_at ON crashes(app_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_crashes_group_id ON crashes(group_id);
 CREATE INDEX IF NOT EXISTS idx_crashes_created_at ON crashes(created_at DESC);
 
@@ -127,6 +128,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_app_id ON events(app_id);
 CREATE INDEX IF NOT EXISTS idx_events_app_version ON events(app_id, version_code);
+CREATE INDEX IF NOT EXISTS idx_events_app_created_at ON events(app_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_name ON events(app_id, name);
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 
@@ -177,6 +179,7 @@ CREATE TABLE IF NOT EXISTS app_sessions (
 CREATE INDEX IF NOT EXISTS idx_app_sessions_app_id ON app_sessions(app_id);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_version ON app_sessions(app_id, version_code);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_first_seen ON app_sessions(first_seen);
+CREATE INDEX IF NOT EXISTS idx_app_sessions_app_first_seen ON app_sessions(app_id, first_seen);
 CREATE INDEX IF NOT EXISTS idx_app_sessions_has_crash ON app_sessions(app_id, has_crash);
 
 -- Download tokens for temporary public APK links

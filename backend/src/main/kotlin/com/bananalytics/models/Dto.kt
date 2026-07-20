@@ -311,3 +311,24 @@ data class CleanupResult(
     @SerialName("groups_recalculated") val groupsRecalculated: Int,
     @SerialName("groups_deleted") val groupsDeleted: Int
 )
+
+@Serializable
+data class RetentionPreviewResponse(
+    val cutoff: String,
+    val crashes: Long,
+    val events: Long,
+    val sessions: Long,
+    val total: Long
+)
+
+@Serializable
+data class TrimDataRequest(
+    val cutoff: String
+)
+
+@Serializable
+data class TrimDataResponse(
+    val target: String,
+    val deleted: Long,
+    val done: Boolean
+)
