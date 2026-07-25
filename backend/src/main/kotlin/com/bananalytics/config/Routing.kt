@@ -56,6 +56,9 @@ fun Application.configureRouting() {
             
             // SDK routes (authenticated by API key)
             sdkRoutes()
+
+            // Release publishing from CI (authenticated by an upload-scoped API key)
+            releaseRoutes()
             
             // Admin routes (authenticated by session)
             authenticated {

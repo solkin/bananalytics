@@ -24,8 +24,11 @@ class UnauthorizedException(message: String = "Invalid or missing API key")
 class NotFoundException(message: String) 
     : ApiException(HttpStatusCode.NotFound, "not_found", message)
 
-class BadRequestException(message: String) 
+class BadRequestException(message: String)
     : ApiException(HttpStatusCode.BadRequest, "bad_request", message)
+
+class PayloadTooLargeException(message: String)
+    : ApiException(HttpStatusCode.PayloadTooLarge, "payload_too_large", message)
 
 fun Application.configureStatusPages() {
     install(StatusPages) {

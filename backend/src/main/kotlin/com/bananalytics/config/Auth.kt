@@ -17,6 +17,19 @@ object AppConfig {
     val registrationEnabled: Boolean by lazy {
         System.getenv("REGISTRATION_ENABLED")?.lowercase() != "false"
     }
+
+    /** Public origin used for links handed out to people and to CI. */
+    val baseUrl: String by lazy {
+        // Deployments often leave BASE_URL declared but empty; treat that as unset.
+        (System.getenv("BASE_URL")?.takeIf { it.isNotBlank() } ?: "http://localhost:5173")
+            .trimEnd('/')
+    }
+
+    /** Ceiling for a single uploaded APK. */
+    val maxApkBytes: Long by lazy {
+        val megabytes = System.getenv("MAX_APK_SIZE_MB")?.toLongOrNull()?.takeIf { it in 1..10_000 }
+        (megabytes ?: 200L) * 1024 * 1024
+    }
 }
 
 private val UserKey = AttributeKey<UserResponse>("user")

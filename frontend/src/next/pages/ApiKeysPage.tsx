@@ -12,17 +12,32 @@ import {
   Input,
   Modal,
   Popconfirm,
+  RadioGroup,
   Table,
   Tag,
   Text,
   toast,
   type Column,
 } from '@/ui'
-import type { ApiKey } from '@/types'
+import type { ApiKey, ApiKeyScope } from '@/types'
 import { createApiKey, deleteApiKey, getApiKeys, renameApiKey, revokeApiKey } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { fmtDateTime, relTime } from '../format'
 import './pages.css'
+
+const SCOPE_LABEL: Record<ApiKeyScope, string> = {
+  sdk: 'SDK',
+  upload: 'CI upload',
+}
+
+const SCOPE_HELP: Record<ApiKeyScope, string> = {
+  sdk: 'Submits crashes and events. Goes into the app, so it cannot publish releases.',
+  upload: 'Publishes releases from CI. Keep it in your CI secrets, never inside a build.',
+}
+
+export function ScopeTag({ scope }: { scope: ApiKeyScope }) {
+  return <Tag tone={scope === 'upload' ? 'purple' : 'primary'}>{SCOPE_LABEL[scope]}</Tag>
+}
 
 /* The one moment a key value is visible — right after it is created. */
 export function KeyReveal({ value }: { value: string }) {
@@ -45,15 +60,20 @@ export function KeyReveal({ value }: { value: string }) {
 export function CreateKeyModal({
   appId,
   defaultName = '',
+  /* Passed in by callers that only make sense for one kind of key — the
+     setup guide, for instance — which then hides the choice. */
+  scope: fixedScope,
   onClose,
   onCreated,
 }: {
   appId: string
   defaultName?: string
+  scope?: ApiKeyScope
   onClose: () => void
   onCreated?: (key: string) => void
 }) {
   const [name, setName] = useState(defaultName)
+  const [scope, setScope] = useState<ApiKeyScope>(fixedScope ?? 'sdk')
   const [creating, setCreating] = useState(false)
   const [created, setCreated] = useState<string | null>(null)
 
@@ -61,7 +81,7 @@ export function CreateKeyModal({
     if (!name.trim()) return toast.error('Enter a key name')
     setCreating(true)
     try {
-      const result = await createApiKey(appId, name.trim())
+      const result = await createApiKey(appId, name.trim(), scope)
       setCreated(result.api_key)
       onCreated?.(result.api_key)
     } catch (e) {
@@ -97,7 +117,16 @@ export function CreateKeyModal({
           />
           <KeyReveal value={created} />
           <Text type="tertiary" size="sm">
-            Put it into <span className="bnn-mono">BananalyticsConfig.apiKey</span> in your app.
+            {scope === 'upload' ? (
+              <>
+                Pass it as the <span className="bnn-mono">X-API-Key</span> header when publishing a
+                release from CI.
+              </>
+            ) : (
+              <>
+                Put it into <span className="bnn-mono">BananalyticsConfig.apiKey</span> in your app.
+              </>
+            )}
           </Text>
         </div>
       ) : (
@@ -110,6 +139,18 @@ export function CreateKeyModal({
               onChange={(e) => setName(e.target.value)}
             />
           </FormItem>
+          {fixedScope == null && (
+            <FormItem label="Used for" help={SCOPE_HELP[scope]}>
+              <RadioGroup
+                options={[
+                  { label: SCOPE_LABEL.sdk, value: 'sdk' },
+                  { label: SCOPE_LABEL.upload, value: 'upload' },
+                ]}
+                value={scope}
+                onChange={(value) => setScope(value as ApiKeyScope)}
+              />
+            </FormItem>
+          )}
         </Form>
       )}
     </Modal>
@@ -204,6 +245,7 @@ function KeyModal({
           size="sm"
           items={[
             { label: 'Key', value: <span className="bnn-mono">{apiKey.key_prefix}…</span> },
+            { label: 'Used for', value: <ScopeTag scope={apiKey.scope} /> },
             { label: 'Status', value: revoked ? <Tag tone="danger">Revoked</Tag> : <Tag tone="success">Active</Tag> },
             { label: 'Created', value: fmtDateTime(apiKey.created_at) },
             { label: 'Created by', value: apiKey.created_by ?? '—' },
@@ -220,7 +262,9 @@ function KeyModal({
               <Text type="tertiary" size="sm">
                 {revoked
                   ? 'Removes the key and its usage history from the list.'
-                  : 'Apps using this key stop submitting data immediately. The key stays listed as revoked.'}
+                  : apiKey.scope === 'upload'
+                    ? 'Publishing releases with this key stops working immediately. The key stays listed as revoked.'
+                    : 'Apps using this key stop submitting data immediately. The key stays listed as revoked.'}
               </Text>
             </div>
           </div>
@@ -239,7 +283,11 @@ function KeyModal({
           ) : (
             <Popconfirm
               title={`Revoke ${apiKey.name}?`}
-              description="Any SDK still using this key will start failing with 401."
+              description={
+                apiKey.scope === 'upload'
+                  ? 'Any CI job still using this key will start failing with 401.'
+                  : 'Any SDK still using this key will start failing with 401.'
+              }
               okText="Revoke"
               okDanger
               onConfirm={revoke}
@@ -262,7 +310,9 @@ export default function ApiKeysPage() {
   const [selected, setSelected] = useState<ApiKey | null>(null)
 
   const keys = state.data ?? []
-  const noActiveKeys = state.data != null && keys.every((k) => k.revoked_at != null)
+  /* Ingestion is what breaks without a key, and only SDK keys do ingestion. */
+  const sdkKeys = keys.filter((k) => k.scope === 'sdk')
+  const noActiveKeys = state.data != null && sdkKeys.every((k) => k.revoked_at != null)
 
   const columns: Column<ApiKey>[] = [
     {
@@ -271,6 +321,7 @@ export default function ApiKeysPage() {
         <div>
           <div className="set-keys__name">
             {r.name}
+            <ScopeTag scope={r.scope} />
             {r.revoked_at && <Tag tone="danger">Revoked</Tag>}
           </div>
           <Text type="tertiary" size="sm"><span className="bnn-mono">{r.key_prefix}…</span></Text>
@@ -302,14 +353,14 @@ export default function ApiKeysPage() {
       {noActiveKeys && (
         <Alert
           type="warning"
-          message={keys.length === 0 ? 'This app has no API keys' : 'This app has no active API keys'}
+          message={sdkKeys.length === 0 ? 'This app has no SDK API keys' : 'This app has no active SDK API keys'}
           description="The SDK authenticates with the X-API-Key header, so crashes and events are rejected until you create one."
         />
       )}
 
       <Card
         title="API keys"
-        subtitle="Used by the SDK to submit crashes and events. Create a separate key per build or integration so you can revoke one without touching the others."
+        subtitle="Used by the SDK to submit crashes and events, and by CI to publish releases. Create a separate key per build or integration so you can revoke one without touching the others."
         padded={false}
       >
         <Loaded state={state} emptyText="No API keys yet">

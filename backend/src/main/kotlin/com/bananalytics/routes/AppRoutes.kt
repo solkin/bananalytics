@@ -138,15 +138,19 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val name = call.receive<CreateApiKeyRequest>().name.trim()
+            val request = call.receive<CreateApiKeyRequest>()
+            val name = request.name.trim()
             if (name.isBlank()) {
                 throw BadRequestException("Name is required")
             }
             if (name.length > 100) {
                 throw BadRequestException("Name must be 100 characters or shorter")
             }
+            if (request.scope !in ApiKeyRepository.SCOPES) {
+                throw BadRequestException("Scope must be 'sdk' or 'upload'")
+            }
 
-            val created = ApiKeyRepository.create(appId, name, UUID.fromString(user.id))
+            val created = ApiKeyRepository.create(appId, name, UUID.fromString(user.id), request.scope)
             call.respond(HttpStatusCode.Created, created)
         }
 

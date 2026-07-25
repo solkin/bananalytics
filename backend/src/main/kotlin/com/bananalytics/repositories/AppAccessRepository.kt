@@ -79,6 +79,16 @@ object AppAccessRepository {
             .count() > 0
     }
 
+    /** Recipients for release notifications, in the order they joined the app. */
+    fun findEmailsByRoles(appId: UUID, roles: Collection<String>): List<String> = transaction {
+        (AppAccess innerJoin Users)
+            .select(Users.email, AppAccess.createdAt)
+            .where { (AppAccess.appId eq appId) and (AppAccess.role inList roles) }
+            .orderBy(AppAccess.createdAt, SortOrder.ASC)
+            .map { it[Users.email] }
+            .distinct()
+    }
+
     fun grantAccess(appId: UUID, userId: UUID, role: String): AppAccessResponse = transaction {
         val now = OffsetDateTime.now()
 

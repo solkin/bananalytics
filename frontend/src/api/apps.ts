@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiKey, App, AppVersion, CreatedApiKey, DownloadToken } from '@/types'
+import type { ApiKey, ApiKeyScope, App, AppVersion, CreatedApiKey, DownloadToken } from '@/types'
 
 export async function getApps(): Promise<App[]> {
   const response = await api.get<App[]>('/apps')
@@ -35,8 +35,12 @@ export async function getApiKeys(appId: string): Promise<ApiKey[]> {
 }
 
 /** The returned `api_key` is the only readable copy — show it immediately. */
-export async function createApiKey(appId: string, name: string): Promise<CreatedApiKey> {
-  const response = await api.post<CreatedApiKey>(`/apps/${appId}/keys`, { name })
+export async function createApiKey(
+  appId: string,
+  name: string,
+  scope: ApiKeyScope = 'sdk',
+): Promise<CreatedApiKey> {
+  const response = await api.post<CreatedApiKey>(`/apps/${appId}/keys`, { name, scope })
   return response.data
 }
 

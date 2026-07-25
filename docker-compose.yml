@@ -68,6 +68,7 @@ services:
       S3_SECRET_KEY: bananalytics_dev
       S3_BUCKET: bananalytics
       BASE_URL: http://localhost:3177
+      MAX_APK_SIZE_MB: ${MAX_APK_SIZE_MB:-200}
     ports:
       - "8266:8080"
     volumes:

@@ -88,6 +88,8 @@ data class ApiKeyResponse(
     val id: String,
     @SerialName("app_id") val appId: String,
     val name: String,
+    /** `sdk` for crash/event ingestion, `upload` for publishing releases from CI. */
+    val scope: String,
     @SerialName("key_prefix") val keyPrefix: String,
     @SerialName("created_by") val createdBy: String?,
     @SerialName("last_used_at") val lastUsedAt: String?,
@@ -103,7 +105,7 @@ data class CreatedApiKeyResponse(
 )
 
 @Serializable
-data class CreateApiKeyRequest(val name: String)
+data class CreateApiKeyRequest(val name: String, val scope: String = "sdk")
 
 @Serializable
 data class UpdateApiKeyRequest(val name: String)
@@ -358,4 +360,23 @@ data class TrimDataResponse(
     val target: String,
     val deleted: Long,
     val done: Boolean
+)
+
+// ============ Release Publishing DTOs ============
+
+/** Result of a one-shot release publish from CI. */
+@Serializable
+data class PublishReleaseResponse(
+    @SerialName("app_id") val appId: String,
+    @SerialName("version_id") val versionId: String,
+    @SerialName("version_code") val versionCode: Long,
+    @SerialName("version_name") val versionName: String?,
+    @SerialName("release_notes") val releaseNotes: String?,
+    @SerialName("published_for_testers") val publishedForTesters: Boolean,
+    @SerialName("has_mapping") val hasMapping: Boolean,
+    @SerialName("apk_size") val apkSize: Long,
+    @SerialName("download_url") val downloadUrl: String,
+    @SerialName("expires_at") val expiresAt: String,
+    /** How many testers and admins actually received the email. */
+    val notified: Int
 )

@@ -15,6 +15,7 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **R8/ProGuard Deobfuscation** — Upload mapping files to decode stacktraces
 - **Event Analytics** — Track custom events with tags and numeric fields
 - **APK Distribution** — Upload APK builds for testers with release notes
+- **One-Call CI Publishing** — Push a build straight from your pipeline; version is read from the APK
 - **Breadcrumbs** — See user actions leading up to a crash
 - **Session Tracking** — Crash-free sessions and unique session metrics
 - **Multi-user Access** — Share apps with team members (admin/viewer/tester roles)
@@ -61,6 +62,7 @@ The production setup uses Nginx as a reverse proxy. Only the `bananalytics-nginx
 | `S3_SECRET_KEY` | MinIO/S3 secret key | Required |
 | `S3_BUCKET` | Bucket for mapping files | `bananalytics` |
 | `REGISTRATION_ENABLED` | Allow new user registration | `false` (prod) |
+| `MAX_APK_SIZE_MB` | Largest APK accepted by release upload | `200` |
 | `SMTP_HOST` | SMTP server host | — |
 | `SMTP_PORT` | SMTP server port | `587` |
 | `SMTP_USER` | SMTP username | — |
@@ -126,12 +128,30 @@ Quick overview:
 
 | Endpoint | Auth | Description |
 |----------|------|-------------|
-| `POST /api/v1/events/submit` | API Key | Submit events from SDK |
-| `POST /api/v1/crashes/submit` | API Key | Submit crashes from SDK |
+| `POST /api/v1/events/submit` | API Key (sdk) | Submit events from SDK |
+| `POST /api/v1/crashes/submit` | API Key (sdk) | Submit crashes from SDK |
+| `POST /api/v1/releases` | API Key (upload) | Publish a build from CI |
 | `POST /api/v1/auth/login` | — | Login |
 | `GET /api/v1/apps` | Session | List apps |
 | `GET /api/v1/apps/{id}/keys` | Session | List app API keys |
 | `GET /api/v1/apps/{id}/crashes` | Session | Get crash groups |
+
+### Publishing a release from CI
+
+Create an `upload`-scoped API key under Settings → API keys, put it into your CI
+secrets, and add one step after the build:
+
+```bash
+curl -f -X POST https://your-server.com/api/v1/releases \
+  -H "X-API-Key: $BANANALYTICS_KEY" \
+  -F apk=@app/build/outputs/apk/release/app-release.apk \
+  -F mapping=@app/build/outputs/mapping/release/mapping.txt \
+  -F release_notes="$(git log -1 --pretty=%s)" \
+  -F notify=true
+```
+
+Version code and name are read from the APK, and the response carries a download
+link for testers. Re-running the same build overwrites it instead of failing.
 
 ## Tech Stack
 

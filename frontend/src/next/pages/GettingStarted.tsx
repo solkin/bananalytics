@@ -99,6 +99,14 @@ bananalytics.trackEvent(
     bananalytics.trackException(e, context = mapOf("screen" to "checkout"))
 }`
 
+  const publish = `# one step after the build, with an upload-scoped key in CI secrets
+curl -f -X POST https://banana.appteka.store/api/v1/releases \\
+  -H "X-API-Key: $BANANALYTICS_KEY" \\
+  -F apk=@app/build/outputs/apk/release/app-release.apk \\
+  -F mapping=@app/build/outputs/mapping/release/mapping.txt \\
+  -F release_notes="$(git log -1 --pretty=%s)" \\
+  -F notify=true`
+
   return (
     <div className="gs">
       <div className="bnn-card">
@@ -156,6 +164,17 @@ bananalytics.trackEvent(
               <CodeBlock code={crash} />
               <Text size="sm" type="tertiary">Upload <span className="bnn-mono">mapping.txt</span> under Diagnostics → Mappings for readable stack traces.</Text>
             </Step>
+
+            <Step n={6} title="Publish builds from CI">
+              <Text size="sm" type="secondary">
+                One request uploads the APK, reads its version, publishes it for testers and returns a download link:
+              </Text>
+              <CodeBlock code={publish} />
+              <Text size="sm" type="tertiary">
+                Needs a key of type <span className="bnn-mono">CI upload</span> — create one under Settings → API keys.
+                Full reference: <Link className="gs-link" to="/docs#publish">Publish from CI<Icons.IconExternalLink size={12} /></Link>.
+              </Text>
+            </Step>
           </div>
         </div>
       </div>
@@ -164,6 +183,7 @@ bananalytics.trackEvent(
         <CreateKeyModal
           appId={appId!}
           defaultName="Default"
+          scope="sdk"
           onClose={() => setCreateOpen(false)}
           onCreated={setCreated}
         />

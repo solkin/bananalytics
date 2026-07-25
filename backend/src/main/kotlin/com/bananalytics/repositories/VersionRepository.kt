@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -144,6 +145,72 @@ object VersionRepository {
             muteEvents = false,
             createdAt = now.toString()
         )
+    }
+
+    /**
+     * One-shot release publish for CI: stores the APK (and mapping, if sent) and
+     * creates or refreshes the row for that version code. Re-uploading the same
+     * version code overwrites it rather than failing, so a retried pipeline is
+     * safe. `versionName`, `mappingContent` and `releaseNotes` left null keep
+     * whatever the version already had.
+     */
+    fun upsertRelease(
+        appId: UUID,
+        versionCode: Long,
+        versionName: String?,
+        apkFile: File,
+        apkFilename: String,
+        mappingContent: String?,
+        releaseNotes: String?,
+        publishForTesters: Boolean
+    ): AppVersionResponse {
+        // Storage first: both keys derive from the version code, and a slow
+        // bucket should not hold a database connection open while it uploads.
+        val apkPath = StorageService.uploadApkFromFile(appId.toString(), versionCode, apkFile)
+        val mappingPath = mappingContent?.let {
+            StorageService.uploadMapping(appId.toString(), versionCode, it)
+        }
+
+        return transaction {
+            val now = OffsetDateTime.now()
+            val existingId = AppVersions.select(AppVersions.id)
+                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                .singleOrNull()
+                ?.get(AppVersions.id)
+                ?.value
+
+            if (existingId == null) {
+                AppVersions.insert {
+                    it[AppVersions.appId] = appId
+                    it[AppVersions.versionCode] = versionCode
+                    it[AppVersions.versionName] = versionName
+                    it[AppVersions.mappingPath] = mappingPath
+                    it[AppVersions.apkPath] = apkPath
+                    it[AppVersions.apkSize] = apkFile.length()
+                    it[AppVersions.apkFilename] = apkFilename
+                    it[AppVersions.apkUploadedAt] = now
+                    it[AppVersions.releaseNotes] = releaseNotes
+                    it[AppVersions.publishedForTesters] = publishForTesters
+                    it[AppVersions.createdAt] = now
+                }
+            } else {
+                AppVersions.update({ AppVersions.id eq existingId }) {
+                    versionName?.let { value -> it[AppVersions.versionName] = value }
+                    mappingPath?.let { value -> it[AppVersions.mappingPath] = value }
+                    releaseNotes?.let { value -> it[AppVersions.releaseNotes] = value }
+                    it[AppVersions.apkPath] = apkPath
+                    it[AppVersions.apkSize] = apkFile.length()
+                    it[AppVersions.apkFilename] = apkFilename
+                    it[AppVersions.apkUploadedAt] = now
+                    it[AppVersions.publishedForTesters] = publishForTesters
+                }
+            }
+
+            AppVersions.selectAll()
+                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                .single()
+                .toVersionResponse()
+        }
     }
 
     fun updateMapping(id: UUID, mappingContent: String): Boolean {

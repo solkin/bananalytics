@@ -5,8 +5,13 @@ Base URL: `/api/v1`
 ## Authentication
 
 ### SDK Endpoints
-Use `X-API-Key` header with any active API key of the app. An app can have as
-many named keys as needed — see [API Key Endpoints](#api-key-endpoints).
+Use `X-API-Key` header with any active `sdk`-scoped API key of the app. An app
+can have as many named keys as needed — see [API Key Endpoints](#api-key-endpoints).
+
+### Release Publishing
+Use `X-API-Key` header with an `upload`-scoped key. SDK keys are rejected: they
+ship inside the app, so anyone who unpacks a build would be able to publish
+releases. See [POST /releases](#post-releases).
 
 ### Admin Endpoints
 Session-based authentication via cookies. Login first to get a session.
@@ -343,6 +348,13 @@ An app can have any number of named keys. Only the SHA-256 hash of a key is
 stored, so a key value is returned exactly once — in the response that created
 it. All endpoints below require the `admin` role on the app.
 
+Every key has a scope, and it is enforced on every request:
+
+| Scope | Authenticates | Notes |
+|-------|---------------|-------|
+| `sdk` | `/events/submit`, `/crashes/submit` | Default. Ships inside the app. |
+| `upload` | `/releases` | Belongs in CI secrets, never in a build. |
+
 ### GET /apps/{id}/keys
 List keys of an app. Values are never returned, only their prefix.
 
@@ -353,6 +365,7 @@ List keys of an app. Values are never returned, only their prefix.
     "id": "uuid",
     "app_id": "uuid",
     "name": "Production build",
+    "scope": "sdk",
     "key_prefix": "bnn_AbCd1234",
     "created_by": "Jane Doe",
     "last_used_at": "2026-01-10T12:00:00Z",
@@ -369,16 +382,22 @@ Create a key.
 
 **Request:**
 ```json
-{ "name": "Production build" }
+{ "name": "Production build", "scope": "sdk" }
 ```
+
+`scope` is optional and defaults to `sdk`; pass `upload` for a key that
+publishes releases from CI.
 
 **Response:** `201 Created`
 ```json
 {
-  "key": { "id": "uuid", "name": "Production build", "key_prefix": "bnn_AbCd1234", "...": "..." },
+  "key": { "id": "uuid", "name": "Production build", "scope": "sdk", "key_prefix": "bnn_AbCd1234", "...": "..." },
   "api_key": "bnn_AbCd1234efgh..."
 }
 ```
+
+**Errors:**
+- `400` - Name is empty or longer than 100 characters, or scope is not `sdk`/`upload`
 
 ### PUT /apps/{id}/keys/{keyId}
 Rename a key.
@@ -526,6 +545,77 @@ Create a temporary public download link for APK.
   "expires_at": "2026-01-11T12:00:00Z"
 }
 ```
+
+---
+
+## Release Publishing
+
+### POST /releases
+Publish a build in one request — meant for CI. The app is identified by the API
+key, and the version by the APK itself, so a pipeline only has to hand over the
+file.
+
+**Authentication:** `X-API-Key` with an `upload`-scoped key.
+
+**Request:** `multipart/form-data`
+
+| Part | Type | Required | Description |
+|------|------|----------|-------------|
+| `apk` | file | yes | The build to publish |
+| `mapping` | file | no | R8/ProGuard `mapping.txt` for this build |
+| `release_notes` | text | no | Shown to testers; keeps the previous notes if omitted |
+| `version_code` | text | no | Overrides the value read from the APK |
+| `version_name` | text | no | Overrides the value read from the APK |
+| `publish` | text | no | Publish for testers, default `true` |
+| `notify` | text | no | Email admins and testers, default `false` |
+| `link_expires_in_hours` | text | no | Lifetime of the returned link, default `720` (30 days), max `8760` |
+
+Booleans accept `true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`.
+
+```bash
+curl -f -X POST https://your-server.com/api/v1/releases \
+  -H "X-API-Key: $BANANALYTICS_KEY" \
+  -F apk=@app/build/outputs/apk/release/app-release.apk \
+  -F mapping=@app/build/outputs/mapping/release/mapping.txt \
+  -F release_notes="$(git log -1 --pretty=%s)" \
+  -F notify=true
+```
+
+**Response:** `201 Created`
+```json
+{
+  "app_id": "uuid",
+  "version_id": "uuid",
+  "version_code": 1092,
+  "version_name": "21.0",
+  "release_notes": "Fix crash on startup",
+  "published_for_testers": true,
+  "has_mapping": true,
+  "apk_size": 3972684,
+  "download_url": "https://your-server.com/api/v1/download/e6ceb82d...",
+  "expires_at": "2026-08-24T17:08:38Z",
+  "notified": 4
+}
+```
+
+**Notes:**
+- `version_code` and `version_name` are read from the APK's `AndroidManifest.xml`.
+  A `versionName` defined as a resource reference (`@string/version`) cannot be
+  resolved from the manifest alone — pass `version_name` explicitly in that case.
+- The APK's package name must match the app, otherwise the request is rejected.
+  This is what keeps a build from landing in the wrong project.
+- Re-publishing the same `version_code` overwrites the existing version instead
+  of failing, so a retried pipeline is safe. `release_notes`, `version_name` and
+  `mapping` that are not sent keep their previous values.
+- `notify` mails everyone with the `admin` or `tester` role, 500 ms apart.
+  Without SMTP configured the release still publishes and `notified` is `0`.
+- Upload ceiling is `MAX_APK_SIZE_MB` (default 200). Keep nginx
+  `client_max_body_size` above it.
+
+**Errors:**
+- `400` - Missing, empty or duplicated `apk`, unreadable APK, package mismatch, no version code, bad field value
+- `401` - Missing key, revoked key, or a key that is not `upload`-scoped
+- `413` - APK or mapping larger than the configured limit
 
 ---
 

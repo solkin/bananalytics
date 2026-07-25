@@ -2,12 +2,14 @@ package com.bananalytics.services
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.net.URI
 import java.time.Duration
 
@@ -15,6 +17,18 @@ object StorageService {
     private val logger = LoggerFactory.getLogger(StorageService::class.java)
     private lateinit var s3Client: S3Client
     private lateinit var bucketName: String
+
+    private const val APK_CONTENT_TYPE = "application/vnd.android.package-archive"
+
+    /**
+     * The client-wide timeouts are sized for small mapping files; a couple of
+     * hundred megabytes of APK needs far longer than ten seconds.
+     */
+    private val largeUploadTimeouts: AwsRequestOverrideConfiguration =
+        AwsRequestOverrideConfiguration.builder()
+            .apiCallAttemptTimeout(Duration.ofMinutes(10))
+            .apiCallTimeout(Duration.ofMinutes(10))
+            .build()
 
     fun init(endpoint: String, accessKey: String, secretKey: String, bucket: String) {
         bucketName = bucket
@@ -97,9 +111,27 @@ object StorageService {
             PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
-                .contentType("application/vnd.android.package-archive")
+                .contentType(APK_CONTENT_TYPE)
+                .overrideConfiguration(largeUploadTimeouts)
                 .build(),
             RequestBody.fromBytes(content)
+        )
+
+        return key
+    }
+
+    /** Streams an APK straight off disk, so a large build never sits in heap. */
+    fun uploadApkFromFile(appId: String, versionCode: Long, file: File): String {
+        val key = "apks/$appId/$versionCode/app.apk"
+
+        s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(APK_CONTENT_TYPE)
+                .overrideConfiguration(largeUploadTimeouts)
+                .build(),
+            RequestBody.fromFile(file)
         )
 
         return key

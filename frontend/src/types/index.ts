@@ -8,10 +8,14 @@ export interface App {
   api_key?: string | null
 }
 
+/** `sdk` submits crashes and events, `upload` publishes releases from CI. */
+export type ApiKeyScope = 'sdk' | 'upload'
+
 export interface ApiKey {
   id: string
   app_id: string
   name: string
+  scope: ApiKeyScope
   key_prefix: string
   created_by: string | null
   last_used_at: string | null

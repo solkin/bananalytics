@@ -20,6 +20,14 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object ApiKeyRepository {
 
+    /** Ingestion from the SDK: submitting crashes and events. */
+    const val SCOPE_SDK = "sdk"
+
+    /** Publishing releases from CI. Never shipped inside an app. */
+    const val SCOPE_UPLOAD = "upload"
+
+    val SCOPES = listOf(SCOPE_SDK, SCOPE_UPLOAD)
+
     private const val PREFIX_LENGTH = 12
     private val secureRandom = SecureRandom()
 
@@ -38,7 +46,12 @@ object ApiKeyRepository {
 
     /** Returns the stored key plus its plaintext value, which the caller must
      *  hand to the user right away — it cannot be recovered later. */
-    fun create(appId: UUID, name: String, createdBy: UUID?): CreatedApiKeyResponse = transaction {
+    fun create(
+        appId: UUID,
+        name: String,
+        createdBy: UUID?,
+        scope: String = SCOPE_SDK
+    ): CreatedApiKeyResponse = transaction {
         val rawKey = generateKey()
         val now = OffsetDateTime.now()
         val creator = createdBy?.let { UserRepository.findById(it) }
@@ -46,6 +59,7 @@ object ApiKeyRepository {
         val id = ApiKeys.insertAndGetId {
             it[ApiKeys.appId] = appId
             it[ApiKeys.name] = name
+            it[ApiKeys.scope] = scope
             it[ApiKeys.keyHash] = sha256(rawKey)
             it[ApiKeys.keyPrefix] = rawKey.take(PREFIX_LENGTH)
             it[ApiKeys.createdBy] = createdBy
@@ -57,6 +71,7 @@ object ApiKeyRepository {
                 id = id.value.toString(),
                 appId = appId.toString(),
                 name = name,
+                scope = scope,
                 keyPrefix = rawKey.take(PREFIX_LENGTH),
                 createdBy = creator?.let { it.name ?: it.email },
                 lastUsedAt = null,
@@ -91,11 +106,16 @@ object ApiKeyRepository {
         deleted
     }
 
-    /** Resolves an `X-API-Key` value to its app. Revoked keys never match. */
-    fun authenticate(rawKey: String): AppResponse? = transaction {
+    /** Resolves an `X-API-Key` value to its app. Revoked keys, and keys issued
+     *  for a different scope, never match. */
+    fun authenticate(rawKey: String, scope: String = SCOPE_SDK): AppResponse? = transaction {
         val row = (ApiKeys innerJoin Apps)
             .selectAll()
-            .where { (ApiKeys.keyHash eq sha256(rawKey)) and ApiKeys.revokedAt.isNull() }
+            .where {
+                (ApiKeys.keyHash eq sha256(rawKey)) and
+                    (ApiKeys.scope eq scope) and
+                    ApiKeys.revokedAt.isNull()
+            }
             .singleOrNull()
             ?: return@transaction null
 
@@ -138,6 +158,7 @@ object ApiKeyRepository {
         id = this[ApiKeys.id].value.toString(),
         appId = this[ApiKeys.appId].value.toString(),
         name = this[ApiKeys.name],
+        scope = this[ApiKeys.scope],
         keyPrefix = this[ApiKeys.keyPrefix],
         createdBy = this[ApiKeys.createdBy]?.let { this[Users.name] ?: this[Users.email] },
         lastUsedAt = this[ApiKeys.lastUsedAt]?.toString(),

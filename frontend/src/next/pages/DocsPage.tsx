@@ -15,6 +15,7 @@ const SECTIONS: [string, string][] = [
   ['breadcrumbs', 'Breadcrumbs'],
   ['how', 'How it works'],
   ['deobfuscation', 'Deobfuscate crashes'],
+  ['publish', 'Publish from CI'],
   ['key', 'Get your app key'],
 ]
 
@@ -87,6 +88,14 @@ const BREADCRUMBS = `import com.tomclaw.bananalytics.api.BreadcrumbCategory
 bananalytics.leaveBreadcrumb("Opened HomeActivity", BreadcrumbCategory.NAVIGATION)
 bananalytics.leaveBreadcrumb("Tapped Buy", BreadcrumbCategory.USER_ACTION)
 // Categories: NAVIGATION, USER_ACTION, NETWORK, ERROR, CUSTOM`
+
+const PUBLISH = `# one step after the build, with an upload-scoped key in CI secrets
+curl -f -X POST https://banana.appteka.store/api/v1/releases \\
+  -H "X-API-Key: $BANANALYTICS_KEY" \\
+  -F apk=@app/build/outputs/apk/release/app-release.apk \\
+  -F mapping=@app/build/outputs/mapping/release/mapping.txt \\
+  -F release_notes="$(git log -1 --pretty=%s)" \\
+  -F notify=true`
 
 export default function DocsPage() {
   const { user, logout } = useAuth()
@@ -249,12 +258,31 @@ export default function DocsPage() {
             </p>
           </section>
 
+          <section id="publish" className="docs-section">
+            <h2>Publish from CI</h2>
+            <p>
+              One request uploads a build and publishes it for testers. The package name and version are read from the
+              APK, so the pipeline only hands over the file:
+            </p>
+            <CodeBlock code={PUBLISH} />
+            <p>
+              The response carries a download link (valid 30 days by default) you can post to your team chat. Optional
+              parts: <code>version_code</code> / <code>version_name</code> to override what the APK says,{' '}
+              <code>publish=false</code> to upload without showing it to testers, <code>notify=true</code> to email
+              admins and testers, <code>link_expires_in_hours</code> for a shorter-lived link.
+            </p>
+            <p>
+              Re-running the same build overwrites that version instead of failing, so a retried pipeline is safe. Use an{' '}
+              <strong>upload</strong> key here — the SDK key is rejected, because it ships inside your app.
+            </p>
+          </section>
+
           <section id="key" className="docs-section">
             <h2>Get your app key</h2>
             <p>
-              Open your app, then <strong>Settings → API keys</strong>, and create a key. The value looks like{' '}
-              <code>bnn_xxxxx</code> and goes into <code>BananalyticsConfig.apiKey</code>. Keep it private — it authorizes
-              data submission for the app.
+              Open your app, then <strong>Settings → API keys</strong>, and create a key. An <strong>SDK</strong> key
+              looks like <code>bnn_xxxxx</code> and goes into <code>BananalyticsConfig.apiKey</code>; a{' '}
+              <strong>CI upload</strong> key publishes releases and belongs in your CI secrets. Keep both private.
             </p>
             <p>
               Keys are stored hashed and shown only once, right after creation. Create a separate named key per build or

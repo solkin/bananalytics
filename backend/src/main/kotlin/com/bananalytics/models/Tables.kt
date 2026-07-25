@@ -15,6 +15,7 @@ object Apps : UUIDTable("apps") {
 object ApiKeys : UUIDTable("api_keys") {
     val appId = reference("app_id", Apps)
     val name = varchar("name", 100)
+    val scope = varchar("scope", 20).default("sdk")
     val keyHash = varchar("key_hash", 64).uniqueIndex()
     val keyPrefix = varchar("key_prefix", 16)
     val createdBy = reference("created_by", Users).nullable()
