@@ -5,7 +5,8 @@ Base URL: `/api/v1`
 ## Authentication
 
 ### SDK Endpoints
-Use `X-API-Key` header with your app's API key.
+Use `X-API-Key` header with any active API key of the app. An app can have as
+many named keys as needed — see [API Key Endpoints](#api-key-endpoints).
 
 ### Admin Endpoints
 Session-based authentication via cookies. Login first to get a session.
@@ -298,7 +299,6 @@ List apps accessible to current user.
     "id": "uuid",
     "name": "My App",
     "package_name": "com.example.app",
-    "api_key": "bnn_xxxxx",
     "created_at": "2026-01-10T12:00:00Z"
   }
 ]
@@ -316,26 +316,88 @@ Create a new app.
 ```
 
 **Response:** `201 Created`
+
+A `Default` API key is created together with the app. This is the only response
+that ever contains a key value — keys are stored hashed.
+
 ```json
 {
   "id": "uuid",
   "name": "My App",
   "package_name": "com.example.app",
-  "api_key": "bnn_xxxxx",
-  "created_at": "2026-01-10T12:00:00Z"
+  "created_at": "2026-01-10T12:00:00Z",
+  "api_key": "bnn_xxxxx"
 }
-```
-
-### POST /apps/{id}/regenerate-key
-Regenerate API key for an app.
-
-**Response:**
-```json
-{ "api_key": "bnn_new_key" }
 ```
 
 ### DELETE /apps/{id}
 Delete an application and all associated data (crashes, events, versions, access).
+
+**Response:** `204 No Content`
+
+---
+
+## API Key Endpoints
+
+An app can have any number of named keys. Only the SHA-256 hash of a key is
+stored, so a key value is returned exactly once — in the response that created
+it. All endpoints below require the `admin` role on the app.
+
+### GET /apps/{id}/keys
+List keys of an app. Values are never returned, only their prefix.
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "app_id": "uuid",
+    "name": "Production build",
+    "key_prefix": "bnn_AbCd1234",
+    "created_by": "Jane Doe",
+    "last_used_at": "2026-01-10T12:00:00Z",
+    "revoked_at": null,
+    "created_at": "2026-01-10T12:00:00Z"
+  }
+]
+```
+
+`last_used_at` is refreshed at most once every 5 minutes per key.
+
+### POST /apps/{id}/keys
+Create a key.
+
+**Request:**
+```json
+{ "name": "Production build" }
+```
+
+**Response:** `201 Created`
+```json
+{
+  "key": { "id": "uuid", "name": "Production build", "key_prefix": "bnn_AbCd1234", "...": "..." },
+  "api_key": "bnn_AbCd1234efgh..."
+}
+```
+
+### PUT /apps/{id}/keys/{keyId}
+Rename a key.
+
+**Request:**
+```json
+{ "name": "CI pipeline" }
+```
+
+**Response:** `204 No Content`
+
+### POST /apps/{id}/keys/{keyId}/revoke
+Revoke a key. It stops authenticating immediately and stays listed with
+`revoked_at` set.
+
+**Response:** `204 No Content`
+
+### DELETE /apps/{id}/keys/{keyId}
+Delete a key permanently, dropping its usage history.
 
 **Response:** `204 No Content`
 

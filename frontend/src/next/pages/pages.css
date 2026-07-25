@@ -502,8 +502,23 @@
   border-radius: inherit;
   transition: width 0.25s var(--bnn-ease);
 }
+/* API keys */
+.set-keys__detail,
+.set-keys__reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.set-keys__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
 @media (max-width: 576px) {
   .people-detail__danger,
+  .pg-danger__row,
   .set-maint__row {
     align-items: stretch;
     flex-direction: column;

@@ -5,7 +5,7 @@ import com.bananalytics.config.UnauthorizedException
 import com.bananalytics.models.CrashesSubmitRequest
 import com.bananalytics.models.EventsSubmitRequest
 import com.bananalytics.models.SubmitResponse
-import com.bananalytics.repositories.AppRepository
+import com.bananalytics.repositories.ApiKeyRepository
 import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.services.CrashService
 import com.bananalytics.services.EventService
@@ -94,6 +94,6 @@ private fun io.ktor.server.application.ApplicationCall.authenticateByApiKey(): c
     val apiKey = request.header("X-API-Key")
         ?: throw UnauthorizedException("Missing X-API-Key header")
 
-    return AppRepository.findByApiKey(apiKey)
+    return ApiKeyRepository.authenticate(apiKey)
         ?: throw UnauthorizedException("Invalid API key")
 }

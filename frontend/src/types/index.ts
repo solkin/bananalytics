@@ -2,8 +2,26 @@ export interface App {
   id: string
   name: string
   package_name: string
-  api_key: string
   created_at: string
+  /** Only present in the response that created the app — keys are stored
+   *  hashed and can never be read back. */
+  api_key?: string | null
+}
+
+export interface ApiKey {
+  id: string
+  app_id: string
+  name: string
+  key_prefix: string
+  created_by: string | null
+  last_used_at: string | null
+  revoked_at: string | null
+  created_at: string
+}
+
+export interface CreatedApiKey {
+  key: ApiKey
+  api_key: string
 }
 
 export interface AppVersion {

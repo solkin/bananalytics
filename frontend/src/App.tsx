@@ -12,6 +12,7 @@ import DevicesPage from './next/pages/DevicesPage'
 import MappingsPage from './next/pages/MappingsPage'
 import ReleasesPage from './next/pages/ReleasesPage'
 import SettingsPage from './next/pages/SettingsPage'
+import ApiKeysPage from './next/pages/ApiKeysPage'
 import PeoplePage from './next/pages/PeoplePage'
 import AppsHome from './next/pages/AppsHome'
 import AccountPage from './next/pages/AccountPage'
@@ -73,6 +74,7 @@ function AppRoutes() {
         <Route path="diagnostics/mappings" element={<MappingsPage />} />
         <Route path="distribution/releases" element={<ReleasesPage />} />
         <Route path="settings/general" element={<SettingsPage />} />
+        <Route path="settings/api-keys" element={<ApiKeysPage />} />
         <Route path="settings/people" element={<PeoplePage />} />
       </Route>
 

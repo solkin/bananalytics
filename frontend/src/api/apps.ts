@@ -1,5 +1,5 @@
 import api from './client'
-import type { App, AppVersion, DownloadToken } from '@/types'
+import type { ApiKey, App, AppVersion, CreatedApiKey, DownloadToken } from '@/types'
 
 export async function getApps(): Promise<App[]> {
   const response = await api.get<App[]>('/apps')
@@ -28,9 +28,28 @@ export async function deleteApp(id: string): Promise<void> {
   await api.delete(`/apps/${id}`)
 }
 
-export async function regenerateApiKey(id: string): Promise<string> {
-  const response = await api.post<{ api_key: string }>(`/apps/${id}/regenerate-key`)
-  return response.data.api_key
+// API keys
+export async function getApiKeys(appId: string): Promise<ApiKey[]> {
+  const response = await api.get<ApiKey[]>(`/apps/${appId}/keys`)
+  return response.data
+}
+
+/** The returned `api_key` is the only readable copy — show it immediately. */
+export async function createApiKey(appId: string, name: string): Promise<CreatedApiKey> {
+  const response = await api.post<CreatedApiKey>(`/apps/${appId}/keys`, { name })
+  return response.data
+}
+
+export async function renameApiKey(appId: string, keyId: string, name: string): Promise<void> {
+  await api.put(`/apps/${appId}/keys/${keyId}`, { name })
+}
+
+export async function revokeApiKey(appId: string, keyId: string): Promise<void> {
+  await api.post(`/apps/${appId}/keys/${keyId}/revoke`)
+}
+
+export async function deleteApiKey(appId: string, keyId: string): Promise<void> {
+  await api.delete(`/apps/${appId}/keys/${keyId}`)
 }
 
 // Versions

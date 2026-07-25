@@ -252,8 +252,13 @@ export default function DocsPage() {
           <section id="key" className="docs-section">
             <h2>Get your app key</h2>
             <p>
-              Open your app, then <strong>Settings → API key</strong>. The key looks like <code>bnn_xxxxx</code> and goes
-              into <code>BananalyticsConfig.apiKey</code>. Keep it private — it authorizes data submission for the app.
+              Open your app, then <strong>Settings → API keys</strong>, and create a key. The value looks like{' '}
+              <code>bnn_xxxxx</code> and goes into <code>BananalyticsConfig.apiKey</code>. Keep it private — it authorizes
+              data submission for the app.
+            </p>
+            <p>
+              Keys are stored hashed and shown only once, right after creation. Create a separate named key per build or
+              integration: revoking one leaves the others working.
             </p>
           </section>
         </main>

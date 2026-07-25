@@ -29,12 +29,26 @@ CREATE TABLE IF NOT EXISTS apps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     package_name VARCHAR(255) NOT NULL UNIQUE,
-    api_key VARCHAR(64) NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_apps_api_key ON apps(api_key);
 CREATE INDEX IF NOT EXISTS idx_apps_package_name ON apps(package_name);
+
+-- Named API keys used by the SDK (X-API-Key). Stored hashed: the key value
+-- is shown once, at creation.
+CREATE TABLE IF NOT EXISTS api_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    key_hash VARCHAR(64) NOT NULL UNIQUE,
+    key_prefix VARCHAR(16) NOT NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    last_used_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
 
 -- App access (sharing)
 CREATE TABLE IF NOT EXISTS app_access (

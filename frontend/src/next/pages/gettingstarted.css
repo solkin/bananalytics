@@ -51,4 +51,12 @@
   margin-bottom: 8px;
 }
 
+.gs-key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* Code blocks now use the shared <CodeBlock> (next/codeblock.css). */

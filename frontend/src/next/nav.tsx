@@ -50,6 +50,7 @@ export const NAV: NavGroup[] = [
     icon: <Icons.IconSettings size={16} />,
     items: [
       { label: 'General', path: 'settings/general' },
+      { label: 'API keys', path: 'settings/api-keys' },
       { label: 'People', path: 'settings/people' },
     ],
   },

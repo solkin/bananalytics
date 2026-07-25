@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Icons, Text, Title } from '@/ui'
+import { useState, type ReactNode } from 'react'
+import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
+import { Button, Icons, Text, Title } from '@/ui'
 import { getApp } from '@/api/apps'
 import { useAsync } from '../async'
 import { CodeBlock } from '../CodeBlock'
+import type { ShellContext } from '../layout/AppShell'
+import { CreateKeyModal } from './ApiKeysPage'
 import './gettingstarted.css'
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
@@ -20,9 +22,17 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 
 export default function GettingStarted() {
   const { appId } = useParams()
+  const { role } = useOutletContext<ShellContext>()
+  const location = useLocation()
   const state = useAsync(() => getApp(appId!), [appId])
   const name = state.data?.name ?? 'your app'
-  const key = state.data?.api_key ?? 'bnn_xxxxx'
+
+  /* Keys are stored hashed, so the value only exists here right after it was
+     created — either with the app (handed over by the create dialog) or from
+     the button below. */
+  const [created, setCreated] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const key = created ?? (location.state as { apiKey?: string } | null)?.apiKey ?? null
 
   const settings = `// settings.gradle.kts
 dependencyResolutionManagement {
@@ -55,7 +65,7 @@ class App : Application() {
             filesDir = filesDir,
             config = BananalyticsConfig(
                 baseUrl = "https://banana.appteka.store",
-                apiKey = "${key}",
+                apiKey = "${key ?? 'bnn_xxxxx'}",
             ),
             environmentProvider = object : EnvironmentProvider {
                 override fun environment() = Environment(
@@ -117,7 +127,23 @@ bananalytics.trackEvent(
             </Step>
 
             <Step n={3} title="Initialize in Application.onCreate()">
-              <Text size="sm" type="secondary">Your app key is filled in below — keep it private.</Text>
+              {key ? (
+                <Text size="sm" type="secondary">
+                  Your API key is filled in below — copy it now, it is shown only once. Keep it private.
+                </Text>
+              ) : (
+                <div className="gs-key">
+                  <Text size="sm" type="secondary">
+                    API keys are shown only once, so paste in a key you saved — or{' '}
+                    {role === 'admin' ? 'create a new one.' : 'ask an app admin for one.'}
+                  </Text>
+                  {role === 'admin' && (
+                    <Button icon={<Icons.IconLock size={14} />} onClick={() => setCreateOpen(true)}>
+                      Create API key
+                    </Button>
+                  )}
+                </div>
+              )}
               <CodeBlock code={init} />
             </Step>
 
@@ -133,6 +159,15 @@ bananalytics.trackEvent(
           </div>
         </div>
       </div>
+
+      {createOpen && (
+        <CreateKeyModal
+          appId={appId!}
+          defaultName="Default"
+          onClose={() => setCreateOpen(false)}
+          onCreated={setCreated}
+        />
+      )}
     </div>
   )
 }

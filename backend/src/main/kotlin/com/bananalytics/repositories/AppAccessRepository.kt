@@ -34,7 +34,6 @@ object AppAccessRepository {
                     id = it[Apps.id].value.toString(),
                     name = it[Apps.name],
                     packageName = it[Apps.packageName],
-                    apiKey = it[Apps.apiKey],
                     createdAt = it[Apps.createdAt].toString()
                 )
             }

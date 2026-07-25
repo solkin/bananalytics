@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Form, FormItem, Icons, Input, Modal, Popconfirm, Statistic, Text, toast } from '@/ui'
 import type { App } from '@/types'
-import { deleteApp, getApp, regenerateApiKey, updateApp } from '@/api/apps'
+import { deleteApp, getApp, updateApp } from '@/api/apps'
 import {
   cleanupOrphanedCrashes,
   getRetentionPreview,
@@ -277,16 +277,11 @@ function MaintenanceCard({ appId }: { appId: string }) {
 function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
   const navigate = useNavigate()
   const [name, setName] = useState(app.name)
-  const [apiKey, setApiKey] = useState(app.api_key)
 
   const save = async () => {
     await updateApp(app.id, name)
     toast.success('Settings saved')
     onChanged()
-  }
-  const regen = async () => {
-    setApiKey(await regenerateApiKey(app.id))
-    toast.success('API key regenerated')
   }
   const remove = async () => {
     await deleteApp(app.id)
@@ -313,13 +308,19 @@ function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
         </Form>
       </Card>
 
-      <Card title="API key" subtitle="Used by the SDK to submit crashes and events.">
-        <div className="pg-apikey">
-          <Input value={apiKey} readOnly prefix={<Icons.IconLock size={15} />} />
-          <Button icon={<Icons.IconCopy size={15} />} onClick={() => { navigator.clipboard?.writeText(apiKey); toast.success('Copied to clipboard') }}>Copy</Button>
-          <Popconfirm title="Regenerate API key?" description="The old key stops working immediately." okDanger okText="Regenerate" onConfirm={regen}>
-            <Button>Regenerate</Button>
-          </Popconfirm>
+      <Card title="API keys" subtitle="Used by the SDK to submit crashes and events.">
+        <div className="set-maint__row">
+          <div>
+            <Text strong>Manage API keys</Text>
+            <div>
+              <Text type="secondary" size="sm">
+                Create a named key per build or integration, and revoke them individually.
+              </Text>
+            </div>
+          </div>
+          <Button icon={<Icons.IconLock size={15} />} onClick={() => navigate(`/apps/${app.id}/settings/api-keys`)}>
+            Open API keys
+          </Button>
         </div>
       </Card>
 

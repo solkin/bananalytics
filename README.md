@@ -130,6 +130,7 @@ Quick overview:
 | `POST /api/v1/crashes/submit` | API Key | Submit crashes from SDK |
 | `POST /api/v1/auth/login` | — | Login |
 | `GET /api/v1/apps` | Session | List apps |
+| `GET /api/v1/apps/{id}/keys` | Session | List app API keys |
 | `GET /api/v1/apps/{id}/crashes` | Session | Get crash groups |
 
 ## Tech Stack

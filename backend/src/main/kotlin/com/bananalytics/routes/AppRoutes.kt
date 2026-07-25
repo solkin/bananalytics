@@ -2,6 +2,7 @@ package com.bananalytics.routes
 
 import com.bananalytics.config.*
 import com.bananalytics.models.*
+import com.bananalytics.repositories.ApiKeyRepository
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
 import com.bananalytics.repositories.DownloadTokenRepository
@@ -48,7 +49,7 @@ fun Route.appRoutes() {
             }
 
             val app = AppRepository.create(request.name, request.packageName)
-            
+
             // Grant admin access to creator
             AppAccessRepository.grantAccess(
                 appId = UUID.fromString(app.id),
@@ -56,7 +57,15 @@ fun Route.appRoutes() {
                 role = "admin"
             )
 
-            call.respond(HttpStatusCode.Created, app)
+            // Every app starts with one key so the SDK snippet works right away.
+            // This is the only response that ever carries a key value.
+            val defaultKey = ApiKeyRepository.create(
+                appId = UUID.fromString(app.id),
+                name = "Default",
+                createdBy = UUID.fromString(user.id)
+            )
+
+            call.respond(HttpStatusCode.Created, app.copy(apiKey = defaultKey.apiKey))
         }
 
         // Get app details
@@ -108,18 +117,96 @@ fun Route.appRoutes() {
             call.respond(HttpStatusCode.NoContent)
         }
 
-        // Regenerate API key
-        post("/{id}/regenerate-key") {
+        // --- API keys ---
+
+        // List keys (values are hashed, only prefixes are returned)
+        get("/{id}/keys") {
             val user = call.getUser()
             val appId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw BadRequestException("Invalid app ID")
 
             call.requireAppAdmin(appId, user)
 
-            val newKey = AppRepository.regenerateApiKey(appId)
-                ?: throw NotFoundException("App not found")
+            call.respond(ApiKeyRepository.findByAppId(appId))
+        }
 
-            call.respond(mapOf("api_key" to newKey))
+        // Create a key — the only time its value is returned
+        post("/{id}/keys") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val name = call.receive<CreateApiKeyRequest>().name.trim()
+            if (name.isBlank()) {
+                throw BadRequestException("Name is required")
+            }
+            if (name.length > 100) {
+                throw BadRequestException("Name must be 100 characters or shorter")
+            }
+
+            val created = ApiKeyRepository.create(appId, name, UUID.fromString(user.id))
+            call.respond(HttpStatusCode.Created, created)
+        }
+
+        // Rename a key
+        put("/{id}/keys/{keyId}") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val keyId = call.parameters["keyId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid key ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val name = call.receive<UpdateApiKeyRequest>().name.trim()
+            if (name.isBlank()) {
+                throw BadRequestException("Name is required")
+            }
+            if (name.length > 100) {
+                throw BadRequestException("Name must be 100 characters or shorter")
+            }
+
+            if (!ApiKeyRepository.rename(appId, keyId, name)) {
+                throw NotFoundException("API key not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        // Revoke a key — stops working immediately, stays in the list
+        post("/{id}/keys/{keyId}/revoke") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val keyId = call.parameters["keyId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid key ID")
+
+            call.requireAppAdmin(appId, user)
+
+            if (!ApiKeyRepository.revoke(appId, keyId)) {
+                throw NotFoundException("Active API key not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        // Delete a key permanently
+        delete("/{id}/keys/{keyId}") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+            val keyId = call.parameters["keyId"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid key ID")
+
+            call.requireAppAdmin(appId, user)
+
+            if (!ApiKeyRepository.delete(appId, keyId)) {
+                throw NotFoundException("API key not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
         }
 
         // --- Access management ---

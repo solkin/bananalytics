@@ -24,7 +24,9 @@ function CreateAppModal({ open, onClose }: { open: boolean; onClose: () => void 
       const app = await createApp(name.trim(), pkg.trim())
       toast.success('App created')
       onClose()
-      navigate(`/apps/${app.id}/getting-started`)
+      // The default key comes back exactly once — hand it to Getting Started
+      // so the setup snippet is ready to copy.
+      navigate(`/apps/${app.id}/getting-started`, { state: { apiKey: app.api_key } })
     } catch (e) {
       toast.error(errorText(e, 'Failed to create app'))
     } finally {

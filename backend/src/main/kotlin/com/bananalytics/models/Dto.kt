@@ -77,9 +77,36 @@ data class AppResponse(
     val id: String,
     val name: String,
     @SerialName("package_name") val packageName: String,
-    @SerialName("api_key") val apiKey: String,
+    @SerialName("created_at") val createdAt: String,
+    // Only filled in the app creation response — API keys are stored hashed
+    // and can never be read back afterwards.
+    @SerialName("api_key") val apiKey: String? = null
+)
+
+@Serializable
+data class ApiKeyResponse(
+    val id: String,
+    @SerialName("app_id") val appId: String,
+    val name: String,
+    @SerialName("key_prefix") val keyPrefix: String,
+    @SerialName("created_by") val createdBy: String?,
+    @SerialName("last_used_at") val lastUsedAt: String?,
+    @SerialName("revoked_at") val revokedAt: String?,
     @SerialName("created_at") val createdAt: String
 )
+
+/** Carries the one and only readable copy of a freshly created key. */
+@Serializable
+data class CreatedApiKeyResponse(
+    val key: ApiKeyResponse,
+    @SerialName("api_key") val apiKey: String
+)
+
+@Serializable
+data class CreateApiKeyRequest(val name: String)
+
+@Serializable
+data class UpdateApiKeyRequest(val name: String)
 
 @Serializable
 data class CreateAppRequest(

@@ -9,7 +9,17 @@ import kotlinx.serialization.json.Json
 object Apps : UUIDTable("apps") {
     val name = varchar("name", 255)
     val packageName = varchar("package_name", 255).uniqueIndex()
-    val apiKey = varchar("api_key", 64).uniqueIndex()
+    val createdAt = timestampWithTimeZone("created_at")
+}
+
+object ApiKeys : UUIDTable("api_keys") {
+    val appId = reference("app_id", Apps)
+    val name = varchar("name", 100)
+    val keyHash = varchar("key_hash", 64).uniqueIndex()
+    val keyPrefix = varchar("key_prefix", 16)
+    val createdBy = reference("created_by", Users).nullable()
+    val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
+    val revokedAt = timestampWithTimeZone("revoked_at").nullable()
     val createdAt = timestampWithTimeZone("created_at")
 }
 
