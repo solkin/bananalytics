@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.io.InputStream
 import java.net.URI
 import java.time.Duration
 import java.util.zip.GZIPInputStream
@@ -131,15 +132,20 @@ object StorageService {
         return key
     }
 
-    fun getApkByKey(key: String): ByteArray? {
+    /**
+     * Opens an APK for streaming; the caller must close the stream. A build is
+     * tens of megabytes, and one download per tester must not mean one copy per
+     * tester in heap.
+     */
+    fun openApk(key: String): InputStream? {
         return try {
-            val response = s3Client.getObjectAsBytes(
+            s3Client.getObject(
                 GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(key)
+                    .overrideConfiguration(largeUploadTimeouts)
                     .build()
             )
-            response.asByteArray()
         } catch (e: NoSuchKeyException) {
             null
         }

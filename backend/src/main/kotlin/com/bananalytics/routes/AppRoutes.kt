@@ -783,26 +783,7 @@ fun Route.appRoutes() {
 
             call.requireAppAccess(appId, user)
 
-            val apkInfo = VersionRepository.getApkInfo(versionId)
-                ?: throw NotFoundException("Version not found")
-
-            if (apkInfo.first == null) {
-                throw NotFoundException("APK not found")
-            }
-
-            val apkContent = VersionRepository.getApkContent(versionId)
-                ?: throw NotFoundException("APK not found")
-
-            val filename = apkInfo.third ?: "app.apk"
-
-            call.response.header(
-                HttpHeaders.ContentDisposition,
-                ContentDisposition.Attachment.withParameter(
-                    ContentDisposition.Parameters.FileName,
-                    filename
-                ).toString()
-            )
-            call.respondBytes(apkContent, ContentType.parse("application/vnd.android.package-archive"))
+            call.respondApk(versionId)
         }
 
         // Delete APK

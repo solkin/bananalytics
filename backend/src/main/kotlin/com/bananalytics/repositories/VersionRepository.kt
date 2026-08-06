@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.io.InputStream
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -316,14 +317,15 @@ object VersionRepository {
         }
     }
 
-    fun getApkContent(id: UUID): ByteArray? {
+    /** Opens the stored APK for streaming; the caller must close the stream. */
+    fun openApk(id: UUID): InputStream? {
         val apkPath = transaction {
             AppVersions.select(AppVersions.apkPath)
                 .where { AppVersions.id eq id }
                 .singleOrNull()
                 ?.get(AppVersions.apkPath)
         }
-        return apkPath?.let { StorageService.getApkByKey(it) }
+        return apkPath?.let { StorageService.openApk(it) }
     }
 
     fun getApkInfo(id: UUID): Triple<String?, Long?, String?>? = transaction {
