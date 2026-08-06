@@ -17,10 +17,24 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_app_id ON api_keys(app_id);
 
 -- Carry over the existing per-app key so deployed SDKs keep authenticating
 -- with the value they already ship. pgcrypto is enabled in init.sql.
-INSERT INTO api_keys (app_id, name, key_hash, key_prefix, created_at)
-SELECT id, 'Default', encode(digest(api_key, 'sha256'), 'hex'), left(api_key, 12), created_at
-FROM apps
-ON CONFLICT (key_hash) DO NOTHING;
+--
+-- A database created from the current init.sql has no apps.api_key to carry
+-- over, and a plain statement naming a missing column fails at parse time —
+-- hence the guard, without which this migration breaks every fresh install.
+DO $migration$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'apps' AND column_name = 'api_key'
+    ) THEN
+        EXECUTE $carry$
+            INSERT INTO api_keys (app_id, name, key_hash, key_prefix, created_at)
+            SELECT id, 'Default', encode(digest(api_key, 'sha256'), 'hex'), left(api_key, 12), created_at
+            FROM apps
+            ON CONFLICT (key_hash) DO NOTHING
+        $carry$;
+    END IF;
+END $migration$;
 
 DROP INDEX IF EXISTS idx_apps_api_key;
 ALTER TABLE apps DROP COLUMN IF EXISTS api_key;
