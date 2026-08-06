@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("Database")
@@ -42,29 +43,37 @@ fun Application.configureDatabase() {
  * a date with no explicit partition. Idempotent.
  */
 private fun ensureEventPartitions() {
-    transaction {
-        val fmt = DateTimeFormatter.ofPattern("yyyy_MM")
-        val firstOfMonth = LocalDate.now().withDayOfMonth(1)
-        for (i in -1..3) {
-            val start = firstOfMonth.plusMonths(i.toLong())
-            val end = start.plusMonths(1)
-            val name = "events_" + start.format(fmt)
-            if (!tableExists(name)) {
-                try {
-                    exec("CREATE TABLE $name PARTITION OF events FOR VALUES FROM ('$start') TO ('$end')")
-                } catch (e: Exception) {
-                    logger.warn("Skipped event partition $name: ${e.message}")
-                }
-            }
+    val fmt = DateTimeFormatter.ofPattern("yyyy_MM")
+    // `created_at` is TIMESTAMPTZ, so a bare date in a bound would be read in
+    // the session's timezone: east of UTC the new month starts before the last
+    // one ends, and Postgres rejects it as an overlap. Anchor both to UTC.
+    val firstOfMonth = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1)
+
+    for (i in -1..3) {
+        val start = firstOfMonth.plusMonths(i.toLong())
+        val name = "events_" + start.format(fmt)
+        createPartition(name) {
+            "CREATE TABLE $name PARTITION OF events " +
+                "FOR VALUES FROM ('$start 00:00:00+00') TO ('${start.plusMonths(1)} 00:00:00+00')"
         }
-        if (!tableExists("events_default")) {
-            try {
-                exec("CREATE TABLE events_default PARTITION OF events DEFAULT")
-            } catch (e: Exception) {
-                logger.warn("Skipped events_default partition: ${e.message}")
-            }
+    }
+    createPartition("events_default") { "CREATE TABLE events_default PARTITION OF events DEFAULT" }
+
+    logger.info("Event partitions ensured")
+}
+
+/**
+ * One transaction per partition: a failed statement aborts the whole Postgres
+ * transaction, so sharing one would turn a single skipped partition into a
+ * failed startup.
+ */
+private fun createPartition(name: String, sql: () -> String) {
+    try {
+        transaction {
+            if (!tableExists(name)) exec(sql())
         }
-        logger.info("Event partitions ensured")
+    } catch (e: Exception) {
+        logger.warn("Skipped event partition $name: ${e.message}")
     }
 }
 

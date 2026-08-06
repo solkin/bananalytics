@@ -146,20 +146,22 @@ CREATE INDEX IF NOT EXISTS idx_events_app_created_at ON events(app_id, created_a
 CREATE INDEX IF NOT EXISTS idx_events_name ON events(app_id, name);
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 
--- Create partitions for current and next months
+-- Create partitions for current and next months.
+-- Bounds are anchored to UTC: created_at is TIMESTAMPTZ, so a bare date would
+-- be read in the session's timezone and the months would overlap.
 DO $$
 DECLARE
     partition_date DATE;
     partition_name TEXT;
-    start_date DATE;
-    end_date DATE;
+    start_date TIMESTAMPTZ;
+    end_date TIMESTAMPTZ;
 BEGIN
     FOR i IN 0..2 LOOP
         partition_date := DATE_TRUNC('month', CURRENT_DATE + (i || ' months')::INTERVAL);
         partition_name := 'events_' || TO_CHAR(partition_date, 'YYYY_MM');
-        start_date := partition_date;
-        end_date := partition_date + INTERVAL '1 month';
-        
+        start_date := partition_date AT TIME ZONE 'UTC';
+        end_date := (partition_date + INTERVAL '1 month') AT TIME ZONE 'UTC';
+
         IF NOT EXISTS (
             SELECT 1 FROM pg_tables
             WHERE tablename = partition_name
