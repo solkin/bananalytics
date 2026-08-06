@@ -95,25 +95,17 @@ object VersionRepository {
         return mappingPath?.let { StorageService.getMappingByKey(it) }
     }
 
+    /** A version created by hand in the UI; its APK, if any, is uploaded after. */
     fun create(
         appId: UUID,
         versionCode: Long,
         versionName: String?,
-        mappingContent: String?,
-        apkBytes: ByteArray? = null,
-        apkFilename: String? = null,
-        releaseNotes: String? = null
+        mappingFile: File?
     ): AppVersionResponse = transaction {
         val now = OffsetDateTime.now()
 
-        // Upload mapping to S3 if provided
-        val mappingPath = mappingContent?.let {
+        val mappingPath = mappingFile?.let {
             StorageService.uploadMapping(appId.toString(), versionCode, it)
-        }
-
-        // Upload APK to S3 if provided
-        val apkPath = apkBytes?.let {
-            StorageService.uploadApk(appId.toString(), versionCode, it)
         }
 
         val id = AppVersions.insertAndGetId {
@@ -121,11 +113,6 @@ object VersionRepository {
             it[AppVersions.versionCode] = versionCode
             it[AppVersions.versionName] = versionName
             it[AppVersions.mappingPath] = mappingPath
-            it[AppVersions.apkPath] = apkPath
-            it[AppVersions.apkSize] = apkBytes?.size?.toLong()
-            it[AppVersions.apkFilename] = apkFilename
-            it[AppVersions.apkUploadedAt] = if (apkBytes != null) now else null
-            it[AppVersions.releaseNotes] = releaseNotes
             it[AppVersions.createdAt] = now
         }
 
@@ -135,11 +122,11 @@ object VersionRepository {
             versionCode = versionCode,
             versionName = versionName,
             hasMapping = mappingPath != null,
-            hasApk = apkPath != null,
-            apkSize = apkBytes?.size?.toLong(),
-            apkFilename = apkFilename,
-            apkUploadedAt = if (apkBytes != null) now.toString() else null,
-            releaseNotes = releaseNotes,
+            hasApk = false,
+            apkSize = null,
+            apkFilename = null,
+            apkUploadedAt = null,
+            releaseNotes = null,
             publishedForTesters = false,
             muteCrashes = false,
             muteEvents = false,
@@ -151,7 +138,7 @@ object VersionRepository {
      * One-shot release publish for CI: stores the APK (and mapping, if sent) and
      * creates or refreshes the row for that version code. Re-uploading the same
      * version code overwrites it rather than failing, so a retried pipeline is
-     * safe. `versionName`, `mappingContent` and `releaseNotes` left null keep
+     * safe. `versionName`, `mappingFile` and `releaseNotes` left null keep
      * whatever the version already had.
      */
     fun upsertRelease(
@@ -160,14 +147,14 @@ object VersionRepository {
         versionName: String?,
         apkFile: File,
         apkFilename: String,
-        mappingContent: String?,
+        mappingFile: File?,
         releaseNotes: String?,
         publishForTesters: Boolean
     ): AppVersionResponse {
         // Storage first: both keys derive from the version code, and a slow
         // bucket should not hold a database connection open while it uploads.
-        val apkPath = StorageService.uploadApkFromFile(appId.toString(), versionCode, apkFile)
-        val mappingPath = mappingContent?.let {
+        val apkPath = StorageService.uploadApk(appId.toString(), versionCode, apkFile)
+        val mappingPath = mappingFile?.let {
             StorageService.uploadMapping(appId.toString(), versionCode, it)
         }
 
@@ -213,7 +200,7 @@ object VersionRepository {
         }
     }
 
-    fun updateMapping(id: UUID, mappingContent: String): Boolean {
+    fun updateMapping(id: UUID, mappingFile: File): Boolean {
         // First get the version to know appId and versionCode
         val version = transaction {
             AppVersions.selectAll()
@@ -225,7 +212,7 @@ object VersionRepository {
         val versionCode = version[AppVersions.versionCode]
 
         // Upload to S3
-        val mappingPath = StorageService.uploadMapping(appId, versionCode, mappingContent)
+        val mappingPath = StorageService.uploadMapping(appId, versionCode, mappingFile)
 
         // Update path in database
         return transaction {
@@ -307,7 +294,7 @@ object VersionRepository {
         } > 0
     }
 
-    fun uploadApk(id: UUID, apkBytes: ByteArray, apkFilename: String): Boolean {
+    fun uploadApk(id: UUID, apkFile: File, apkFilename: String): Boolean {
         val version = transaction {
             AppVersions.selectAll()
                 .where { AppVersions.id eq id }
@@ -317,12 +304,12 @@ object VersionRepository {
         val appId = version[AppVersions.appId].value.toString()
         val versionCode = version[AppVersions.versionCode]
 
-        val apkPath = StorageService.uploadApk(appId, versionCode, apkBytes)
+        val apkPath = StorageService.uploadApk(appId, versionCode, apkFile)
 
         return transaction {
             AppVersions.update({ AppVersions.id eq id }) {
                 it[AppVersions.apkPath] = apkPath
-                it[AppVersions.apkSize] = apkBytes.size.toLong()
+                it[AppVersions.apkSize] = apkFile.length()
                 it[AppVersions.apkFilename] = apkFilename
                 it[AppVersions.apkUploadedAt] = OffsetDateTime.now()
             } > 0

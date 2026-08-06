@@ -117,8 +117,8 @@ function NewReleaseModal({
         </FormItem>
         <FormItem label="Mapping file" help="Optional — ProGuard / R8 mapping for stack trace deobfuscation.">
           <UploadDragger
-            accept=".txt,.map"
-            title={mapping ? mapping.name : 'Click or drag mapping.txt'}
+            accept=".txt,.map,.gz"
+            title={mapping ? mapping.name : 'Click or drag mapping.txt or .gz'}
             onFiles={(files) => setMapping(files[0] ?? null)}
           />
         </FormItem>
@@ -437,9 +437,9 @@ function ReleaseDrawer({
           </div>
         )}
         <UploadDragger
-          accept=".txt,.map"
+          accept=".txt,.map,.gz"
           disabled={uploading != null}
-          title={uploading === 'mapping' ? 'Uploading…' : version.has_mapping ? 'Click or drag to replace mapping.txt' : 'Click or drag mapping.txt'}
+          title={uploading === 'mapping' ? 'Uploading…' : version.has_mapping ? 'Click or drag to replace mapping.txt or .gz' : 'Click or drag mapping.txt or .gz'}
           onFiles={(files) => files[0] && void upload('mapping', files[0])}
         />
 

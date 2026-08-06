@@ -17,6 +17,7 @@ import io.ktor.http.content.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.io.File
 import java.util.*
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -551,45 +552,48 @@ fun Route.appRoutes() {
 
             var versionCode: Long? = null
             var versionName: String? = null
-            var mappingContent: String? = null
+            var mappingFile: File? = null
 
-            val multipart = call.receiveMultipart()
-            multipart.forEachPart { part ->
-                when (part) {
-                    is PartData.FormItem -> {
-                        when (part.name) {
-                            "version_code" -> versionCode = part.value.toLongOrNull()
-                            "version_name" -> versionName = part.value.takeIf { it.isNotBlank() }
+            try {
+                val multipart = call.receiveMultipart()
+                multipart.forEachPart { part ->
+                    when (part) {
+                        is PartData.FormItem -> {
+                            when (part.name) {
+                                "version_code" -> versionCode = part.value.toLongOrNull()
+                                "version_name" -> versionName = part.value.takeIf { it.isNotBlank() }
+                            }
                         }
-                    }
-                    is PartData.FileItem -> {
-                        if (part.name == "mapping") {
-                            @Suppress("DEPRECATION")
-                            mappingContent = part.streamProvider().bufferedReader().readText()
+                        is PartData.FileItem -> {
+                            if (part.name == "mapping") {
+                                mappingFile = part.receiveMapping(AppConfig.maxApkBytes)
+                            }
                         }
+                        else -> {}
                     }
-                    else -> {}
+                    part.dispose()
                 }
-                part.dispose()
+
+                if (versionCode == null) {
+                    throw BadRequestException("Version code is required")
+                }
+
+                val existing = VersionRepository.findByAppAndVersionCode(appId, versionCode!!)
+                if (existing != null) {
+                    throw BadRequestException("Version $versionCode already exists")
+                }
+
+                val version = VersionRepository.create(
+                    appId = appId,
+                    versionCode = versionCode!!,
+                    versionName = versionName,
+                    mappingFile = mappingFile
+                )
+
+                call.respond(HttpStatusCode.Created, version)
+            } finally {
+                mappingFile?.delete()
             }
-
-            if (versionCode == null) {
-                throw BadRequestException("Version code is required")
-            }
-
-            val existing = VersionRepository.findByAppAndVersionCode(appId, versionCode!!)
-            if (existing != null) {
-                throw BadRequestException("Version $versionCode already exists")
-            }
-
-            val version = VersionRepository.create(
-                appId = appId,
-                versionCode = versionCode!!,
-                versionName = versionName,
-                mappingContent = mappingContent
-            )
-
-            call.respond(HttpStatusCode.Created, version)
         }
 
         put("/{appId}/versions/{versionId}/mapping") {
@@ -601,33 +605,34 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            var mappingContent: String? = null
+            var mappingFile: File? = null
 
-            val multipart = call.receiveMultipart()
-            multipart.forEachPart { part ->
-                when (part) {
-                    is PartData.FileItem -> {
-                        if (part.name == "mapping") {
-                            @Suppress("DEPRECATION")
-                            mappingContent = part.streamProvider().bufferedReader().readText()
+            try {
+                val multipart = call.receiveMultipart()
+                multipart.forEachPart { part ->
+                    when (part) {
+                        is PartData.FileItem -> {
+                            if (part.name == "mapping") {
+                                mappingFile = part.receiveMapping(AppConfig.maxApkBytes)
+                            }
                         }
+                        else -> {}
                     }
-                    else -> {}
+                    part.dispose()
                 }
-                part.dispose()
-            }
 
-            if (mappingContent.isNullOrBlank()) {
-                throw BadRequestException("Mapping file is required")
-            }
+                val mapping = mappingFile ?: throw BadRequestException("Mapping file is required")
 
-            val updated = VersionRepository.updateMapping(versionId, mappingContent!!)
-            if (!updated) {
-                throw NotFoundException("Version not found")
-            }
+                val updated = VersionRepository.updateMapping(versionId, mapping)
+                if (!updated) {
+                    throw NotFoundException("Version not found")
+                }
 
-            val version = VersionRepository.findById(versionId)!!
-            call.respond(version)
+                val version = VersionRepository.findById(versionId)!!
+                call.respond(version)
+            } finally {
+                mappingFile?.delete()
+            }
         }
 
         // Download mapping file
@@ -736,40 +741,36 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            var apkBytes: ByteArray? = null
-            var apkFilename: String? = null
+            var apkFile: File? = null
+            var apkFilename = "app.apk"
 
-            val multipart = call.receiveMultipart()
-            multipart.forEachPart { part ->
-                when (part) {
-                    is PartData.FileItem -> {
-                        if (part.name == "apk") {
-                            apkFilename = part.originalFileName ?: "app.apk"
-                            @Suppress("DEPRECATION")
-                            apkBytes = part.streamProvider().readBytes()
+            try {
+                val multipart = call.receiveMultipart()
+                multipart.forEachPart { part ->
+                    when (part) {
+                        is PartData.FileItem -> {
+                            if (part.name == "apk") {
+                                apkFilename = part.originalFileName ?: "app.apk"
+                                apkFile = part.receiveFile(AppConfig.maxApkBytes, "APK", ".apk")
+                            }
                         }
+                        else -> {}
                     }
-                    else -> {}
+                    part.dispose()
                 }
-                part.dispose()
-            }
 
-            if (apkBytes == null) {
-                throw BadRequestException("APK file is required")
-            }
+                val apk = apkFile ?: throw BadRequestException("APK file is required")
 
-            // Check size limit (200MB)
-            if (apkBytes!!.size > 200 * 1024 * 1024) {
-                throw BadRequestException("APK file exceeds 200MB limit")
-            }
+                val updated = VersionRepository.uploadApk(versionId, apk, apkFilename)
+                if (!updated) {
+                    throw NotFoundException("Version not found")
+                }
 
-            val updated = VersionRepository.uploadApk(versionId, apkBytes!!, apkFilename!!)
-            if (!updated) {
-                throw NotFoundException("Version not found")
+                val version = VersionRepository.findById(versionId)!!
+                call.respond(version)
+            } finally {
+                apkFile?.delete()
             }
-
-            val version = VersionRepository.findById(versionId)!!
-            call.respond(version)
         }
 
         // Download APK

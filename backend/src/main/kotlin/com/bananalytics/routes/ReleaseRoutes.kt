@@ -20,18 +20,15 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.*
 
 private val logger = LoggerFactory.getLogger("ReleaseRoutes")
 
-private const val COPY_BUFFER_SIZE = 64 * 1024
 private const val DEFAULT_LINK_HOURS = 720 // 30 days
 private const val MAX_LINK_HOURS = 8760 // a year
 
@@ -64,7 +61,7 @@ fun Route.releaseRoutes() {
         var apkFile: File? = null
         var apkFilename = "app.apk"
         var apkSize = 0L
-        var mappingContent: String? = null
+        var mappingFile: File? = null
         var formVersionCode: Long? = null
         var formVersionName: String? = null
         var releaseNotes: String? = null
@@ -95,13 +92,16 @@ fun Route.releaseRoutes() {
                                     throw BadRequestException("Only one apk part is allowed")
                                 }
                                 apkFilename = part.originalFileName.toSafeFilename()
-                                val target = File.createTempFile("bananalytics-release-", ".apk")
+                                val target = part.receiveFile(apkLimit, "APK", ".apk")
                                 apkFile = target
-                                apkSize = part.provider().copyToFile(target, apkLimit, "APK")
+                                apkSize = target.length()
                             }
-                            "mapping" -> mappingContent = part.provider()
-                                .readText(apkLimit, "Mapping file")
-                                .takeIf { it.isNotBlank() }
+                            "mapping" -> {
+                                if (mappingFile != null) {
+                                    throw BadRequestException("Only one mapping part is allowed")
+                                }
+                                mappingFile = part.receiveMapping(apkLimit)
+                            }
                             else -> {}
                         }
 
@@ -148,7 +148,7 @@ fun Route.releaseRoutes() {
                     versionName = versionName,
                     apkFile = apk,
                     apkFilename = apkFilename,
-                    mappingContent = mappingContent,
+                    mappingFile = mappingFile,
                     releaseNotes = releaseNotes,
                     publishForTesters = publish
                 )
@@ -161,7 +161,7 @@ fun Route.releaseRoutes() {
 
             logger.info(
                 "Published release {} ({}) for app {}: {} bytes, mapping={}, published={}, notified={}",
-                versionCode, versionName ?: "-", app.packageName, apkSize, mappingContent != null, publish, notified
+                versionCode, versionName ?: "-", app.packageName, apkSize, mappingFile != null, publish, notified
             )
 
             call.respond(
@@ -182,6 +182,7 @@ fun Route.releaseRoutes() {
             )
         } finally {
             apkFile?.delete()
+            mappingFile?.delete()
         }
     }
 }
@@ -218,41 +219,6 @@ private suspend fun notifyTeam(appId: UUID, app: AppResponse, version: AppVersio
 
     return sent
 }
-
-/** Streams a part to disk, refusing it the moment it outgrows the limit. */
-private suspend fun ByteReadChannel.copyToFile(target: File, limit: Long, what: String): Long =
-    withContext(Dispatchers.IO) {
-        var total = 0L
-        val buffer = ByteArray(COPY_BUFFER_SIZE)
-        target.outputStream().buffered().use { out ->
-            while (!isClosedForRead) {
-                val read = readAvailable(buffer)
-                if (read <= 0) break
-                total += read
-                if (total > limit) {
-                    throw PayloadTooLargeException("$what exceeds the ${mb(limit)} MB limit")
-                }
-                out.write(buffer, 0, read)
-            }
-        }
-        total
-    }
-
-private suspend fun ByteReadChannel.readText(limit: Long, what: String): String {
-    val collected = ByteArrayOutputStream()
-    val buffer = ByteArray(COPY_BUFFER_SIZE)
-    while (!isClosedForRead) {
-        val read = readAvailable(buffer)
-        if (read <= 0) break
-        if (collected.size() + read > limit) {
-            throw PayloadTooLargeException("$what exceeds the ${mb(limit)} MB limit")
-        }
-        collected.write(buffer, 0, read)
-    }
-    return collected.toString(Charsets.UTF_8)
-}
-
-private fun mb(bytes: Long): Long = bytes / (1024 * 1024)
 
 /**
  * The name a CI job sends is echoed back in `Content-Disposition` when a tester

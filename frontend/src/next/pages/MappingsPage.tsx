@@ -71,7 +71,7 @@ export default function MappingsPage() {
       <input
         ref={fileRef}
         type="file"
-        accept=".txt,.map"
+        accept=".txt,.map,.gz"
         hidden
         onChange={(e) => void onFile(e.target.files?.[0])}
       />

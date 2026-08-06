@@ -451,7 +451,7 @@ Create a new version with optional mapping file.
 **Form fields:**
 - `version_code` (required): Version code number
 - `version_name` (optional): Version name string (e.g., "1.2.3")
-- `mapping` (optional): R8/ProGuard mapping file
+- `mapping` (optional): R8/ProGuard mapping file, plain or gzipped
 
 ### PUT /apps/{appId}/versions/{versionId}/mapping
 Upload or update mapping file for a version.
@@ -459,7 +459,10 @@ Upload or update mapping file for a version.
 **Content-Type:** `multipart/form-data`
 
 **Form fields:**
-- `mapping` (required): R8/ProGuard mapping file
+- `mapping` (required): R8/ProGuard mapping file, plain or gzipped
+
+Mappings are stored gzipped whichever way they arrive, so uploading
+`mapping.txt.gz` saves both the transfer and the compression step.
 
 ### PUT /apps/{appId}/versions/{versionId}
 Update version settings (release notes, publishing, mute settings).
@@ -562,7 +565,7 @@ file.
 | Part | Type | Required | Description |
 |------|------|----------|-------------|
 | `apk` | file | yes | The build to publish |
-| `mapping` | file | no | R8/ProGuard `mapping.txt` for this build |
+| `mapping` | file | no | R8/ProGuard mapping for this build — gzip it, plain text is accepted too |
 | `release_notes` | text | no | Shown to testers; keeps the previous notes if omitted |
 | `version_code` | text | no | Overrides the value read from the APK |
 | `version_name` | text | no | Overrides the value read from the APK |
@@ -573,10 +576,12 @@ file.
 Booleans accept `true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`.
 
 ```bash
-curl -f -X POST https://your-server.com/api/v1/releases \
+gzip -9 -c app/build/outputs/mapping/release/mapping.txt > mapping.txt.gz
+
+curl --fail-with-body -X POST https://your-server.com/api/v1/releases \
   -H "X-API-Key: $BANANALYTICS_KEY" \
   -F apk=@app/build/outputs/apk/release/app-release.apk \
-  -F mapping=@app/build/outputs/mapping/release/mapping.txt \
+  -F mapping=@mapping.txt.gz \
   -F release_notes="$(git log -1 --pretty=%s)" \
   -F notify=true
 ```
@@ -607,6 +612,9 @@ curl -f -X POST https://your-server.com/api/v1/releases \
 - Re-publishing the same `version_code` overwrites the existing version instead
   of failing, so a retried pipeline is safe. `release_notes`, `version_name` and
   `mapping` that are not sent keep their previous values.
+- A release mapping is tens of megabytes of text and is stored gzipped anyway,
+  so send it that way: it compresses about tenfold. An uncompressed file still
+  works — the server compresses it before storing.
 - `notify` mails everyone with the `admin` or `tester` role, 500 ms apart.
   Without SMTP configured the release still publishes and `notified` is `0`.
 - Upload ceiling is `MAX_APK_SIZE_MB` (default 200). Keep nginx

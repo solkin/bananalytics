@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URI
 import java.time.Duration
+import java.util.zip.GZIPInputStream
 
 object StorageService {
     private val logger = LoggerFactory.getLogger(StorageService::class.java)
@@ -19,10 +20,12 @@ object StorageService {
     private lateinit var bucketName: String
 
     private const val APK_CONTENT_TYPE = "application/vnd.android.package-archive"
+    private const val MAPPING_CONTENT_TYPE = "application/gzip"
+    private const val GZIP_SUFFIX = ".gz"
 
     /**
-     * The client-wide timeouts are sized for small mapping files; a couple of
-     * hundred megabytes of APK needs far longer than ten seconds.
+     * The client-wide timeouts are sized for small objects; APKs and mappings
+     * run to hundreds of megabytes and need far longer than ten seconds.
      */
     private val largeUploadTimeouts: AwsRequestOverrideConfiguration =
         AwsRequestOverrideConfiguration.builder()
@@ -59,69 +62,60 @@ object StorageService {
         }
     }
 
-    fun uploadMapping(appId: String, versionCode: Long, content: String): String {
-        val key = "mappings/$appId/$versionCode/mapping.txt"
+    /**
+     * Mappings are stored gzipped: a release mapping is tens of megabytes of
+     * text that compresses about tenfold. The `.gz` suffix on the key is what
+     * tells those apart from the plain objects written before, so versions
+     * uploaded earlier stay readable without a backfill.
+     */
+    private fun mappingKey(appId: String, versionCode: Long) =
+        "mappings/$appId/$versionCode/mapping.txt$GZIP_SUFFIX"
+
+    /** Streams an already-gzipped mapping off disk, so it never sits in heap. */
+    fun uploadMapping(appId: String, versionCode: Long, file: File): String {
+        val key = mappingKey(appId, versionCode)
 
         s3Client.putObject(
             PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
-                .contentType("text/plain")
+                .contentType(MAPPING_CONTENT_TYPE)
+                .overrideConfiguration(largeUploadTimeouts)
                 .build(),
-            RequestBody.fromString(content)
+            RequestBody.fromFile(file)
         )
+
+        // Re-publishing a version that predates gzipped mappings writes to a new
+        // key, so the plain object it used to point at would sit there forever.
+        deleteFiles(listOf(key.removeSuffix(GZIP_SUFFIX)))
 
         return key
     }
 
-    fun getMapping(appId: String, versionCode: Long): String? {
-        val key = "mappings/$appId/$versionCode/mapping.txt"
-        return getObject(key)
-    }
-
     fun getMappingByKey(key: String): String? {
-        return getObject(key)
-    }
-
-    private fun getObject(key: String): String? {
-        return try {
-            val response = s3Client.getObjectAsBytes(
+        val bytes = try {
+            s3Client.getObjectAsBytes(
                 GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(key)
+                    .overrideConfiguration(largeUploadTimeouts)
                     .build()
-            )
-            response.asUtf8String()
+            ).asByteArray()
         } catch (e: NoSuchKeyException) {
-            null
+            return null
         }
-    }
 
-    fun deleteMapping(appId: String, versionCode: Long) {
-        val key = "mappings/$appId/$versionCode/mapping.txt"
-        deleteFiles(listOf(key))
+        return if (key.endsWith(GZIP_SUFFIX)) {
+            GZIPInputStream(bytes.inputStream()).bufferedReader().use { it.readText() }
+        } else {
+            String(bytes, Charsets.UTF_8)
+        }
     }
 
     // APK Storage
 
-    fun uploadApk(appId: String, versionCode: Long, content: ByteArray): String {
-        val key = "apks/$appId/$versionCode/app.apk"
-
-        s3Client.putObject(
-            PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType(APK_CONTENT_TYPE)
-                .overrideConfiguration(largeUploadTimeouts)
-                .build(),
-            RequestBody.fromBytes(content)
-        )
-
-        return key
-    }
-
     /** Streams an APK straight off disk, so a large build never sits in heap. */
-    fun uploadApkFromFile(appId: String, versionCode: Long, file: File): String {
+    fun uploadApk(appId: String, versionCode: Long, file: File): String {
         val key = "apks/$appId/$versionCode/app.apk"
 
         s3Client.putObject(

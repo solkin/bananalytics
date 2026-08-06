@@ -90,10 +90,12 @@ bananalytics.leaveBreadcrumb("Tapped Buy", BreadcrumbCategory.USER_ACTION)
 // Categories: NAVIGATION, USER_ACTION, NETWORK, ERROR, CUSTOM`
 
 const PUBLISH = `# one step after the build, with an upload-scoped key in CI secrets
-curl -f -X POST https://banana.appteka.store/api/v1/releases \\
+gzip -9 -c app/build/outputs/mapping/release/mapping.txt > mapping.txt.gz
+
+curl --fail-with-body -X POST https://banana.appteka.store/api/v1/releases \\
   -H "X-API-Key: $BANANALYTICS_KEY" \\
   -F apk=@app/build/outputs/apk/release/app-release.apk \\
-  -F mapping=@app/build/outputs/mapping/release/mapping.txt \\
+  -F mapping=@mapping.txt.gz \\
   -F release_notes="$(git log -1 --pretty=%s)" \\
   -F notify=true`
 
