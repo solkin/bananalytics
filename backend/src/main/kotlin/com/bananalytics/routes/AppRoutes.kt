@@ -513,21 +513,27 @@ fun Route.appRoutes() {
                 throw BadRequestException("Unknown trim target")
             }
 
-            val deleted = dbIO {
-                when (target) {
-                    "crashes" -> CrashRepository.deleteOlderThan(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
-                    "events" -> DataRetentionRepository.deleteEvents(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
-                    "sessions" -> DataRetentionRepository.deleteSessions(appId, cutoff, DataRetentionRepository.TRIM_BATCH_SIZE)
-                    else -> error("Validated trim target became invalid")
+            // One batch is one transaction, and one request keeps deleting batches
+            // until its time budget runs out: a multi-million row trim should not
+            // be paced by an HTTP round trip per 50k rows.
+            val batchSize = DataRetentionRepository.TRIM_BATCH_SIZE
+            val deadline = System.currentTimeMillis() + DataRetentionRepository.TRIM_TIME_BUDGET_MS
+            var deleted = 0L
+            var done: Boolean
+            do {
+                val batch = dbIO {
+                    when (target) {
+                        "crashes" -> CrashRepository.deleteOlderThan(appId, cutoff, batchSize)
+                        "events" -> DataRetentionRepository.deleteEvents(appId, cutoff, batchSize)
+                        "sessions" -> DataRetentionRepository.deleteSessions(appId, cutoff, batchSize)
+                        else -> error("Validated trim target became invalid")
+                    }
                 }
-            }
-            call.respond(
-                TrimDataResponse(
-                    target = target,
-                    deleted = deleted,
-                    done = deleted < DataRetentionRepository.TRIM_BATCH_SIZE
-                )
-            )
+                deleted += batch
+                done = batch < batchSize
+            } while (!done && System.currentTimeMillis() < deadline)
+
+            call.respond(TrimDataResponse(target = target, deleted = deleted, done = done))
         }
 
         // --- Versions ---

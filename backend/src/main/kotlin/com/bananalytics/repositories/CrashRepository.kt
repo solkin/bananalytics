@@ -345,37 +345,35 @@ object CrashRepository {
 
     /** Delete one batch of old crash reports and update every affected group in bulk. */
     fun deleteOlderThan(appId: UUID, cutoff: OffsetDateTime, limit: Int): Long = transaction {
+        // Pick the batch and delete it in one statement, keyed by ctid: joining a
+        // separately materialized batch back on `id` makes PostgreSQL hash-join it
+        // against a sequential scan of the whole crashes table for every batch, and
+        // ordering the batch by age makes it read and sort every old crash before
+        // applying the limit. What survives is one row per affected group, which
+        // the bulk recalculation below needs anyway.
         exec(
             """
             CREATE TEMP TABLE old_crash_batch ON COMMIT DROP AS
-            SELECT id, group_id
-            FROM crashes
-            WHERE app_id = '$appId'::uuid
-              AND created_at < '$cutoff'::timestamptz
-            ORDER BY created_at
-            LIMIT $limit
-            """.trimIndent()
-        )
-
-        exec(
-            """
-            CREATE TEMP TABLE affected_old_crash_groups ON COMMIT DROP AS
-            SELECT DISTINCT group_id
-            FROM old_crash_batch
-            WHERE group_id IS NOT NULL
+            WITH batch AS (
+                SELECT ctid
+                FROM crashes
+                WHERE app_id = '$appId'::uuid
+                  AND created_at < '$cutoff'::timestamptz
+                LIMIT $limit
+            ), deleted AS (
+                DELETE FROM crashes AS crash
+                USING batch
+                WHERE crash.ctid = batch.ctid
+                RETURNING crash.group_id
+            )
+            SELECT group_id, COUNT(*)::bigint AS removed
+            FROM deleted
+            GROUP BY group_id
             """.trimIndent()
         )
 
         val deletedCount = exec(
-            """
-            WITH deleted AS (
-                DELETE FROM crashes AS crash
-                USING old_crash_batch AS batch
-                WHERE crash.id = batch.id
-                RETURNING 1
-            )
-            SELECT COUNT(*) AS deleted FROM deleted
-            """.trimIndent(),
+            "SELECT COALESCE(SUM(removed), 0) AS deleted FROM old_crash_batch",
             emptyList(),
             StatementType.SELECT
         ) { result ->
@@ -394,7 +392,7 @@ object CrashRepository {
                        MIN(crash.created_at) AS first_seen,
                        MAX(crash.created_at) AS last_seen
                 FROM crashes AS crash
-                JOIN affected_old_crash_groups AS affected ON affected.group_id = crash.group_id
+                JOIN old_crash_batch AS affected ON affected.group_id = crash.group_id
                 GROUP BY crash.group_id
             ) AS stats
             WHERE crash_group.id = stats.group_id
@@ -404,7 +402,7 @@ object CrashRepository {
         exec(
             """
             DELETE FROM crash_groups AS crash_group
-            USING affected_old_crash_groups AS affected
+            USING old_crash_batch AS affected
             WHERE crash_group.id = affected.group_id
               AND NOT EXISTS (
                   SELECT 1 FROM crashes AS crash WHERE crash.group_id = crash_group.id

@@ -5,6 +5,7 @@ import com.bananalytics.models.Crashes
 import com.bananalytics.models.Events
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.StatementType
@@ -23,6 +24,9 @@ data class RetentionCounts(
 object DataRetentionRepository {
     const val TRIM_BATCH_SIZE = 50_000
 
+    /** How long a single trim request keeps deleting batches before reporting back. */
+    const val TRIM_TIME_BUDGET_MS = 3_000L
+
     fun preview(appId: UUID, cutoff: OffsetDateTime): RetentionCounts = transaction {
         RetentionCounts(
             crashes = Crashes.selectAll()
@@ -37,30 +41,24 @@ object DataRetentionRepository {
         )
     }
 
+    /**
+     * `events` is partitioned by month, and joining a batch back to the
+     * partitioned parent makes PostgreSQL hash-join it against a sequential scan
+     * of every partition — the whole table re-read for each batch. Deleting from
+     * one partition at a time by `ctid` keeps a batch at one index scan plus a
+     * TID lookup per row, so walk the partitions oldest first until the batch is
+     * full.
+     */
     fun deleteEvents(appId: UUID, cutoff: OffsetDateTime, limit: Int): Long = transaction {
-        val deleted = exec(
-            """
-            WITH batch AS (
-                SELECT id, created_at
-                FROM events
-                WHERE app_id = '$appId'::uuid
-                  AND created_at < '$cutoff'::timestamptz
-                ORDER BY created_at
-                LIMIT $limit
-            ), deleted AS (
-                DELETE FROM events AS event
-                USING batch
-                WHERE event.id = batch.id
-                  AND event.created_at = batch.created_at
-                RETURNING 1
+        var deleted = 0L
+        for (partition in eventPartitions()) {
+            if (deleted >= limit) break
+            deleted += deleteBatch(
+                table = partition,
+                where = "app_id = '$appId'::uuid AND created_at < '$cutoff'::timestamptz",
+                limit = limit - deleted.toInt()
             )
-            SELECT COUNT(*) AS deleted FROM deleted
-            """.trimIndent(),
-            emptyList(),
-            StatementType.SELECT
-        ) { result ->
-            if (result.next()) result.getLong("deleted") else 0L
-        } ?: 0L
+        }
 
         if (deleted < limit) exec(
             """
@@ -73,19 +71,49 @@ object DataRetentionRepository {
     }
 
     fun deleteSessions(appId: UUID, cutoff: OffsetDateTime, limit: Int): Long = transaction {
+        deleteBatch(
+            table = "app_sessions",
+            where = "app_id = '$appId'::uuid AND first_seen < '$cutoff'::timestamptz",
+            limit = limit
+        )
+    }
+
+    /** Partitions of `events`, oldest first; the DEFAULT catch-all sorts last. */
+    private fun Transaction.eventPartitions(): List<String> {
+        val partitions = mutableListOf<String>()
+        exec(
+            """
+            SELECT partition.oid::regclass::text AS name
+            FROM pg_inherits
+            JOIN pg_class AS partition ON partition.oid = pg_inherits.inhrelid
+            WHERE pg_inherits.inhparent = 'events'::regclass
+            ORDER BY name
+            """.trimIndent()
+        ) { result ->
+            while (result.next()) partitions.add(result.getString("name"))
+        }
+        return partitions
+    }
+
+    /**
+     * Delete up to [limit] matching rows of a single physical table. The rows are
+     * picked by an index scan and deleted by `ctid`, which PostgreSQL resolves
+     * with a TID lookup instead of scanning the table for every batch. Which rows
+     * a batch picks is left unordered on purpose: ordering them by age makes the
+     * planner read *every* matching row and sort it before applying the limit.
+     */
+    private fun Transaction.deleteBatch(table: String, where: String, limit: Int): Long =
         exec(
             """
             WITH batch AS (
-                SELECT id
-                FROM app_sessions
-                WHERE app_id = '$appId'::uuid
-                  AND first_seen < '$cutoff'::timestamptz
-                ORDER BY first_seen
+                SELECT ctid
+                FROM $table
+                WHERE $where
                 LIMIT $limit
             ), deleted AS (
-                DELETE FROM app_sessions AS session
+                DELETE FROM $table AS target
                 USING batch
-                WHERE session.id = batch.id
+                WHERE target.ctid = batch.ctid
                 RETURNING 1
             )
             SELECT COUNT(*) AS deleted FROM deleted
@@ -95,5 +123,4 @@ object DataRetentionRepository {
         ) { result ->
             if (result.next()) result.getLong("deleted") else 0L
         } ?: 0L
-    }
 }
