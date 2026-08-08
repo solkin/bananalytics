@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -235,6 +236,7 @@ export function Popconfirm({
   children: ReactNode
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const [top, setTop] = useState(0)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const open = rect != null
@@ -242,12 +244,31 @@ export function Popconfirm({
   useDismiss(open, [triggerRef, popRef], close)
   useEsc(open, close)
   const width = 240
+  const gap = 8
+
+  /* The trigger is often the last control of a long form or drawer, where a
+     popover placed below it would hang off the bottom of the viewport with no
+     way to reach it. Measure it once it is mounted and flip it above the
+     trigger when it does not fit underneath. */
+  useLayoutEffect(() => {
+    if (!rect || !popRef.current) return
+    const below = rect.bottom + gap
+    const height = popRef.current.offsetHeight
+    setTop(
+      below + height <= window.innerHeight - gap
+        ? below
+        : Math.max(gap, rect.top - gap - height),
+    )
+  }, [rect])
+
   return (
     <span className="bnn-popconfirm" ref={triggerRef}>
       <span
-        onClick={() =>
-          setRect((r) => (r ? null : triggerRef.current!.getBoundingClientRect()))
-        }
+        onClick={() => {
+          const next = rect ? null : triggerRef.current!.getBoundingClientRect()
+          if (next) setTop(next.bottom + gap)
+          setRect(next)
+        }}
       >
         {children}
       </span>
@@ -259,10 +280,10 @@ export function Popconfirm({
             role="dialog"
             style={{
               position: 'fixed',
-              top: rect.bottom + 8,
+              top,
               left: Math.min(
-                Math.max(rect.left + rect.width / 2, width / 2 + 8),
-                window.innerWidth - width / 2 - 8,
+                Math.max(rect.left + rect.width / 2, width / 2 + gap),
+                window.innerWidth - width / 2 - gap,
               ),
             }}
           >

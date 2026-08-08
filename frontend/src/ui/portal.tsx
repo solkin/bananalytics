@@ -1,9 +1,17 @@
-import { useEffect, useState, type ReactNode, type RefObject } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 
 export function Portal({ children }: { children: ReactNode }) {
   const [el] = useState(() => document.createElement('div'))
-  useEffect(() => {
+  /* Attached before paint: a floating element that measures itself on mount
+     would otherwise size up while still detached, and read a height of 0. */
+  useLayoutEffect(() => {
     el.className = 'bnn-portal'
     document.body.appendChild(el)
     return () => {
