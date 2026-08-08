@@ -2,6 +2,7 @@ package com.bananalytics.repositories
 
 import com.bananalytics.models.AppResponse
 import com.bananalytics.models.Apps
+import com.bananalytics.models.Events
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -54,8 +55,18 @@ object AppRepository {
         updated > 0
     }
 
+    /**
+     * Every app-scoped table cascades from `apps` except `events` and its
+     * `device_stats_daily` rollup: neither carries a foreign key, so an app
+     * deletion leaves their rows behind forever. Clear both here, in the same
+     * transaction that drops the app.
+     */
     fun delete(id: UUID): Boolean = transaction {
-        Apps.deleteWhere { Apps.id eq id } > 0
+        if (Apps.deleteWhere { Apps.id eq id } == 0) return@transaction false
+
+        Events.deleteWhere { Events.appId eq id }
+        exec("DELETE FROM device_stats_daily WHERE app_id = '$id'::uuid")
+        true
     }
 
     private fun ResultRow.toAppResponse() = AppResponse(
