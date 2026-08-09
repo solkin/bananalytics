@@ -24,6 +24,9 @@ object StorageService {
     private const val MAPPING_CONTENT_TYPE = "application/gzip"
     private const val GZIP_SUFFIX = ".gz"
 
+    /** S3 accepts at most this many keys in one list page or delete request. */
+    private const val MAX_KEYS_PER_REQUEST = 1000
+
     /**
      * The client-wide timeouts are sized for small objects; APKs and mappings
      * run to hundreds of megabytes and need far longer than ten seconds.
@@ -155,6 +158,35 @@ object StorageService {
         val key = "apks/$appId/$versionCode/app.apk"
 
         deleteFiles(listOf(key))
+    }
+
+    /**
+     * Everything an app owns lives under these two prefixes, one object per
+     * version. Sweeping by prefix rather than by the paths stored on the rows
+     * also collects what a version never recorded: uploads happen outside the
+     * transaction that writes the path, and a mapping re-uploaded before the
+     * gzip switch left the plain object behind.
+     */
+    fun deleteAppFiles(appId: String) {
+        deleteByPrefix("apks/$appId/")
+        deleteByPrefix("mappings/$appId/")
+    }
+
+    private fun deleteByPrefix(prefix: String) {
+        try {
+            s3Client.listObjectsV2Paginator(
+                ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .maxKeys(MAX_KEYS_PER_REQUEST)
+                    .build()
+            ).forEach { page ->
+                deleteFiles(page.contents().map { it.key() })
+            }
+        } catch (e: Exception) {
+            // Same bargain as deleteFiles: losing the bucket must not block the caller.
+            logger.warn("Failed to list objects under {}: {}", prefix, e.message)
+        }
     }
 
     /** Delete known objects in a single MinIO/S3 request. */
