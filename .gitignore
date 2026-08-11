@@ -22,6 +22,7 @@ backend/*.jar
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/*.tsbuildinfo
 
 # Docker volumes (local development)
 postgres_data/
