@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Dropdown, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
+import { Alert, Avatar, Button, Dropdown, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { createApp, getApps } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { accentFor } from '../colors'
+import { KeyReveal } from './ApiKeysPage'
 import { Brand } from '../layout/Brand'
 import './appshome.css'
 
 const PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/i
 
-function CreateAppModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateAppModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [pkg, setPkg] = useState('')
   const [creating, setCreating] = useState(false)
+  /* Once the app exists the dialog stops being a form and becomes the one and
+     only chance to read the default key the create response carried. */
+  const [created, setCreated] = useState<{ id: string; apiKey: string | null } | null>(null)
   const pkgInvalid = pkg.trim() !== '' && !PACKAGE_RE.test(pkg.trim())
 
   const create = async () => {
@@ -24,10 +28,7 @@ function CreateAppModal({ open, onClose }: { open: boolean; onClose: () => void 
     try {
       const app = await createApp(name.trim(), pkg.trim())
       toast.success('App created')
-      onClose()
-      // The default key comes back exactly once — hand it to Getting Started
-      // so the setup snippet is ready to copy.
-      navigate(`/apps/${app.id}/getting-started`, { state: { apiKey: app.api_key } })
+      setCreated({ id: app.id, apiKey: app.api_key ?? null })
     } catch (e) {
       toast.error(errorText(e, 'Failed to create app'))
     } finally {
@@ -35,24 +36,67 @@ function CreateAppModal({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }
 
+  /* Leaving the dialog always lands on the setup guide, and hands the key over
+     so the snippet there is ready to copy. */
+  const done = () => {
+    if (!created) return onClose()
+    onClose()
+    navigate(`/apps/${created.id}/getting-started`, { state: { apiKey: created.apiKey } })
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title="Add new app" width={480} okText="Add new app" onOk={create} confirmLoading={creating}>
-      <Form>
-        <FormItem label="App name" required>
-          <Input placeholder="My Android App" value={name} onChange={(e) => setName(e.target.value)} />
-        </FormItem>
-        <FormItem
-          label="Package name"
-          required
-          error={pkgInvalid ? 'Lowercase segments separated by dots, e.g. com.example.app' : undefined}
-          help={pkgInvalid ? undefined : 'Immutable after creation — must match the applicationId of your app.'}
-        >
-          <Input placeholder="com.example.app" status={pkgInvalid ? 'error' : undefined} value={pkg} onChange={(e) => setPkg(e.target.value)} />
-        </FormItem>
-        <FormItem label="Platform">
-          <Input value="Android" disabled />
-        </FormItem>
-      </Form>
+    <Modal
+      open
+      onClose={creating ? undefined : done}
+      title={created ? 'App created' : 'Add new app'}
+      width={480}
+      footer={
+        created ? (
+          <Button variant="primary" onClick={done}>Continue to setup</Button>
+        ) : (
+          <>
+            <Button onClick={onClose} disabled={creating}>Cancel</Button>
+            <Button variant="primary" loading={creating} onClick={create}>Add new app</Button>
+          </>
+        )
+      }
+    >
+      {created ? (
+        <div className="set-keys__reveal">
+          <Alert
+            type="warning"
+            message="Copy this API key now"
+            description="It is stored hashed and will never be shown again. If you lose it, create a new key under Settings → API keys."
+          />
+          {created.apiKey ? (
+            <KeyReveal value={created.apiKey} />
+          ) : (
+            <Text type="tertiary" size="sm">
+              No key came back with the app — create one under Settings → API keys.
+            </Text>
+          )}
+          <Text type="tertiary" size="sm">
+            Put it into <span className="bnn-mono">BananalyticsConfig.apiKey</span> in your app.
+          </Text>
+        </div>
+      ) : (
+        <Form>
+          <FormItem label="App name" required>
+            <Input placeholder="My Android App" value={name} onChange={(e) => setName(e.target.value)} />
+          </FormItem>
+          <FormItem
+            label="Package name"
+            required
+            error={pkgInvalid ? 'Lowercase segments separated by dots, e.g. com.example.app' : undefined}
+            help={pkgInvalid ? undefined : 'Immutable after creation — must match the applicationId of your app.'}
+          >
+            <Input placeholder="com.example.app" status={pkgInvalid ? 'error' : undefined} value={pkg} onChange={(e) => setPkg(e.target.value)} />
+          </FormItem>
+          <FormItem label="Platform">
+            <Input value="Android" disabled />
+          </FormItem>
+        </Form>
+      )}
     </Modal>
   )
 }
@@ -148,7 +192,7 @@ export default function AppsHome() {
         </Loaded>
       </main>
 
-      <CreateAppModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      {createOpen && <CreateAppModal onClose={() => setCreateOpen(false)} />}
     </div>
   )
 }

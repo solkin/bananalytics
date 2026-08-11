@@ -59,4 +59,12 @@
   gap: 10px;
 }
 
+/* The one place a freshly created key is readable. */
+.gs-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 /* Code blocks now use the shared <CodeBlock> (next/codeblock.css). */

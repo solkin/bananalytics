@@ -5,7 +5,7 @@ import { getApp } from '@/api/apps'
 import { useAsync } from '../async'
 import { CodeBlock } from '../CodeBlock'
 import type { ShellContext } from '../layout/AppShell'
-import { CreateKeyModal } from './ApiKeysPage'
+import { CreateKeyModal, KeyReveal } from './ApiKeysPage'
 import './gettingstarted.css'
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
@@ -138,9 +138,13 @@ curl --fail-with-body -X POST https://banana.appteka.store/api/v1/releases \\
 
             <Step n={3} title="Initialize in Application.onCreate()">
               {key ? (
-                <Text size="sm" type="secondary">
-                  Your API key is filled in below — copy it now, it is shown only once. Keep it private.
-                </Text>
+                <div className="gs-reveal">
+                  <Text size="sm" type="secondary">
+                    Copy your API key now — it is stored hashed, so this is the only time it can be
+                    read. It is already filled into the snippet below. Keep it private.
+                  </Text>
+                  <KeyReveal value={key} />
+                </div>
               ) : (
                 <div className="gs-key">
                   <Text size="sm" type="secondary">
