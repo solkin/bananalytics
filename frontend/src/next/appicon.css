@@ -1,0 +1,33 @@
+/* Square app mark — see AppIcon.tsx. */
+.app-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--bnn-radius-lg);
+  color: var(--bnn-text-inverse);
+  font-weight: 700;
+}
+/* An uploaded icon fills the slot the generated initial would have. */
+.app-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-icon--sm {
+  width: 34px;
+  height: 34px;
+  font-size: var(--bnn-fs-lg);
+}
+.app-icon--md {
+  width: 44px;
+  height: 44px;
+  font-size: var(--bnn-fs-xl);
+}
+.app-icon--lg {
+  width: 56px;
+  height: 56px;
+  font-size: var(--bnn-fs-2xl);
+}

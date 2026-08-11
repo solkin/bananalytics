@@ -1,4 +1,4 @@
-import { Icons, toast } from '@/ui'
+import { Button, Icons, toast } from '@/ui'
 import './codeblock.css'
 
 export function CodeBlock({ code }: { code: string }) {
@@ -8,10 +8,9 @@ export function CodeBlock({ code }: { code: string }) {
   }
   return (
     <div className="cb">
-      <button className="cb__copy" type="button" onClick={copy}>
-        <Icons.IconCopy size={13} />
-        <span>Copy</span>
-      </button>
+      <Button className="cb__copy" size="sm" icon={<Icons.IconCopy size={13} />} onClick={copy}>
+        Copy
+      </Button>
       <pre className="stacktrace">{code}</pre>
     </div>
   )

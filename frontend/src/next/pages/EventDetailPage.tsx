@@ -10,6 +10,7 @@ import {
   Table,
   Tag,
   Text,
+  Title,
   type ChartPoint,
   type Column,
   type DescItem,
@@ -119,7 +120,7 @@ export default function EventDetailPage() {
 
   return (
     <div className="pg">
-      <h1 className="bnn-pageheader__title" style={{ margin: 0 }}>{decoded}</h1>
+      <Title level={3}>{decoded}</Title>
 
       <Card
         title="Count"
@@ -140,7 +141,7 @@ export default function EventDetailPage() {
             return (
               <div className="pg-split">
                 <div className="pg-split__chart"><AreaChart data={series} height={220} /></div>
-                <div className="pg-rail"><Statistic title={`Last ${days} days`} value={fmtK(total)} /></div>
+                <div className="pg-rail"><Statistic variant="kpi" title={`Last ${days} days`} value={fmtK(total)} /></div>
               </div>
             )
           }}

@@ -5,9 +5,9 @@
   border-radius: var(--bnn-radius-lg);
   box-shadow: var(--bnn-shadow-xs);
 }
+/* Hover raises the card with light, never with movement. */
 .bnn-card--hover {
-  transition: box-shadow 0.18s var(--bnn-ease), border-color 0.18s var(--bnn-ease),
-    transform 0.18s var(--bnn-ease);
+  transition: box-shadow 0.18s var(--bnn-ease), border-color 0.18s var(--bnn-ease);
   cursor: pointer;
 }
 .bnn-card--hover:hover {
@@ -45,6 +45,76 @@
   padding: 0;
 }
 
+/* ===== TopBar =====
+   The single application header: brand and context on the left, account
+   actions on the right. Every top-level page mounts this same bar. */
+.bnn-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bnn-sp-3);
+  height: var(--bnn-topbar-h);
+  padding: 0 var(--bnn-sp-4);
+  background: var(--bnn-surface);
+  border-bottom: 1px solid var(--bnn-border);
+}
+.bnn-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  min-width: 0;
+}
+.bnn-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  flex-shrink: 0;
+}
+.bnn-topbar__sep {
+  width: 1px;
+  height: 18px;
+  background: var(--bnn-border-strong);
+  flex-shrink: 0;
+}
+/* Text link in the bar (docs, help) */
+.bnn-topbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--bnn-fs-md);
+  color: var(--bnn-text-secondary);
+  text-decoration: none;
+  border-radius: var(--bnn-radius);
+  transition: color 0.15s;
+}
+.bnn-topbar__link:hover {
+  color: var(--bnn-primary);
+}
+/* Account menu trigger */
+.bnn-topbar__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--bnn-sp-1) 6px;
+  border-radius: var(--bnn-radius);
+  cursor: pointer;
+  color: var(--bnn-text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+.bnn-topbar__user:hover,
+.bnn-dropdown__trigger.is-open .bnn-topbar__user {
+  background: var(--bnn-surface-hover);
+  color: var(--bnn-text);
+}
+.bnn-topbar__link:focus-visible,
+.bnn-topbar__user:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+
 /* ===== Breadcrumb ===== */
 .bnn-breadcrumb {
   display: flex;
@@ -52,6 +122,12 @@
   flex-wrap: wrap;
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text-tertiary);
+}
+.bnn-breadcrumb--truncate {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .bnn-breadcrumb__item {
   display: inline-flex;
@@ -72,57 +148,6 @@
 .bnn-breadcrumb__sep {
   margin: 0 8px;
   color: var(--bnn-text-tertiary);
-}
-
-/* ===== PageHeader ===== */
-.bnn-pageheader {
-  margin-bottom: var(--bnn-sp-4);
-}
-.bnn-pageheader__crumb {
-  margin-bottom: 8px;
-}
-.bnn-pageheader__row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.bnn-pageheader__main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-.bnn-pageheader__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--bnn-border-strong);
-  border-radius: var(--bnn-radius);
-  background: var(--bnn-surface);
-  color: var(--bnn-text-secondary);
-  cursor: pointer;
-}
-.bnn-pageheader__back:hover {
-  color: var(--bnn-primary);
-  border-color: var(--bnn-primary);
-}
-.bnn-pageheader__title {
-  margin: 0;
-  font-size: var(--bnn-fs-xl);
-  font-weight: 600;
-}
-.bnn-pageheader__subtitle {
-  margin-top: 2px;
-  font-size: var(--bnn-fs-sm);
-  color: var(--bnn-text-secondary);
-}
-.bnn-pageheader__extra {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* ===== NavMenu (toolbar) ===== */
@@ -228,7 +253,7 @@
 .bnn-segmented {
   display: inline-flex;
   padding: 2px;
-  background: #eceef1;
+  background: var(--bnn-surface-sunken);
   border-radius: var(--bnn-radius);
   gap: 2px;
 }
@@ -307,10 +332,10 @@
   border-right: 4px solid transparent;
 }
 .bnn-table__sort i.up {
-  border-bottom: 5px solid #c2c8d0;
+  border-bottom: 5px solid var(--bnn-icon-muted);
 }
 .bnn-table__sort i.down {
-  border-top: 5px solid #c2c8d0;
+  border-top: 5px solid var(--bnn-icon-muted);
 }
 .bnn-table__sort.is-asc i.up {
   border-bottom-color: var(--bnn-primary);
@@ -335,6 +360,17 @@
 }
 .bnn-table tbody tr.is-clickable:hover td {
   background: var(--bnn-surface-hover);
+}
+/* A row is reachable by keyboard, so it needs a focus treatment of its own —
+   a box-shadow on <tr> does not paint, hence the inset ring on the cells. */
+.bnn-table tbody tr.is-clickable:focus-visible {
+  outline: none;
+}
+.bnn-table tbody tr.is-clickable:focus-visible td {
+  background: var(--bnn-primary-soft);
+}
+.bnn-table tbody tr.is-clickable:focus-visible td:first-child {
+  box-shadow: inset 3px 0 0 var(--bnn-primary);
 }
 .bnn-table__empty {
   padding: 0 !important;
@@ -378,6 +414,18 @@
 .bnn-pagination__current {
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-text-secondary);
+}
+
+/* ===== Keyboard focus ===== */
+.bnn-navmenu__item:focus-visible,
+.bnn-tabs__tab:focus-visible,
+.bnn-segmented__item:focus-visible,
+.bnn-pagination__btn:focus-visible,
+.bnn-breadcrumb__link:focus-visible,
+.bnn-table th.is-sortable:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+  border-radius: var(--bnn-radius);
 }
 
 /* ===== Descriptions ===== */

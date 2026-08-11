@@ -3,73 +3,26 @@
   background: var(--bnn-bg);
 }
 
-/* Top bar */
-.kit-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 52px;
-  padding: 0 20px;
-  background: var(--bnn-surface);
-  border-bottom: 1px solid var(--bnn-border);
-}
-.kit-topbar__left {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  min-width: 0;
-  flex: 1;
-}
-.kit-topbar__left .bnn-navmenu {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.kit-topbar__left .bnn-navmenu::-webkit-scrollbar {
-  display: none;
-}
+/* Top bar — chrome comes from the kit's TopBar; only the demo brand and the
+   scrollable nav slot are local. */
 .kit-topbar__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--bnn-sp-3);
   font-weight: 600;
   font-size: var(--bnn-fs-base);
 }
 .kit-logo {
-  font-size: 20px;
+  font-size: var(--bnn-fs-xl);
 }
-.kit-topbar__divider {
-  width: 1px;
-  height: 18px;
-  background: var(--bnn-border-strong);
-  margin: 0 2px;
-}
-.kit-topbar__right {
+.kit-topbar__nav {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.kit-user {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 8px;
-  border-radius: var(--bnn-radius);
-  cursor: pointer;
-  color: var(--bnn-text-secondary);
-  transition: background 0.15s, color 0.15s;
-}
-.kit-user:hover,
-.bnn-dropdown__trigger.is-open .kit-user {
-  background: rgba(16, 24, 40, 0.06);
-  color: var(--bnn-text);
-}
-.kit-user:active {
-  background: rgba(16, 24, 40, 0.1);
-  color: var(--bnn-text);
+.kit-topbar__nav::-webkit-scrollbar {
+  display: none;
 }
 
 /* Body layout */
@@ -78,7 +31,7 @@
   align-items: flex-start;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 var(--bnn-sp-5);
 }
 .kit-nav {
   position: sticky;
@@ -88,10 +41,10 @@
   gap: 2px;
   width: 170px;
   flex-shrink: 0;
-  padding: 24px 8px 24px 0;
+  padding: var(--bnn-sp-6) var(--bnn-sp-2) var(--bnn-sp-6) 0;
 }
 .kit-nav__link {
-  padding: 7px 12px;
+  padding: 7px var(--bnn-sp-3);
   border-radius: var(--bnn-radius);
   font-size: var(--bnn-fs-md);
   font-weight: 500;
@@ -110,48 +63,48 @@
 .kit-main {
   flex: 1;
   min-width: 0;
-  padding: 24px 0 80px 24px;
+  padding: var(--bnn-sp-6) 0 var(--bnn-sp-8) var(--bnn-sp-6);
 }
 
 .kit-intro {
-  margin-bottom: 32px;
+  margin-bottom: var(--bnn-sp-8);
 }
 .kit-intro .bnn-title {
-  margin: 10px 0 6px;
+  margin: var(--bnn-sp-3) 0 6px;
 }
 
 /* Sections */
 .kit-section {
-  margin-bottom: 40px;
+  margin-bottom: var(--bnn-sp-8);
   scroll-margin-top: 70px;
 }
 .kit-section__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 14px;
+  margin-bottom: var(--bnn-sp-4);
 }
 .kit-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--bnn-sp-3);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--bnn-sp-3);
 }
 .kit-section > .bnn-card {
-  margin-bottom: 12px;
+  margin-bottom: var(--bnn-sp-3);
 }
 
 /* Foundation */
 .kit-swatches {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 12px;
+  gap: var(--bnn-sp-3);
 }
 .kit-swatch {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--bnn-sp-2);
 }
 .kit-swatch__box {
   width: 26px;
@@ -161,7 +114,7 @@
 }
 
 .kit-footer {
-  margin-top: 24px;
+  margin-top: var(--bnn-sp-6);
 }
 
 @media (max-width: 860px) {
@@ -182,12 +135,6 @@
 }
 /* collapse nav labels to icons, keep brand logo only */
 @media (max-width: 560px) {
-  .kit-topbar {
-    padding: 0 12px;
-  }
-  .kit-topbar__left {
-    gap: 10px;
-  }
   .kit-topbar__name {
     display: none;
   }

@@ -91,7 +91,23 @@ export function Table<T>({
                   key={col.key}
                   style={{ width: col.width, textAlign: col.align }}
                   className={cn(col.sorter && 'is-sortable')}
+                  tabIndex={col.sorter ? 0 : undefined}
+                  role={col.sorter ? 'button' : undefined}
+                  aria-sort={
+                    col.sorter && sortKey === col.key
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : undefined
+                  }
                   onClick={() => toggleSort(col)}
+                  onKeyDown={(e) => {
+                    if (!col.sorter) return
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleSort(col)
+                    }
+                  }}
                 >
                   <span className="bnn-table__th">
                     {col.title}
@@ -133,7 +149,18 @@ export function Table<T>({
                 <tr
                   key={rowKey(row, i)}
                   className={cn(onRowClick && 'is-clickable')}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? 'button' : undefined}
                   onClick={() => onRowClick?.(row)}
+                  onKeyDown={(e) => {
+                    if (!onRowClick) return
+                    /* Space would scroll the page, Enter would do nothing —
+                       both should open the row like a click does. */
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onRowClick(row)
+                    }
+                  }}
                 >
                   {columns.map((col) => (
                     <td key={col.key} style={{ textAlign: col.align }}>

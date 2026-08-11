@@ -1,10 +1,10 @@
-/* Documentation page — sticky TOC + content sections (App Center style). */
+/* Documentation page — sticky TOC + content sections. */
 .docs-body {
   display: flex;
   align-items: flex-start;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 var(--bnn-sp-5);
 }
 .docs-toc {
   position: sticky;
@@ -14,11 +14,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 28px 8px 24px 0;
+  padding: var(--bnn-sp-7) var(--bnn-sp-2) var(--bnn-sp-6) 0;
 }
 .docs-toc a {
   position: relative;
-  padding: 6px 10px;
+  padding: 6px var(--bnn-sp-3);
   border-radius: var(--bnn-radius);
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text-secondary);
@@ -28,6 +28,10 @@
 .docs-toc a:hover {
   background: var(--bnn-surface-hover);
   color: var(--bnn-text);
+}
+.docs-toc a:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 .docs-toc a.is-active {
   background: var(--bnn-primary-soft);
@@ -49,32 +53,32 @@
   min-width: 0;
   /* trailing room so the short final sections can scroll up to the
      scroll-spy line and get highlighted */
-  padding: 28px 0 85vh 24px;
+  padding: var(--bnn-sp-7) 0 85vh var(--bnn-sp-6);
 }
 .docs-intro {
-  margin-bottom: 28px;
+  margin-bottom: var(--bnn-sp-7);
 }
 .docs-intro .bnn-title {
-  margin: 0 0 8px;
+  margin-bottom: var(--bnn-sp-2);
 }
 .docs-section {
-  margin-bottom: 36px;
+  margin-bottom: var(--bnn-sp-8);
   scroll-margin-top: 70px;
 }
 .docs-section h2 {
-  margin: 0 0 10px;
+  margin-bottom: var(--bnn-sp-3);
   font-size: var(--bnn-fs-xl);
   font-weight: 600;
 }
 .docs-section p {
-  margin: 0 0 10px;
+  margin-bottom: var(--bnn-sp-3);
   font-size: var(--bnn-fs-base);
   line-height: 1.6;
   color: var(--bnn-text-secondary);
 }
 .docs-section ul {
-  margin: 8px 0;
-  padding-left: 18px;
+  margin: var(--bnn-sp-2) 0;
+  padding-left: var(--bnn-sp-5);
   color: var(--bnn-text-secondary);
   line-height: 1.7;
 }
@@ -84,11 +88,11 @@
 }
 .docs-section code {
   font-family: var(--bnn-font-mono);
-  font-size: 12px;
+  font-size: var(--bnn-fs-sm);
   background: var(--bnn-surface-alt);
   border: 1px solid var(--bnn-border);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--bnn-radius-sm);
   color: var(--bnn-text);
 }
 

@@ -18,6 +18,7 @@ import {
   Empty,
   Form,
   FormItem,
+  IconButton,
   Icons,
   Input,
   LineChart,
@@ -40,6 +41,7 @@ import {
   Title,
   ToastViewport,
   Tooltip,
+  TopBar,
   UploadDragger,
   toast,
   type ChartPoint,
@@ -159,40 +161,46 @@ export default function UiKitPage() {
     <div className="kit">
       <ToastViewport />
 
-      {/* Top bar */}
-      <header className="kit-topbar">
-        <div className="kit-topbar__left">
-          <div className="kit-topbar__brand">
-            <span className="kit-logo">🍌</span>
-            <span className="kit-topbar__name">Bananalytics</span>
-          </div>
-          <NavMenu
-            activeKey={topNav}
-            onChange={setTopNav}
-            items={[
-              { key: 'overview', label: 'Overview', icon: <Icons.IconApps size={15} /> },
-              { key: 'diagnostics', label: 'Diagnostics', icon: <Icons.IconBug size={15} /> },
-              { key: 'analytics', label: 'Analytics', icon: <Icons.IconChart size={15} /> },
-              { key: 'settings', label: 'Settings', icon: <Icons.IconSettings size={15} /> },
-            ]}
-          />
-        </div>
-        <div className="kit-topbar__right">
-          <Tag tone="warning">Preview</Tag>
-          <Dropdown
-            items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} /> },
-              { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true },
-            ]}
-          >
-            <span className="kit-user">
-              <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-              <Text size="sm" className="kit-username">Igor Sulkin</Text>
-              <Icons.IconChevronDown size={14} />
+      {/* Top bar — the kit's own TopBar, same one every page mounts */}
+      <TopBar
+        left={
+          <>
+            <div className="kit-topbar__brand">
+              <span className="kit-logo">🍌</span>
+              <span className="kit-topbar__name">Bananalytics</span>
+            </div>
+            <span className="kit-topbar__nav">
+              <NavMenu
+                activeKey={topNav}
+                onChange={setTopNav}
+                items={[
+                  { key: 'overview', label: 'Overview', icon: <Icons.IconApps size={15} /> },
+                  { key: 'diagnostics', label: 'Diagnostics', icon: <Icons.IconBug size={15} /> },
+                  { key: 'analytics', label: 'Analytics', icon: <Icons.IconChart size={15} /> },
+                  { key: 'settings', label: 'Settings', icon: <Icons.IconSettings size={15} /> },
+                ]}
+              />
             </span>
-          </Dropdown>
-        </div>
-      </header>
+          </>
+        }
+        right={
+          <>
+            <Tag tone="warning">Preview</Tag>
+            <Dropdown
+              items={[
+                { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} /> },
+                { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true },
+              ]}
+            >
+              <span className="bnn-topbar__user">
+                <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
+                <Text size="sm" className="kit-username">Igor Sulkin</Text>
+                <Icons.IconChevronDown size={14} />
+              </span>
+            </Dropdown>
+          </>
+        }
+      />
 
       <div className="kit-body">
         {/* Sidebar nav */}
@@ -279,6 +287,11 @@ export default function UiKitPage() {
                 <Button size="md" icon={<Icons.IconReload size={15} />}>Medium</Button>
                 <Button size="lg" variant="primary">Large</Button>
                 <Button variant="default" icon={<Icons.IconDownload size={15} />} />
+                <Divider vertical />
+                <Tooltip title="Icon button">
+                  <IconButton aria-label="Refresh"><Icons.IconReload size={17} /></IconButton>
+                </Tooltip>
+                <IconButton size="sm" aria-label="Close"><Icons.IconClose size={15} /></IconButton>
               </Row>
             </Card>
           </Section>
@@ -297,6 +310,15 @@ export default function UiKitPage() {
                 </Card>
               ))}
             </Row>
+            <Card title="KPI rail" subtitle="Statistic variant='kpi' — the headline readout beside a chart.">
+              <Row>
+                <Statistic variant="kpi" title="Last 28 days" value="106.9k" />
+                <Divider vertical />
+                <Statistic variant="kpi" title="Total sessions" value="1.4m" />
+                <Divider vertical />
+                <Statistic variant="kpi" title="Crash-free" value="99.4%" />
+              </Row>
+            </Card>
             <Row>
               <Card title="Crash details" style={{ flex: 2, minWidth: 360 }}>
                 <Descriptions

@@ -33,11 +33,8 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useAsync, Loaded, errorText } from '../async'
 import { cap, fmtDateTime, shortDate } from '../format'
+import { roleTone } from '../tones'
 import './pages.css'
-
-const ROLE_TONE: Record<string, 'primary' | 'purple' | 'success' | 'neutral'> = {
-  admin: 'primary', viewer: 'neutral', tester: 'success',
-}
 
 const ROLE_OPTIONS = [
   { label: 'Admin — full access including settings', value: 'admin' },
@@ -262,7 +259,7 @@ function MemberModal({
           <Descriptions
             column={1}
             size="sm"
-            items={[{ label: 'Role', value: <Tag tone={ROLE_TONE[access.role] ?? 'neutral'}>{cap(access.role)}</Tag> }]}
+            items={[{ label: 'Role', value: <Tag tone={roleTone(access.role)}>{cap(access.role)}</Tag> }]}
           />
         )}
 
@@ -331,8 +328,8 @@ export default function PeoplePage() {
           <div>
             <div className="pg-person__name">
               {r.user_name || r.user_email}
-              {r.user_id === user?.id && <Tag className="pg-person__tag">You</Tag>}
-              {r.status === 'invited' && <Tag tone="warning" className="pg-person__tag">Invited</Tag>}
+              {r.user_id === user?.id && <Tag>You</Tag>}
+              {r.status === 'invited' && <Tag tone="warning">Invited</Tag>}
             </div>
             {r.user_name && <Text type="tertiary" size="sm">{r.user_email}</Text>}
           </div>
@@ -341,7 +338,7 @@ export default function PeoplePage() {
     },
     {
       key: 'role', title: 'Role', width: 140,
-      render: (r) => <Tag tone={ROLE_TONE[r.role] ?? 'neutral'}>{cap(r.role)}</Tag>,
+      render: (r) => <Tag tone={roleTone(r.role)}>{cap(r.role)}</Tag>,
     },
     { key: 'added', title: 'Added', align: 'right', render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
   ]

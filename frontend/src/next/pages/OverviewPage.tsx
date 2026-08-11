@@ -1,19 +1,13 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { MultiAreaChart, BarChart, BarList, Card, Icons, Segmented, Statistic, Text, type BarListItem, type ChartPoint } from '@/ui'
+import { MultiAreaChart, BarChart, Card, Segmented, Statistic, type ChartPoint } from '@/ui'
 import { getDeviceStats, getDailyActivity, getUniqueSessionsByVersion } from '@/api/events'
 import { getCrashFreeStats } from '@/api/crashes'
 import { useAsync, Loaded } from '../async'
+import { CardHelp, DistributionCards } from '../DistributionCards'
 import { fmtK, fromTo, shortDate } from '../format'
-import './overview.css'
+import './pages.css'
 
-function HelpDot() {
-  return <span className="ov-help" aria-hidden><Icons.IconHelp size={15} /></span>
-}
-function toBars(items: { name: string; count: number }[]): BarListItem[] {
-  const total = items.reduce((s, i) => s + i.count, 0) || 1
-  return items.map((i) => ({ label: i.name, value: i.count, display: fmtK(i.count), secondary: `${Math.round((i.count / total) * 100)}%` }))
-}
 function byVersion(rows: { version_code: number; version_name: string | null; count: number }[]): ChartPoint[] {
   const m = new Map<string, number>()
   for (const r of rows) {
@@ -41,11 +35,11 @@ export default function OverviewPage() {
   const crashFree = cfRows.length ? `${cfRows[cfRows.length - 1].crash_free_rate.toFixed(1)}%` : '—'
 
   return (
-    <div className="ov">
+    <div className="pg">
       <Card
         title="Active users"
         extra={
-          <span className="ov-card-extra">
+          <span className="pg-card-extra">
             <Segmented<number>
               size="sm"
               value={range}
@@ -57,12 +51,12 @@ export default function OverviewPage() {
                 { label: '1y', value: 365 },
               ]}
             />
-            <HelpDot />
+            <CardHelp text="Distinct devices and sessions per day over the selected period." />
           </span>
         }
       >
-        <div className="ov-split">
-          <div className="ov-split__chart">
+        <div className="pg-split">
+          <div className="pg-split__chart">
             <MultiAreaChart
               height={230}
               series={[
@@ -71,32 +65,22 @@ export default function OverviewPage() {
               ]}
             />
           </div>
-          <div className="ov-rail">
-            <Statistic title={`Last ${range} days`} value={fmtK(rangeSessions)} />
-            <Statistic title="Total sessions" value={fmtK(totalSessions)} />
-            <Statistic title="Crash-free" value={crashFree} />
+          <div className="pg-rail">
+            <Statistic variant="kpi" title={`Last ${range} days`} value={fmtK(rangeSessions)} />
+            <Statistic variant="kpi" title="Total sessions" value={fmtK(totalSessions)} />
+            <Statistic variant="kpi" title="Crash-free" value={crashFree} />
           </div>
         </div>
       </Card>
 
-      <Card title="Sessions per version" extra={<HelpDot />}>
+      <Card
+        title="Sessions per version"
+        extra={<CardHelp text="Unique sessions in the last 28 days, grouped by app version." />}
+      >
         <BarChart data={byVersion(sessRows)} color="var(--bnn-warning)" height={220} />
       </Card>
 
-      <Loaded state={dev}>
-        {(d) => (
-          <>
-            <div className="ov-grid2">
-              <Card title="Top devices" extra={<HelpDot />}>{d.models.length ? <BarList items={toBars(d.models)} /> : <Text type="tertiary">No device data yet</Text>}</Card>
-              <Card title="OS distribution" extra={<HelpDot />}>{d.os_versions.length ? <BarList items={toBars(d.os_versions)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-            </div>
-            <div className="ov-grid2">
-              <Card title="Country / Region" extra={<HelpDot />}>{d.countries.length ? <BarList items={toBars(d.countries)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-              <Card title="Languages" extra={<HelpDot />}>{d.languages.length ? <BarList items={toBars(d.languages)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-            </div>
-          </>
-        )}
-      </Loaded>
+      <Loaded state={dev}>{(d) => <DistributionCards stats={d} />}</Loaded>
     </div>
   )
 }

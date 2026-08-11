@@ -1,9 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { AreaChart, Card, Select, Table, Text, type ChartPoint, type Column } from '@/ui'
+import { AreaChart, Card, Select, Table, Tag, Text, type ChartPoint, type Column } from '@/ui'
 import type { CrashGroup } from '@/types'
 import { getAppCrashStats, getCrashFreeStats, getCrashGroups, getCrashVersions } from '@/api/crashes'
 import { useAsync, Loaded } from '../async'
 import { cap, fillDaily, fmtK, fromTo, relTime, shortDate, versionLabel } from '../format'
+import { issueStatusTone } from '../tones'
 import { useStickyFilters } from '../filters'
 import './pages.css'
 
@@ -51,7 +52,7 @@ export default function IssuesPage() {
     { key: 'devices', title: 'Devices', align: 'right', sorter: (a, b) => a.affected_devices - b.affected_devices, render: (r) => fmtK(r.affected_devices) },
     {
       key: 'status', title: 'Status', align: 'right',
-      render: (r) => <Text type={r.status === 'open' ? 'success' : r.status === 'ignored' ? 'warning' : 'tertiary'}>{cap(r.status)}</Text>,
+      render: (r) => <Tag tone={issueStatusTone(r.status)}>{cap(r.status)}</Tag>,
     },
     {
       key: 'lastReport', title: 'Last report', align: 'right',

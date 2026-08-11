@@ -1,8 +1,4 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* The reset lives in the kit (ui/theme.css) so there is only one. */
 
 #root {
   min-height: 100vh;
@@ -10,15 +6,14 @@
 
 /* Monospace stack traces (crash details) */
 .stacktrace {
-  margin: 0;
   font-family: var(--bnn-font-mono);
-  font-size: 12px;
+  font-size: var(--bnn-fs-sm);
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-all;
   background: var(--bnn-surface-alt);
   border: 1px solid var(--bnn-border);
-  padding: 14px 16px;
+  padding: var(--bnn-sp-4);
   border-radius: var(--bnn-radius);
   overflow-x: auto;
 }

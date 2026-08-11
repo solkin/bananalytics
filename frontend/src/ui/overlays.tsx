@@ -51,7 +51,7 @@ export function Modal({
           {title && (
             <div className="bnn-modal__head">
               <div className="bnn-modal__title">{title}</div>
-              <button className="bnn-iconbtn" onClick={onClose} aria-label="close">
+              <button className="bnn-iconbtn bnn-iconbtn--sm" onClick={onClose} aria-label="close">
                 <IconClose size={16} />
               </button>
             </div>
@@ -110,7 +110,7 @@ export function Drawer({
           {title && (
             <div className="bnn-drawer__head">
               <div className="bnn-drawer__title">{title}</div>
-              <button className="bnn-iconbtn" onClick={onClose} aria-label="close">
+              <button className="bnn-iconbtn bnn-iconbtn--sm" onClick={onClose} aria-label="close">
                 <IconClose size={16} />
               </button>
             </div>

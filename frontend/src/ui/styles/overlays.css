@@ -126,18 +126,23 @@
   position: absolute;
   z-index: var(--bnn-z-toast);
   padding: 5px 9px;
-  background: #20262e;
-  color: #fff;
+  background: var(--bnn-ink);
+  color: var(--bnn-text-inverse);
   font-size: var(--bnn-fs-sm);
   line-height: 1.4;
   border-radius: var(--bnn-radius-sm);
-  white-space: nowrap;
+  /* Wraps rather than running off-screen; short labels still sit on one
+     line because the box shrinks to fit. */
+  width: max-content;
+  max-width: 240px;
+  text-align: center;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
   box-shadow: var(--bnn-shadow-md);
 }
-.bnn-tooltip-wrap:hover .bnn-tooltip {
+.bnn-tooltip-wrap:hover .bnn-tooltip,
+.bnn-tooltip-wrap:focus-within .bnn-tooltip {
   opacity: 1;
 }
 .bnn-tooltip--top {
@@ -219,6 +224,14 @@
 .bnn-menu__item.is-disabled {
   color: var(--bnn-text-tertiary);
   cursor: not-allowed;
+}
+.bnn-menu__item:focus-visible,
+.bnn-dropdown__trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.bnn-dropdown__trigger:focus-visible {
+  border-radius: var(--bnn-radius);
 }
 .bnn-menu__icon {
   display: inline-flex;
@@ -306,7 +319,7 @@
   border-radius: 50%;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--bnn-text-inverse);
   flex-shrink: 0;
 }
 .bnn-toast--success .bnn-toast__icon {
@@ -361,9 +374,9 @@
   flex-direction: column;
   align-items: center;
   padding: 4px 8px;
-  background: #20262e;
+  background: var(--bnn-ink);
   border-radius: var(--bnn-radius-sm);
-  color: #fff;
+  color: var(--bnn-text-inverse);
   line-height: 1.3;
 }
 .bnn-chart__tip-label {

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Alert, Avatar, Button, Dropdown, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
+import { Alert, Avatar, Button, Card, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { createApp, getApps } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
-import { accentFor } from '../colors'
+import { AppIcon } from '../AppIcon'
 import { KeyReveal } from './ApiKeysPage'
-import { Brand } from '../layout/Brand'
+import { AppTopBar } from '../layout/AppTopBar'
 import './appshome.css'
 
 const PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/i
@@ -102,8 +102,7 @@ function CreateAppModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function AppsHome() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const state = useAsync(() => getApps(), [])
@@ -111,31 +110,7 @@ export default function AppsHome() {
 
   return (
     <div className="home">
-      <header className="home-top">
-        <Brand />
-        <div className="home-top__right">
-          <Link className="home-docs" to="/docs">
-            <Icons.IconBook size={15} />
-            <span>Go to docs</span>
-          </Link>
-          <button className="home-iconbtn" type="button" aria-label="Help">
-            <Icons.IconHelp size={17} />
-          </button>
-          <Dropdown
-            items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
-              { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => void logout() },
-            ]}
-          >
-            <span className="home-user">
-              <Avatar size={26}>
-                <Icons.IconUser size={14} />
-              </Avatar>
-              <Icons.IconChevronDown size={14} />
-            </span>
-          </Dropdown>
-        </div>
-      </header>
+      <AppTopBar />
 
       <main className="home-main">
         <div className="home-head">
@@ -171,22 +146,20 @@ export default function AppsHome() {
                 </div>
                 <div className="home-grid">
                   {list.map((a) => (
-                    <Link key={a.id} to={`/apps/${a.id}`} className="home-card">
-                      <span
-                        className="home-card__icon"
-                        style={a.icon_url ? undefined : { background: accentFor(a.name) }}
-                      >
-                        {a.icon_url ? <img src={a.icon_url} alt="" /> : a.name.charAt(0).toUpperCase()}
-                      </span>
-                      <div className="home-card__meta">
-                        <div className="home-card__name">{a.name}</div>
-                        <div className="home-card__sub">
-                          <Tag tone="success">Android</Tag>
-                          <Text type="tertiary" size="sm">{a.package_name}</Text>
+                    /* Kit card for the chrome, link for the whole hit area. */
+                    <Card key={a.id} hoverable padded={false}>
+                      <Link to={`/apps/${a.id}`} className="home-card">
+                        <AppIcon name={a.name} iconUrl={a.icon_url} />
+                        <div className="home-card__meta">
+                          <div className="home-card__name">{a.name}</div>
+                          <div className="home-card__sub">
+                            <Tag tone="neutral">Android</Tag>
+                            <Text type="tertiary" size="sm">{a.package_name}</Text>
+                          </div>
                         </div>
-                      </div>
-                      <Icons.IconChevronRight size={16} className="home-card__arrow" />
-                    </Link>
+                        <Icons.IconChevronRight size={16} className="home-card__arrow" />
+                      </Link>
+                    </Card>
                   ))}
                 </div>
               </>

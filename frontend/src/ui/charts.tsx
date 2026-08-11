@@ -148,7 +148,7 @@ function Hover({
         <g pointerEvents="none">
           <line x1={px(idx)} x2={px(idx)} y1={g.padT} y2={g.h - g.padB} className="bnn-chart__cursor" />
           {!band && (
-            <circle cx={px(idx)} cy={scale.y(data[idx].value)} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+            <circle cx={px(idx)} cy={scale.y(data[idx].value)} r={4} fill={color} stroke="var(--bnn-surface)" strokeWidth={2} />
           )}
         </g>
       )}
@@ -273,7 +273,7 @@ function MultiHover({
           <line x1={scale.x(idx)} x2={scale.x(idx)} y1={g.padT} y2={g.h - g.padB} className="bnn-chart__cursor" />
           {series.map((s) =>
             s.data[idx] != null ? (
-              <circle key={s.label} cx={scale.x(idx)} cy={scale.y(s.data[idx].value)} r={4} fill={s.color} stroke="#fff" strokeWidth={2} />
+              <circle key={s.label} cx={scale.x(idx)} cy={scale.y(s.data[idx].value)} r={4} fill={s.color} stroke="var(--bnn-surface)" strokeWidth={2} />
             ) : null,
           )}
         </g>

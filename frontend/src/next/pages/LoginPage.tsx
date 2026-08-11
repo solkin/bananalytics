@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Form, FormItem, Icons, Input, Password, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { errorText } from '../async'
-import './auth.css'
+import { AuthFrame } from './AuthFrame'
 
 export default function LoginPage() {
   const { login, config } = useAuth()
@@ -26,45 +26,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth">
-      <div className="auth-card">
-        <div className="auth-head">
-          <img className="auth-head__logo" src="/banana.svg" alt="" />
-          <div className="auth-head__name">Bananalytics</div>
-          <div className="auth-head__sub">Sign in to your account</div>
+    <AuthFrame sub="Sign in to your account">
+      <Card>
+        <Form className="auth-form" onSubmit={submit}>
+          <FormItem label="Email">
+            <Input
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              prefix={<Icons.IconMail size={15} />}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </FormItem>
+          <FormItem label="Password">
+            <Password
+              autoComplete="current-password"
+              placeholder="••••••••"
+              prefix={<Icons.IconLock size={15} />}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </FormItem>
+          <Button variant="primary" size="lg" block loading={loading} type="submit">
+            Sign in
+          </Button>
+        </Form>
+      </Card>
+      {config?.registration_enabled && (
+        <div className="auth-foot">
+          Don't have an account? <Link to="/register">Sign up</Link>
         </div>
-        <Card>
-          <Form className="auth-form" onSubmit={submit}>
-            <FormItem label="Email">
-              <Input
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                prefix={<Icons.IconMail size={15} />}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </FormItem>
-            <FormItem label="Password">
-              <Password
-                autoComplete="current-password"
-                placeholder="••••••••"
-                prefix={<Icons.IconLock size={15} />}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </FormItem>
-            <Button variant="primary" size="lg" block loading={loading} type="submit">
-              Sign in
-            </Button>
-          </Form>
-        </Card>
-        {config?.registration_enabled && (
-          <div className="auth-foot">
-            Don't have an account? <Link to="/register">Sign up</Link>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AuthFrame>
   )
 }

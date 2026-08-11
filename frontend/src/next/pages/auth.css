@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: var(--bnn-sp-6) var(--bnn-sp-4);
   background: var(--bnn-bg);
 }
 .auth-card {
@@ -12,7 +12,7 @@
   max-width: 380px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--bnn-sp-5);
 }
 .auth-head {
   display: flex;
@@ -36,7 +36,7 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--bnn-sp-1);
 }
 .auth-foot {
   text-align: center;
@@ -46,7 +46,12 @@
 .auth-foot a {
   color: var(--bnn-primary);
   text-decoration: none;
+  border-radius: var(--bnn-radius);
 }
 .auth-foot a:hover {
   text-decoration: underline;
+}
+.auth-foot a:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }

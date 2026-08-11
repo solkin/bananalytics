@@ -8,6 +8,7 @@ import {
   Card,
   Descriptions,
   Divider,
+  Empty,
   Icons,
   Popconfirm,
   Segmented,
@@ -33,6 +34,7 @@ import {
 import { useAsync, Loaded, errorText } from '../async'
 import { cap, fillDaily, fmtDateTime, fmtK, fromTo, relTime, versionLabel } from '../format'
 import { useDetailCrumb } from '../layout/useDetailCrumb'
+import { issueStatusTone } from '../tones'
 import './pages.css'
 
 const DAY_OPTIONS = [
@@ -129,7 +131,7 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
       ]}
     />
   ) : (
-    <Text type="tertiary">No device information captured.</Text>
+    <Empty description="No device information captured" />
   )
 
   const breadcrumbsTab = crash.breadcrumbs?.length ? (
@@ -140,7 +142,7 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
       }))}
     />
   ) : (
-    <Text type="tertiary">No breadcrumbs captured before this crash.</Text>
+    <Empty description="No breadcrumbs captured before this crash" />
   )
 
   const contextTab = crash.context && Object.keys(crash.context).length > 0 ? (
@@ -149,7 +151,7 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
       items={Object.entries(crash.context).map(([label, value]) => ({ label, value }))}
     />
   ) : (
-    <Text type="tertiary">No context data attached.</Text>
+    <Empty description="No context data attached" />
   )
 
   return (
@@ -254,7 +256,7 @@ export default function IssueDetailPage() {
                   <div className="pg-detailhead__main">
                     <div className="pg-detailhead__titlerow">
                       <div className="pg-detailhead__title">{group.exception_class || 'Unknown error'}</div>
-                      <Tag tone={group.status === 'open' ? 'success' : group.status === 'ignored' ? 'warning' : 'neutral'}>{cap(group.status)}</Tag>
+                      <Tag tone={issueStatusTone(group.status)}>{cap(group.status)}</Tag>
                     </div>
                     <div className="pg-detailhead__msg">{group.exception_message || '—'}</div>
                   </div>
@@ -291,10 +293,10 @@ export default function IssueDetailPage() {
 
               <div className="pg-affected">
                 <Card title="Most affected devices">
-                  {devices.length ? <BarList items={devices} /> : <Text type="tertiary">No device data.</Text>}
+                  {devices.length ? <BarList items={devices} /> : <Empty description="No device data yet" />}
                 </Card>
                 <Card title="Most affected OS">
-                  {oses.length ? <BarList items={oses} /> : <Text type="tertiary">No OS data.</Text>}
+                  {oses.length ? <BarList items={oses} /> : <Empty description="No OS data yet" />}
                 </Card>
               </div>
 
@@ -342,7 +344,7 @@ export default function IssueDetailPage() {
                     onRetraced={(c) => setPatch((p) => ({ ...p, [c.id]: c }))}
                   />
                 ) : (
-                  <Text type="tertiary">No crash reports in the selected period.</Text>
+                  <Empty description="No crash reports in the selected period" />
                 )}
               </Card>
             </>

@@ -10,6 +10,7 @@ import './styles/overlays.css'
 export {
   cn,
   Button,
+  IconButton,
   Tag,
   Badge,
   Divider,
@@ -25,9 +26,9 @@ export {
   Title,
   Text,
 } from './primitives'
-export type { ButtonProps, TimelineItem } from './primitives'
+export type { ButtonProps, TagTone, TimelineItem } from './primitives'
 
-export { Card, Breadcrumb, PageHeader } from './Card'
+export { Card, Breadcrumb, TopBar, TopBarSeparator } from './Card'
 export type { CardProps, BreadcrumbItem } from './Card'
 
 export { NavMenu } from './nav'

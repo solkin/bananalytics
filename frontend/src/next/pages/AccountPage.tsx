@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Card, Dropdown, Form, FormItem, Icons, Input, Password, Text, toast } from '@/ui'
+import { Button, Card, Form, FormItem, Icons, Input, Password, Text, Title, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { changePassword } from '@/api/auth'
-import { Brand } from '../layout/Brand'
+import { AppTopBar } from '../layout/AppTopBar'
 import './appshome.css'
 import './account.css'
 
@@ -51,36 +51,14 @@ export default function AccountPage() {
 
   return (
     <div className="home">
-      <header className="home-top">
-        <Brand />
-        <div className="home-top__right">
-          <Link className="home-docs" to="/docs">
-            <Icons.IconBook size={15} />
-            <span>Go to docs</span>
-          </Link>
-          <button className="home-iconbtn" type="button" aria-label="Help">
-            <Icons.IconHelp size={17} />
-          </button>
-          <Dropdown
-            items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
-              { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
-            ]}
-          >
-            <span className="home-user">
-              <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-              <Icons.IconChevronDown size={14} />
-            </span>
-          </Dropdown>
-        </div>
-      </header>
+      <AppTopBar />
 
       <main className="acct">
         <Link to="/" className="acct-back">
           <Icons.IconChevronLeft size={15} />
           <span>All apps</span>
         </Link>
-        <h1 className="acct-title">Account</h1>
+        <Title level={2}>Account</Title>
 
         <Card title="Profile">
           <Form>

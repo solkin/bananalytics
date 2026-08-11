@@ -57,8 +57,27 @@ export function Button({
   )
 }
 
+/* --------------------------------------------------------- IconButton */
+/** Borderless square button for toolbars and overlay headers. */
+export function IconButton({
+  size = 'md',
+  className,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { size?: 'sm' | 'md' }) {
+  return (
+    <button
+      type="button"
+      className={cn('bnn-iconbtn', size === 'sm' && 'bnn-iconbtn--sm', className)}
+      {...rest}
+    >
+      {children}
+    </button>
+  )
+}
+
 /* ---------------------------------------------------------------- Tag */
-type TagTone =
+export type TagTone =
   | 'neutral'
   | 'primary'
   | 'success'
@@ -240,6 +259,7 @@ export function Statistic({
   prefix,
   trend,
   trendTone,
+  variant = 'default',
   className,
 }: {
   title: ReactNode
@@ -248,10 +268,13 @@ export function Statistic({
   prefix?: ReactNode
   trend?: ReactNode
   trendTone?: 'up' | 'down'
+  /** `kpi` is the headline readout next to a chart: label set in small caps,
+   *  value large and in the primary colour. */
+  variant?: 'default' | 'kpi'
   className?: string
 }) {
   return (
-    <div className={cn('bnn-stat', className)}>
+    <div className={cn('bnn-stat', variant === 'kpi' && 'bnn-stat--kpi', className)}>
       <div className="bnn-stat__title">{title}</div>
       <div className="bnn-stat__value">
         {prefix && <span className="bnn-stat__affix">{prefix}</span>}
@@ -280,17 +303,17 @@ export function Empty({
   return (
     <div className={cn('bnn-empty', className)}>
       <svg className="bnn-empty__icon" viewBox="0 0 64 41" width="64" height="41" aria-hidden>
-        <ellipse cx="32" cy="33" rx="32" ry="7" fill="#f0f1f4" />
+        <ellipse cx="32" cy="33" rx="32" ry="7" fill="var(--bnn-neutral-soft)" />
         <path
           d="M14 9h36l6 18v8a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3v-8L14 9z"
-          fill="#fafbfc"
-          stroke="#dcdfe4"
+          fill="var(--bnn-surface-alt)"
+          stroke="var(--bnn-border-strong)"
           strokeWidth="1.5"
         />
         <path
           d="M8 27h14a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h14"
           fill="none"
-          stroke="#dcdfe4"
+          stroke="var(--bnn-border-strong)"
           strokeWidth="1.5"
         />
       </svg>

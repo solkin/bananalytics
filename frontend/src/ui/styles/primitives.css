@@ -29,6 +29,13 @@
   border-color: var(--bnn-primary-active);
   color: var(--bnn-primary-active);
 }
+.bnn-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.bnn-btn--danger:focus-visible {
+  box-shadow: var(--bnn-focus-ring-danger);
+}
 .bnn-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -64,17 +71,17 @@
 .bnn-btn--danger {
   background: var(--bnn-danger);
   border-color: var(--bnn-danger);
-  color: #fff;
+  color: var(--bnn-text-inverse);
 }
 .bnn-btn--danger:hover:not(:disabled) {
   background: var(--bnn-danger-hover);
   border-color: var(--bnn-danger-hover);
-  color: #fff;
+  color: var(--bnn-text-inverse);
 }
 .bnn-btn--danger:active:not(:disabled) {
   background: var(--bnn-danger-active);
   border-color: var(--bnn-danger-active);
-  color: #fff;
+  color: var(--bnn-text-inverse);
 }
 .bnn-btn--text {
   border-color: transparent;
@@ -121,8 +128,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--bnn-icon-control);
+  height: var(--bnn-icon-control);
   border: none;
   border-radius: var(--bnn-radius);
   background: transparent;
@@ -130,9 +137,22 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
+/* sm is the density used inside overlay headers */
+.bnn-iconbtn--sm {
+  width: var(--bnn-icon-control-sm);
+  height: var(--bnn-icon-control-sm);
+}
 .bnn-iconbtn:hover {
   background: var(--bnn-surface-hover);
   color: var(--bnn-text);
+}
+.bnn-iconbtn:active {
+  background: var(--bnn-primary-soft);
+  color: var(--bnn-primary-active);
+}
+.bnn-iconbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 
 /* ===== Tag ===== */
@@ -150,9 +170,9 @@
   white-space: nowrap;
 }
 .bnn-tag--neutral {
-  background: #f1f2f4;
+  background: var(--bnn-neutral-soft);
   color: var(--bnn-text-secondary);
-  border-color: #e7e9ed;
+  border-color: var(--bnn-border);
 }
 .bnn-tag--primary {
   background: var(--bnn-primary-soft);
@@ -162,22 +182,22 @@
 .bnn-tag--success {
   background: var(--bnn-success-soft);
   color: var(--bnn-success);
-  border-color: #bfe6cd;
+  border-color: var(--bnn-success-border);
 }
 .bnn-tag--warning {
   background: var(--bnn-warning-soft);
   color: var(--bnn-warning);
-  border-color: #f3dcb0;
+  border-color: var(--bnn-warning-border);
 }
 .bnn-tag--danger {
   background: var(--bnn-danger-soft);
   color: var(--bnn-danger);
-  border-color: #f5c9cd;
+  border-color: var(--bnn-danger-border);
 }
 .bnn-tag--purple {
-  background: #f1edff;
-  color: var(--bnn-chart-4);
-  border-color: #ddd2ff;
+  background: var(--bnn-purple-soft);
+  color: var(--bnn-purple);
+  border-color: var(--bnn-purple-border);
 }
 
 /* ===== Badge ===== */
@@ -192,7 +212,7 @@
   font-weight: 600;
   line-height: 1;
   border-radius: var(--bnn-radius-pill);
-  color: #fff;
+  color: var(--bnn-text-inverse);
 }
 .bnn-badge--danger {
   background: var(--bnn-danger);
@@ -207,10 +227,10 @@
   background: var(--bnn-warning);
 }
 .bnn-badge--neutral {
-  background: #98a1ad;
+  background: var(--bnn-neutral);
 }
 .bnn-badge--purple {
-  background: var(--bnn-chart-4);
+  background: var(--bnn-purple);
 }
 
 /* ===== Divider ===== */
@@ -252,7 +272,7 @@
   justify-content: center;
   border-radius: 50%;
   background: var(--bnn-primary);
-  color: #fff;
+  color: var(--bnn-text-inverse);
   font-weight: 600;
   overflow: hidden;
   flex-shrink: 0;
@@ -315,8 +335,8 @@
 .bnn-skeleton__title,
 .bnn-skeleton__line,
 .bnn-skeleton__block {
-  background: #eef0f3;
-  border-radius: 4px;
+  background: var(--bnn-track);
+  border-radius: var(--bnn-radius-sm);
 }
 .bnn-skeleton__title {
   height: 16px;
@@ -333,7 +353,12 @@
 .bnn-skeleton.is-active .bnn-skeleton__title,
 .bnn-skeleton.is-active .bnn-skeleton__line,
 .bnn-skeleton__block.is-active {
-  background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 37%, #eef0f3 63%);
+  background: linear-gradient(
+    90deg,
+    var(--bnn-track) 25%,
+    var(--bnn-surface-hover) 37%,
+    var(--bnn-track) 63%
+  );
   background-size: 400% 100%;
   animation: bnn-shimmer 1.4s ease infinite;
 }
@@ -374,6 +399,21 @@
 .bnn-stat__trend.is-down {
   color: var(--bnn-danger);
 }
+/* KPI readout — the headline number beside a chart. */
+.bnn-stat--kpi .bnn-stat__title {
+  font-size: var(--bnn-fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bnn-text-tertiary);
+}
+.bnn-stat--kpi .bnn-stat__value {
+  font-size: var(--bnn-fs-2xl);
+  line-height: 1.1;
+  color: var(--bnn-primary);
+}
+.bnn-stat--kpi .bnn-stat__trend {
+  color: var(--bnn-text-tertiary);
+}
 
 /* ===== Empty ===== */
 .bnn-empty {
@@ -408,7 +448,7 @@
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
-  color: #fff;
+  color: var(--bnn-text-inverse);
   flex-shrink: 0;
 }
 .bnn-alert__body {
@@ -428,31 +468,31 @@
 .bnn-alert--info {
   background: var(--bnn-primary-soft);
   border-color: var(--bnn-primary-border);
-  color: #114a9e;
+  color: var(--bnn-primary-strong);
 }
 .bnn-alert--info .bnn-alert__icon {
   background: var(--bnn-primary);
 }
 .bnn-alert--success {
   background: var(--bnn-success-soft);
-  border-color: #bfe6cd;
-  color: #136b35;
+  border-color: var(--bnn-success-border);
+  color: var(--bnn-success-strong);
 }
 .bnn-alert--success .bnn-alert__icon {
   background: var(--bnn-success);
 }
 .bnn-alert--warning {
   background: var(--bnn-warning-soft);
-  border-color: #f3dcb0;
-  color: #8a5a00;
+  border-color: var(--bnn-warning-border);
+  color: var(--bnn-warning-strong);
 }
 .bnn-alert--warning .bnn-alert__icon {
   background: var(--bnn-warning);
 }
 .bnn-alert--error {
   background: var(--bnn-danger-soft);
-  border-color: #f5c9cd;
-  color: #a31b26;
+  border-color: var(--bnn-danger-border);
+  color: var(--bnn-danger-strong);
 }
 .bnn-alert--error .bnn-alert__icon {
   background: var(--bnn-danger);
@@ -466,10 +506,10 @@
   line-height: 1.3;
 }
 .bnn-title--1 {
-  font-size: 28px;
+  font-size: var(--bnn-fs-3xl);
 }
 .bnn-title--2 {
-  font-size: 23px;
+  font-size: var(--bnn-fs-2xl);
 }
 .bnn-title--3 {
   font-size: var(--bnn-fs-xl);

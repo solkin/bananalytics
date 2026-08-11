@@ -14,7 +14,7 @@ import {
   type TrimTarget,
 } from '@/api/crashes'
 import { useAsync, Loaded, errorText } from '../async'
-import { accentFor } from '../colors'
+import { AppIcon } from '../AppIcon'
 import { fmtK } from '../format'
 import { ICON_ACCEPT, squareIconPng } from '../icon'
 import type { ShellContext } from '../layout/AppShell'
@@ -314,9 +314,7 @@ function IconCard({ app, onChanged }: { app: App; onChanged: () => void }) {
   return (
     <Card title="App icon" subtitle="Shown in the app list and the sidebar.">
       <div className="set-icon">
-        <span className="set-icon__preview" style={app.icon_url ? undefined : { background: accentFor(app.name) }}>
-          {app.icon_url ? <img src={app.icon_url} alt="" /> : app.name.charAt(0).toUpperCase()}
-        </span>
+        <AppIcon name={app.name} iconUrl={app.icon_url} size="lg" />
         <div>
           <Text strong>{app.icon_url ? 'Custom icon' : 'Generated from the app name'}</Text>
           <div>

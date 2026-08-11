@@ -46,6 +46,31 @@ export function Card({
   )
 }
 
+/* ------------------------------------------------------------- TopBar */
+/** Sticky application header. `left` holds brand and context, `right` the
+ *  account actions; both are plain slots so pages stay in charge of content. */
+export function TopBar({
+  left,
+  right,
+  className,
+}: {
+  left?: ReactNode
+  right?: ReactNode
+  className?: string
+}) {
+  return (
+    <header className={cn('bnn-topbar', className)}>
+      <div className="bnn-topbar__left">{left}</div>
+      <div className="bnn-topbar__right">{right}</div>
+    </header>
+  )
+}
+
+/** Vertical hairline between two groups inside the top bar. */
+export function TopBarSeparator() {
+  return <span className="bnn-topbar__sep" />
+}
+
 /* --------------------------------------------------------- Breadcrumb */
 export interface BreadcrumbItem {
   label: ReactNode
@@ -55,13 +80,20 @@ export interface BreadcrumbItem {
 
 export function Breadcrumb({
   items,
+  truncate,
   className,
 }: {
   items: BreadcrumbItem[]
+  /** Keep the trail on one line and clip it instead of wrapping — for the
+   *  top bar, where the header height is fixed. */
+  truncate?: boolean
   className?: string
 }) {
   return (
-    <nav className={cn('bnn-breadcrumb', className)} aria-label="breadcrumb">
+    <nav
+      className={cn('bnn-breadcrumb', truncate && 'bnn-breadcrumb--truncate', className)}
+      aria-label="breadcrumb"
+    >
       {items.map((it, i) => {
         const last = i === items.length - 1
         return (
@@ -92,41 +124,6 @@ export function Breadcrumb({
   )
 }
 
-/* --------------------------------------------------------- PageHeader */
-export function PageHeader({
-  title,
-  subtitle,
-  extra,
-  breadcrumb,
-  onBack,
-  className,
-}: {
-  title: ReactNode
-  subtitle?: ReactNode
-  extra?: ReactNode
-  breadcrumb?: ReactNode
-  onBack?: () => void
-  className?: string
-}) {
-  return (
-    <div className={cn('bnn-pageheader', className)}>
-      {breadcrumb && <div className="bnn-pageheader__crumb">{breadcrumb}</div>}
-      <div className="bnn-pageheader__row">
-        <div className="bnn-pageheader__main">
-          {onBack && (
-            <button className="bnn-pageheader__back" onClick={onBack} aria-label="back">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M11 18l-6-6 6-6" />
-              </svg>
-            </button>
-          )}
-          <div>
-            <h1 className="bnn-pageheader__title">{title}</h1>
-            {subtitle && <div className="bnn-pageheader__subtitle">{subtitle}</div>}
-          </div>
-        </div>
-        {extra && <div className="bnn-pageheader__extra">{extra}</div>}
-      </div>
-    </div>
-  )
-}
+/* PageHeader used to live here. Every page carries its context in the top
+   bar's breadcrumb instead, so nothing rendered it — removed rather than
+   left in the kit as a second, unused way to title a page. */

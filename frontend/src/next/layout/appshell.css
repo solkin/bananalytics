@@ -1,108 +1,27 @@
-/* App Center clone shell — top breadcrumb bar + app-scoped left sidebar. */
+/* App-scoped shell — kit top bar + left sidebar. The bar itself lives in the
+   kit (.bnn-topbar); everything here is shell-specific chrome. */
 
 .ac {
   min-height: 100vh;
   background: var(--bnn-bg);
 }
 
-/* ===== Top bar ===== */
-.ac-top {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 52px;
-  padding: 0 16px;
-  background: var(--bnn-surface);
-  border-bottom: 1px solid var(--bnn-border);
-}
-.ac-top__left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-.ac-top__sep {
-  width: 1px;
-  height: 18px;
-  background: var(--bnn-border-strong);
-  flex-shrink: 0;
-}
-.ac-top__left .bnn-breadcrumb {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.ac-top__right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-.ac-top__docs {
+/* Breadcrumb group in the top bar — collapses first on narrow screens. */
+.ac-crumbs {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: var(--bnn-fs-md);
-  color: var(--bnn-text-secondary);
-  text-decoration: none;
-  transition: color 0.15s;
+  gap: var(--bnn-sp-3);
+  min-width: 0;
 }
-.ac-top__docs:hover {
-  color: var(--bnn-primary);
-}
-.ac-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: var(--bnn-radius);
-  background: transparent;
-  color: var(--bnn-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.ac-iconbtn:hover {
-  background: var(--bnn-surface-hover);
-  color: var(--bnn-text);
-}
+
+/* Only the mobile menu button's visibility is shell business; the button
+   itself is the kit IconButton. */
 .ac-burger {
   display: none;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
   margin-right: 2px;
-  border: none;
-  border-radius: var(--bnn-radius);
-  background: transparent;
-  color: var(--bnn-text);
-  cursor: pointer;
-}
-.ac-burger:hover {
-  background: var(--bnn-surface-hover);
 }
 .ac-drawer-nav .ac-nav__top {
   margin-top: 0;
-}
-.ac-user {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: var(--bnn-radius);
-  cursor: pointer;
-  color: var(--bnn-text-secondary);
-  transition: background 0.15s, color 0.15s;
-}
-.ac-user:hover,
-.bnn-dropdown__trigger.is-open .ac-user {
-  background: var(--bnn-surface-hover);
-  color: var(--bnn-text);
 }
 
 /* ===== Body ===== */
@@ -112,43 +31,33 @@
 }
 .ac-side {
   position: sticky;
-  top: 52px;
+  top: var(--bnn-topbar-h);
   flex-shrink: 0;
   width: 224px;
-  height: calc(100vh - 52px);
+  height: calc(100vh - var(--bnn-topbar-h));
   overflow-y: auto;
   background: var(--bnn-surface);
   border-right: 1px solid var(--bnn-border);
-  padding: 8px 8px 24px;
+  padding: var(--bnn-sp-2) var(--bnn-sp-2) var(--bnn-sp-6);
 }
 
 /* App context header */
 .ac-app {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 8px 14px;
-  margin-bottom: 8px;
+  gap: var(--bnn-sp-3);
+  padding: var(--bnn-sp-3) var(--bnn-sp-2) var(--bnn-sp-4);
+  margin-bottom: var(--bnn-sp-2);
   border-bottom: 1px solid var(--bnn-border);
+  text-decoration: none;
+  border-radius: var(--bnn-radius);
 }
-.ac-app__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  overflow: hidden;
-  border-radius: var(--bnn-radius-lg);
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
-  flex-shrink: 0;
+.ac-app:hover .ac-app__name {
+  color: var(--bnn-primary);
 }
-/* An uploaded icon fills the slot the generated initial would have. */
-.ac-app__icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.ac-app:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 .ac-app__meta {
   min-width: 0;
@@ -161,12 +70,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ac-app {
-  text-decoration: none;
-}
-.ac-app:hover .ac-app__name {
-  color: var(--bnn-primary);
-}
 .ac-app__platform {
   font-size: var(--bnn-fs-xs);
   letter-spacing: 0.04em;
@@ -177,15 +80,15 @@
 /* Standalone top-level nav item (Getting started) */
 .ac-nav__top {
   margin-bottom: 6px;
-  padding-bottom: 8px;
+  padding-bottom: var(--bnn-sp-2);
   border-bottom: 1px solid var(--bnn-border);
 }
 .ac-nav__solo {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: var(--bnn-sp-3);
+  padding: var(--bnn-sp-2) var(--bnn-sp-3);
   border-radius: var(--bnn-radius);
   font-size: var(--bnn-fs-md);
   font-weight: 500;
@@ -207,7 +110,7 @@
 .ac-nav__solo.is-active::before {
   content: '';
   position: absolute;
-  left: 4px;
+  left: var(--bnn-sp-1);
   top: 6px;
   bottom: 6px;
   width: 3px;
@@ -217,13 +120,13 @@
 
 /* Grouped nav */
 .ac-nav__group {
-  margin-bottom: 4px;
+  margin-bottom: var(--bnn-sp-1);
 }
 .ac-nav__group-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px 4px;
+  gap: var(--bnn-sp-3);
+  padding: var(--bnn-sp-2) var(--bnn-sp-3) var(--bnn-sp-1);
   color: var(--bnn-text-secondary);
 }
 .ac-nav__group-icon {
@@ -241,7 +144,7 @@
 .ac-nav__item {
   position: relative;
   display: block;
-  padding: 7px 10px 7px 36px;
+  padding: 7px var(--bnn-sp-3) 7px 36px;
   border-radius: var(--bnn-radius);
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text-secondary);
@@ -260,33 +163,37 @@
 .ac-nav__item.is-active::before {
   content: '';
   position: absolute;
-  left: 4px;
+  left: var(--bnn-sp-1);
   top: 6px;
   bottom: 6px;
   width: 3px;
   border-radius: var(--bnn-radius-pill);
   background: var(--bnn-primary);
 }
+.ac-nav__solo:focus-visible,
+.ac-nav__item:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
 
 /* Main content */
 .ac-main {
   flex: 1;
   min-width: 0;
-  padding: 22px 28px 64px;
+  padding: var(--bnn-sp-6) var(--bnn-sp-7) var(--bnn-sp-8);
 }
 
 @media (max-width: 760px) {
   .ac-burger {
     display: inline-flex;
   }
-  .ac-top__sep,
-  .ac-top__left .bnn-breadcrumb {
+  .ac-crumbs {
     display: none;
   }
   .ac-side {
     display: none;
   }
   .ac-main {
-    padding: 18px 16px 48px;
+    padding: var(--bnn-sp-5) var(--bnn-sp-4) var(--bnn-sp-6);
   }
 }

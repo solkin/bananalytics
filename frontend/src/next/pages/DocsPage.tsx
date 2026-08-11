@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Avatar, Dropdown, Icons, Tag, Text, Title } from '@/ui'
-import { useAuth } from '@/context/AuthContext'
+import { Tag, Text, Title } from '@/ui'
 import { CodeBlock } from '../CodeBlock'
-import { Brand } from '../layout/Brand'
+import { AppTopBar } from '../layout/AppTopBar'
 import './appshome.css'
 import './docs.css'
 
@@ -101,8 +99,6 @@ curl --fail-with-body -X POST https://banana.appteka.store/api/v1/releases \\
   -F notify=true`
 
 export default function DocsPage() {
-  const { logout } = useAuth()
-  const navigate = useNavigate()
   const [activeId, setActiveId] = useState(() => {
     const hash = window.location.hash.slice(1)
     return SECTIONS.some(([id]) => id === hash) ? hash : SECTIONS[0][0]
@@ -132,25 +128,7 @@ export default function DocsPage() {
 
   return (
     <div className="home">
-      <header className="home-top">
-        <Brand />
-        <div className="home-top__right">
-          <button className="home-iconbtn" type="button" aria-label="Help">
-            <Icons.IconHelp size={17} />
-          </button>
-          <Dropdown
-            items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
-              { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
-            ]}
-          >
-            <span className="home-user">
-              <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-              <Icons.IconChevronDown size={14} />
-            </span>
-          </Dropdown>
-        </div>
-      </header>
+      <AppTopBar />
 
       <div className="docs-body">
         <aside className="docs-toc">
@@ -168,7 +146,7 @@ export default function DocsPage() {
 
         <main className="docs-main">
           <div className="docs-intro">
-            <Title level={1}>Bananalytics documentation</Title>
+            <Title level={2}>Bananalytics documentation</Title>
             <Text type="secondary">
               Self-hosted analytics & crash reporting for Android. Add the SDK, point it at your server, and your
               events and crashes show up here.

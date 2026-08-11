@@ -1,149 +1,58 @@
-/* App Center landing — list of applications (own chrome, no sidebar). */
+/* Landing page — list of applications (own chrome, no sidebar). */
 .home {
   min-height: 100vh;
   background: var(--bnn-bg);
 }
 
-.home-top {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 52px;
-  padding: 0 16px;
-  background: var(--bnn-surface);
-  border-bottom: 1px solid var(--bnn-border);
-}
-.home-top__right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.home-docs {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--bnn-fs-md);
-  color: var(--bnn-text-secondary);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.home-docs:hover {
-  color: var(--bnn-primary);
-}
-.home-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: var(--bnn-radius);
-  background: transparent;
-  color: var(--bnn-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.home-iconbtn:hover {
-  background: var(--bnn-surface-hover);
-  color: var(--bnn-text);
-}
-.home-user {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: var(--bnn-radius);
-  cursor: pointer;
-  color: var(--bnn-text-secondary);
-  transition: background 0.15s, color 0.15s;
-}
-.home-user:hover,
-.bnn-dropdown__trigger.is-open .home-user {
-  background: var(--bnn-surface-hover);
-  color: var(--bnn-text);
-}
-
 .home-main {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 28px 20px 64px;
+  padding: var(--bnn-sp-7) var(--bnn-sp-5) var(--bnn-sp-8);
 }
 .home-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--bnn-sp-4);
   flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.home-head .bnn-title {
-  margin: 0;
+  margin-bottom: var(--bnn-sp-4);
 }
 .home-head__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--bnn-sp-3);
 }
 .home-search {
   width: 240px;
-}
-.home-search .bnn-input {
-  display: flex;
-  width: 100%;
 }
 
 .home-owner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0 14px;
-  margin-bottom: 16px;
+  gap: var(--bnn-sp-2);
+  padding-bottom: var(--bnn-sp-3);
+  margin-bottom: var(--bnn-sp-4);
   border-bottom: 1px solid var(--bnn-border);
 }
 
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  gap: var(--bnn-sp-4);
 }
+/* The card chrome is the kit's <Card hoverable>; this is only the row inside
+   it, which is also the link target. */
 .home-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
-  background: var(--bnn-surface);
-  border: 1px solid var(--bnn-border);
+  gap: var(--bnn-sp-4);
+  padding: var(--bnn-sp-4);
   border-radius: var(--bnn-radius-lg);
-  box-shadow: var(--bnn-shadow-xs);
   text-decoration: none;
-  transition: box-shadow 0.18s var(--bnn-ease), border-color 0.18s var(--bnn-ease), transform 0.18s var(--bnn-ease);
 }
-.home-card:hover {
-  box-shadow: var(--bnn-shadow-md);
-  border-color: var(--bnn-border-strong);
-  transform: translateY(-1px);
-}
-.home-card__icon {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  overflow: hidden;
-  border-radius: var(--bnn-radius-lg);
-  color: #fff;
-  font-weight: 700;
-  font-size: 18px;
-}
-/* An uploaded icon fills the slot the generated initial would have. */
-.home-card__icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.home-card:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 .home-card__meta {
   flex: 1;
@@ -160,8 +69,8 @@
 .home-card__sub {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 5px;
+  gap: var(--bnn-sp-2);
+  margin-top: var(--bnn-sp-1);
 }
 .home-card__arrow {
   flex-shrink: 0;

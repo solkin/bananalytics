@@ -4,22 +4,7 @@ import { Alert, Button, Card, Form, FormItem, Icons, Input, Password, Spin, toas
 import { useAuth } from '@/context/AuthContext'
 import { getInviteInfo } from '@/api/auth'
 import { errorText } from '../async'
-import './auth.css'
-
-function AuthFrame({ sub, children }: { sub?: string; children: React.ReactNode }) {
-  return (
-    <div className="auth">
-      <div className="auth-card">
-        <div className="auth-head">
-          <img className="auth-head__logo" src="/banana.svg" alt="" />
-          <div className="auth-head__name">Bananalytics</div>
-          {sub && <div className="auth-head__sub">{sub}</div>}
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import { AuthFrame } from './AuthFrame'
 
 export default function RegisterPage() {
   const { register, config } = useAuth()

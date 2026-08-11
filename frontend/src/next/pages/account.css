@@ -2,32 +2,32 @@
 .acct {
   max-width: 560px;
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: var(--bnn-sp-6) var(--bnn-sp-5) var(--bnn-sp-8);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--bnn-sp-4);
 }
 .acct-back {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--bnn-sp-1);
   width: fit-content;
   color: var(--bnn-text-secondary);
   text-decoration: none;
   font-size: var(--bnn-fs-md);
+  border-radius: var(--bnn-radius);
 }
 .acct-back:hover {
   color: var(--bnn-primary);
 }
-.acct-title {
-  margin: 2px 0;
-  font-size: var(--bnn-fs-2xl);
-  font-weight: 600;
+.acct-back:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 .acct-signout {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--bnn-sp-4);
   flex-wrap: wrap;
 }

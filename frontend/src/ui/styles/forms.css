@@ -1,6 +1,8 @@
 /* ===== Input ===== */
 .bnn-input {
-  display: inline-flex;
+  /* block-level by default: every caller wanted it full width and was
+     overriding `display` from the outside to get there */
+  display: flex;
   align-items: center;
   gap: 7px;
   width: 100%;
@@ -24,13 +26,13 @@
 }
 .bnn-input:focus-within {
   border-color: var(--bnn-primary);
-  box-shadow: 0 0 0 3px var(--bnn-primary-soft);
+  box-shadow: var(--bnn-focus-ring);
 }
 .bnn-input.is-error {
   border-color: var(--bnn-danger);
 }
 .bnn-input.is-error:focus-within {
-  box-shadow: 0 0 0 3px var(--bnn-danger-soft);
+  box-shadow: var(--bnn-focus-ring-danger);
 }
 .bnn-input__el {
   flex: 1;
@@ -98,7 +100,7 @@
 }
 .bnn-textarea:focus {
   border-color: var(--bnn-primary);
-  box-shadow: 0 0 0 3px var(--bnn-primary-soft);
+  box-shadow: var(--bnn-focus-ring);
 }
 .bnn-textarea.is-error {
   border-color: var(--bnn-danger);
@@ -139,7 +141,7 @@
 }
 .bnn-select.is-open .bnn-select__control {
   border-color: var(--bnn-primary);
-  box-shadow: 0 0 0 3px var(--bnn-primary-soft);
+  box-shadow: var(--bnn-focus-ring);
 }
 .bnn-select.is-error .bnn-select__control {
   border-color: var(--bnn-danger);
@@ -237,16 +239,19 @@
   width: 0;
   height: 0;
 }
+/* 16px, not 17: an even box puts the centre on a whole pixel, which keeps
+   the check glyph and the radio dot from landing on half-pixel edges. */
 .bnn-checkbox__box {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   border: 1.5px solid var(--bnn-border-strong);
-  border-radius: 4px;
+  border-radius: var(--bnn-radius-sm);
   background: var(--bnn-surface);
-  color: #fff;
+  color: var(--bnn-text-inverse);
   transition: background 0.15s, border-color 0.15s;
 }
 .bnn-checkbox__box svg {
@@ -277,7 +282,7 @@
   padding: 0;
   border: none;
   border-radius: var(--bnn-radius-pill);
-  background: #c4cad2;
+  background: var(--bnn-icon-muted);
   cursor: pointer;
   transition: background 0.18s;
 }
@@ -299,7 +304,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bnn-surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: transform 0.18s var(--bnn-ease);
 }
@@ -334,11 +339,16 @@
   width: 0;
   height: 0;
 }
+/* Same 16px box as the checkbox. Centring the dot with flexbox instead of
+   `inset: 0; margin: auto` keeps it on the pixel grid whatever used width
+   the browser picks for the 1.5px border. */
 .bnn-radio__dot {
-  position: relative;
-  display: inline-block;
-  width: 17px;
-  height: 17px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   border: 1.5px solid var(--bnn-border-strong);
   border-radius: 50%;
   background: var(--bnn-surface);
@@ -346,9 +356,6 @@
 }
 .bnn-radio__dot::after {
   content: '';
-  position: absolute;
-  inset: 0;
-  margin: auto;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -405,6 +412,22 @@
   margin-top: 5px;
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-text-tertiary);
+}
+
+/* ===== Keyboard focus =====
+   The visually hidden inputs behind the checkbox / radio hand their focus
+   ring to the glyph that stands in for them. */
+.bnn-select__control:focus-visible,
+.bnn-select__option:focus-visible,
+.bnn-switch:focus-visible,
+.bnn-upload-dragger:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.bnn-checkbox input:focus-visible + .bnn-checkbox__box,
+.bnn-radio input:focus-visible + .bnn-radio__dot {
+  box-shadow: var(--bnn-focus-ring);
+  border-color: var(--bnn-primary);
 }
 
 /* ===== Upload dragger ===== */

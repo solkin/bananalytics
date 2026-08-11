@@ -18,12 +18,19 @@
   --bnn-fs-lg: 16px;
   --bnn-fs-xl: 20px;
   --bnn-fs-2xl: 26px;
+  --bnn-fs-3xl: 28px;
 
   /* Surfaces */
   --bnn-bg: #f4f5f7;
   --bnn-surface: #ffffff;
   --bnn-surface-alt: #fafbfc;
   --bnn-surface-hover: #f6f8fa;
+  /* recessed surface: segmented track, progress track */
+  --bnn-surface-sunken: #eceef1;
+  /* neutral fill behind bars, skeletons and chart grid lines */
+  --bnn-track: #eef0f3;
+  /* darkest surface in the kit: tooltips and chart hints */
+  --bnn-ink: #20262e;
 
   /* Borders */
   --bnn-border: #e7e9ed;
@@ -34,33 +41,59 @@
   --bnn-text-secondary: #5c6470;
   --bnn-text-tertiary: #9aa1ab;
   --bnn-text-inverse: #ffffff;
+  /* muted glyphs that are not text: sort arrows, illustration strokes */
+  --bnn-icon-muted: #c2c8d0;
 
-  /* Brand / semantic */
+  /* Brand / semantic.
+     Each family is base / hover / active / soft / soft-strong / border /
+     strong, where `strong` is the text-on-soft shade. */
   --bnn-primary: #1f6feb;
   --bnn-primary-hover: #387bff;
   --bnn-primary-active: #1858c4;
   --bnn-primary-soft: #eaf2ff;
   --bnn-primary-soft-strong: #d4e3ff;
   --bnn-primary-border: #bcd5ff;
+  --bnn-primary-strong: #114a9e;
 
   --bnn-success: #1a8c46;
   --bnn-success-soft: #e7f6ec;
+  --bnn-success-border: #bfe6cd;
+  --bnn-success-strong: #136b35;
+
   --bnn-warning: #b87503;
   --bnn-warning-soft: #fdf3e2;
+  --bnn-warning-border: #f3dcb0;
+  --bnn-warning-strong: #8a5a00;
+
   --bnn-danger: #d92d3a;
   --bnn-danger-hover: #e23b47;
   --bnn-danger-active: #b3232e;
   --bnn-danger-soft: #fdeaec;
   --bnn-danger-soft-strong: #f9d5d9;
+  --bnn-danger-border: #f5c9cd;
+  --bnn-danger-strong: #a31b26;
+
+  /* Purple carries no semantics — it is the categorical accent. */
+  --bnn-purple: #7c5cff;
+  --bnn-purple-soft: #f1edff;
+  --bnn-purple-border: #ddd2ff;
+
+  --bnn-neutral: #98a1ad;
+  --bnn-neutral-soft: #f1f2f4;
 
   /* Chart palette */
   --bnn-chart-1: #1f6feb;
   --bnn-chart-2: #16b8c4;
   --bnn-chart-3: #d92d3a;
   --bnn-chart-4: #7c5cff;
-  --bnn-chart-grid: #eef0f3;
+  --bnn-chart-5: #2aa775;
+  --bnn-chart-6: #b8902b;
+  --bnn-chart-7: #c2417f;
+  --bnn-chart-8: #5c6470;
+  --bnn-chart-grid: var(--bnn-track);
 
   /* Radii */
+  --bnn-radius-xs: 2px;
   --bnn-radius-sm: 4px;
   --bnn-radius: 6px;
   --bnn-radius-lg: 8px;
@@ -73,36 +106,44 @@
   --bnn-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
   --bnn-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.16);
 
-  /* Spacing scale */
+  /* Spacing scale — the only step values layout should use */
   --bnn-sp-1: 4px;
   --bnn-sp-2: 8px;
   --bnn-sp-3: 12px;
   --bnn-sp-4: 16px;
   --bnn-sp-5: 20px;
   --bnn-sp-6: 24px;
+  --bnn-sp-7: 28px;
   --bnn-sp-8: 32px;
 
   /* Control heights */
   --bnn-control-sm: 26px;
   --bnn-control: 34px;
   --bnn-control-lg: 40px;
+  /* square icon-only controls */
+  --bnn-icon-control-sm: 28px;
+  --bnn-icon-control: 30px;
+  /* application header */
+  --bnn-topbar-h: 52px;
 
   /* Motion */
   --bnn-ease: cubic-bezier(0.2, 0, 0, 1);
   --bnn-z-overlay: 1000;
   --bnn-z-toast: 1100;
+
+  /* Focus — one ring for every interactive element in the kit */
+  --bnn-focus-ring: 0 0 0 3px rgba(31, 111, 235, 0.35);
+  --bnn-focus-ring-danger: 0 0 0 3px rgba(217, 45, 58, 0.3);
 }
 
+/* Reset. Lives here rather than in the app so there is one of it — the kit
+   is loaded before any page stylesheet. */
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-}
-
-html,
-body {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 body {
@@ -133,4 +174,17 @@ body {
 ::selection {
   background: var(--bnn-primary);
   color: #fff;
+}
+
+/* The kit only ever animates decoration, so honouring the preference is a
+   blanket opt-out rather than a per-component decision. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

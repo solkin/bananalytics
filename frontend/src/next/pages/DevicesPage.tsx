@@ -1,8 +1,9 @@
 import { useParams } from 'react-router-dom'
-import { BarList, Card, MultiAreaChart, Select, Text, type BarListItem } from '@/ui'
+import { Card, MultiAreaChart, Select } from '@/ui'
 import { getDeviceStats, getEventVersions, getUniqueSessionsByVersion } from '@/api/events'
 import { useAsync, Loaded } from '../async'
-import { fmtK, fromTo, versionLabel } from '../format'
+import { DistributionCards } from '../DistributionCards'
+import { fromTo, versionLabel } from '../format'
 import { useStickyFilters } from '../filters'
 import { versionSeries } from '../series'
 import './pages.css'
@@ -12,11 +13,6 @@ const DAY_OPTIONS = [
   { label: 'Last 28 days', value: '28' },
   { label: 'Last 90 days', value: '90' },
 ]
-
-function toBars(items: { name: string; count: number }[]): BarListItem[] {
-  const total = items.reduce((s, i) => s + i.count, 0) || 1
-  return items.map((i) => ({ label: i.name, value: i.count, display: fmtK(i.count), secondary: `${Math.round((i.count / total) * 100)}%` }))
-}
 
 export default function DevicesPage() {
   const { appId } = useParams()
@@ -52,20 +48,7 @@ export default function DevicesPage() {
         <MultiAreaChart height={220} series={versionSeries(sess.data ?? [], days)} />
       </Card>
 
-      <Loaded state={dev}>
-        {(d) => (
-          <>
-            <div className="pg-grid2">
-              <Card title="Top device models">{d.models.length ? <BarList items={toBars(d.models)} /> : <Text type="tertiary">No device data yet</Text>}</Card>
-              <Card title="OS versions">{d.os_versions.length ? <BarList items={toBars(d.os_versions)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-            </div>
-            <div className="pg-grid2">
-              <Card title="Country / Region">{d.countries.length ? <BarList items={toBars(d.countries)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-              <Card title="Languages">{d.languages.length ? <BarList items={toBars(d.languages)} /> : <Text type="tertiary">No data yet</Text>}</Card>
-            </div>
-          </>
-        )}
-      </Loaded>
+      <Loaded state={dev}>{(d) => <DistributionCards stats={d} />}</Loaded>
     </div>
   )
 }

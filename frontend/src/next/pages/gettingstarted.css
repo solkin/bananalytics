@@ -2,31 +2,36 @@
 .gs {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--bnn-sp-4);
 }
 .gs-intro .bnn-title {
-  margin: 0 0 6px;
+  margin-bottom: 6px;
 }
 .gs-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--bnn-sp-1);
   color: var(--bnn-primary);
   text-decoration: none;
+  border-radius: var(--bnn-radius);
 }
 .gs-link:hover {
   text-decoration: underline;
+}
+.gs-link:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
 }
 
 .gs-steps {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-top: 22px;
+  gap: var(--bnn-sp-6);
+  margin-top: var(--bnn-sp-5);
 }
 .gs-step {
   display: flex;
-  gap: 14px;
+  gap: var(--bnn-sp-4);
 }
 .gs-step__num {
   flex-shrink: 0;
@@ -48,7 +53,7 @@
 .gs-step__title {
   font-size: var(--bnn-fs-base);
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--bnn-sp-2);
 }
 
 .gs-key {
@@ -56,15 +61,13 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--bnn-sp-3);
 }
 
 /* The one place a freshly created key is readable. */
 .gs-reveal {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--bnn-sp-2);
+  margin-bottom: var(--bnn-sp-3);
 }
-
-/* Code blocks now use the shared <CodeBlock> (next/codeblock.css). */

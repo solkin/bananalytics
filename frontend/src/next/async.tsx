@@ -86,13 +86,9 @@ export function Loaded<T>({
   emptyText?: string
   children: (data: T) => ReactNode
 }) {
-  if (state.loading) {
-    return (
-      <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-        <Spin tip="Loading…" />
-      </div>
-    )
-  }
+  /* Spin already centres itself and brings its own padding. */
+  if (state.loading) return <Spin tip="Loading…" />
+
   if (state.error) {
     return <Alert type="error" message="Failed to load" description={state.error} />
   }

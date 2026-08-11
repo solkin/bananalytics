@@ -43,6 +43,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useAsync, Loaded, errorText } from '../async'
 import { fmtBytes, fmtDateTime, shortDate } from '../format'
+import { mappingTone } from '../tones'
 import type { ShellContext } from '../layout/AppShell'
 import './pages.css'
 
@@ -395,24 +396,19 @@ function ReleaseDrawer({
                 <Button variant="danger" icon={<Icons.IconTrash size={14} />} loading={removingApk}>Delete</Button>
               </Popconfirm>
             </div>
+            {/* Same shape as the API-key reveal: read-only field + Copy. */}
             {link && (
-              <div className="rel-link">
-                <Input
-                  value={link}
-                  readOnly
-                  suffix={
-                    <button
-                      type="button"
-                      className="bnn-input__toggle"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(link)
-                        toast.success('Link copied — valid for 24 hours')
-                      }}
-                    >
-                      Copy
-                    </button>
-                  }
-                />
+              <div className="pg-apikey">
+                <Input value={link} readOnly prefix={<Icons.IconExternalLink size={15} />} />
+                <Button
+                  icon={<Icons.IconCopy size={15} />}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(link)
+                    toast.success('Link copied — valid for 24 hours')
+                  }}
+                >
+                  Copy
+                </Button>
               </div>
             )}
           </>
@@ -546,7 +542,7 @@ export default function ReleasesPage() {
     },
     { key: 'date', title: 'Created', align: 'right', sorter: (a, b) => a.created_at.localeCompare(b.created_at), render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
     { key: 'size', title: 'APK', align: 'right', render: (r) => <Text type="secondary">{r.has_apk ? fmtBytes(r.apk_size) : 'No APK'}</Text> },
-    { key: 'mapping', title: 'Mapping', align: 'right', render: (r) => <Tag tone={r.has_mapping ? 'success' : 'neutral'}>{r.has_mapping ? 'Yes' : 'No'}</Tag> },
+    { key: 'mapping', title: 'Mapping', align: 'right', render: (r) => <Tag tone={mappingTone(r.has_mapping)}>{r.has_mapping ? 'Available' : 'Missing'}</Tag> },
     { key: 'status', title: 'Status', align: 'right', render: (r) => <Tag tone={r.published_for_testers ? 'primary' : 'neutral'}>{r.published_for_testers ? 'Published' : 'Draft'}</Tag> },
     {
       key: 'apk', title: '', align: 'right',

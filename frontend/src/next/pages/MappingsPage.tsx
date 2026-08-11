@@ -5,6 +5,7 @@ import type { AppVersion } from '@/types'
 import { getMappingDownloadUrl, getVersions, uploadMapping } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { shortDate } from '../format'
+import { mappingTone } from '../tones'
 import './pages.css'
 
 export default function MappingsPage() {
@@ -39,7 +40,7 @@ export default function MappingsPage() {
     { key: 'version', title: 'Version', render: (r) => <Text strong>{r.version_name || r.version_code}</Text> },
     { key: 'code', title: 'Version code', align: 'right', render: (r) => <Text mono>{r.version_code}</Text> },
     { key: 'created', title: 'Created', align: 'right', render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
-    { key: 'status', title: 'Mapping', align: 'right', render: (r) => <Tag tone={r.has_mapping ? 'success' : 'warning'}>{r.has_mapping ? 'Available' : 'Missing'}</Tag> },
+    { key: 'status', title: 'Mapping', align: 'right', render: (r) => <Tag tone={mappingTone(r.has_mapping)}>{r.has_mapping ? 'Available' : 'Missing'}</Tag> },
     {
       key: 'actions', title: '', align: 'right',
       render: (r) => (

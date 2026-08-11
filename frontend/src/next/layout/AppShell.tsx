@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { Navigate, Outlet, NavLink, Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { Avatar, Breadcrumb, Drawer, Dropdown, Icons, Spin, cn } from '@/ui'
+import { Breadcrumb, Drawer, IconButton, Icons, Spin, TopBarSeparator, cn } from '@/ui'
 import type { BreadcrumbItem } from '@/ui'
 import type { App } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import { getApp } from '@/api/apps'
 import { getMyRole } from '@/api/auth'
 import { useAsync } from '../async'
-import { accentFor } from '../colors'
+import { AppIcon } from '../AppIcon'
 import { findActive, navForRole, type NavGroup, type NavLeaf } from '../nav'
-import { Brand } from './Brand'
+import { AppTopBar } from './AppTopBar'
 import './appshell.css'
 
 export interface ShellContext {
@@ -30,8 +30,6 @@ export function IndexRedirect() {
 function SidebarContent({
   base,
   appName,
-  initial,
-  accent,
   iconUrl,
   top,
   groups,
@@ -40,8 +38,6 @@ function SidebarContent({
 }: {
   base: string
   appName: string
-  initial: string
-  accent: string
   iconUrl: string | null
   top: NavLeaf[]
   groups: NavGroup[]
@@ -52,9 +48,7 @@ function SidebarContent({
     <>
       {!hideApp && (
         <Link to={base} className="ac-app" onClick={onNavigate}>
-          <span className="ac-app__icon" style={iconUrl ? undefined : { background: accent }}>
-            {iconUrl ? <img src={iconUrl} alt="" /> : initial}
-          </span>
+          <AppIcon name={appName} iconUrl={iconUrl} size="sm" />
           <div className="ac-app__meta">
             <div className="ac-app__name">{appName}</div>
             <div className="ac-app__platform">Android</div>
@@ -104,7 +98,7 @@ export default function AppShell() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { appId } = useParams()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const [detail, setDetail] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
 
@@ -115,8 +109,6 @@ export default function AppShell() {
   const app = appState.data?.[0] ?? null
   const role = appState.data?.[1] ?? null
   const appName = app?.name ?? '…'
-  const initial = (app?.name?.charAt(0) ?? '?').toUpperCase()
-  const accent = accentFor(app?.name ?? '?')
   const { top, groups } = navForRole(role)
 
   const base = `/apps/${appId}`
@@ -139,42 +131,22 @@ export default function AppShell() {
   }
   if (detail) crumbs.push({ label: detail })
 
-  const sidebar = { base, appName, initial, accent, iconUrl: app?.icon_url ?? null, top, groups }
+  const sidebar = { base, appName, iconUrl: app?.icon_url ?? null, top, groups }
 
   return (
     <div className="ac">
-      <header className="ac-top">
-        <div className="ac-top__left">
-          <button className="ac-burger" type="button" aria-label="Open menu" onClick={() => setNavOpen(true)}>
+      <AppTopBar
+        leading={
+          <IconButton className="ac-burger" aria-label="Open menu" onClick={() => setNavOpen(true)}>
             <Icons.IconMenu size={18} />
-          </button>
-          <Brand />
-          <span className="ac-top__sep" />
-          <Breadcrumb items={crumbs} />
-        </div>
-        <div className="ac-top__right">
-          <Link className="ac-top__docs" to="/docs">
-            <Icons.IconBook size={15} />
-            <span>Go to docs</span>
-          </Link>
-          <button className="ac-iconbtn" type="button" aria-label="Help">
-            <Icons.IconHelp size={17} />
-          </button>
-          <Dropdown
-            items={[
-              { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
-              { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true, onClick: () => logout().then(() => navigate('/login')) },
-            ]}
-          >
-            <span className="ac-user">
-              <Avatar size={26}>
-                <Icons.IconUser size={14} />
-              </Avatar>
-              <Icons.IconChevronDown size={14} />
-            </span>
-          </Dropdown>
-        </div>
-      </header>
+          </IconButton>
+        }
+      >
+        <span className="ac-crumbs">
+          <TopBarSeparator />
+          <Breadcrumb items={crumbs} truncate />
+        </span>
+      </AppTopBar>
 
       <div className="ac-body">
         <aside className="ac-side">

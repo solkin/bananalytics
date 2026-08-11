@@ -1,12 +1,17 @@
-.bnn-brand {
+.app-brand {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
+  border-radius: var(--bnn-radius);
   transition: opacity 0.15s;
 }
-.bnn-brand:hover {
+.app-brand:hover {
   opacity: 0.75;
 }
-.bnn-brand img {
+.app-brand:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.app-brand img {
   display: block;
 }
