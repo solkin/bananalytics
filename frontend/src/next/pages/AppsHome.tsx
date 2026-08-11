@@ -87,7 +87,6 @@ export default function AppsHome() {
               <Avatar size={26}>
                 <Icons.IconUser size={14} />
               </Avatar>
-              <Text size="sm">{accountName}</Text>
               <Icons.IconChevronDown size={14} />
             </span>
           </Dropdown>

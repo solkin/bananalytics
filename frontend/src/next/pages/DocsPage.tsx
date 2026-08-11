@@ -101,9 +101,8 @@ curl --fail-with-body -X POST https://banana.appteka.store/api/v1/releases \\
   -F notify=true`
 
 export default function DocsPage() {
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
   const navigate = useNavigate()
-  const accountName = user?.name || user?.email || 'Account'
   const [activeId, setActiveId] = useState(() => {
     const hash = window.location.hash.slice(1)
     return SECTIONS.some(([id]) => id === hash) ? hash : SECTIONS[0][0]
@@ -147,7 +146,6 @@ export default function DocsPage() {
           >
             <span className="home-user">
               <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-              <Text size="sm">{accountName}</Text>
               <Icons.IconChevronDown size={14} />
             </span>
           </Dropdown>

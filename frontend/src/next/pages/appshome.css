@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: space-between;
   height: 52px;
-  padding: 0 20px;
+  padding: 0 16px;
   background: var(--bnn-surface);
   border-bottom: 1px solid var(--bnn-border);
 }
@@ -28,6 +28,7 @@
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text-secondary);
   text-decoration: none;
+  transition: color 0.15s;
 }
 .home-docs:hover {
   color: var(--bnn-primary);
@@ -43,6 +44,7 @@
   background: transparent;
   color: var(--bnn-text-secondary);
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 .home-iconbtn:hover {
   background: var(--bnn-surface-hover);
@@ -51,11 +53,12 @@
 .home-user {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 8px;
+  gap: 6px;
+  padding: 4px 6px;
   border-radius: var(--bnn-radius);
   cursor: pointer;
   color: var(--bnn-text-secondary);
+  transition: background 0.15s, color 0.15s;
 }
 .home-user:hover,
 .bnn-dropdown__trigger.is-open .home-user {

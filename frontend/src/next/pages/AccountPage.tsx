@@ -49,8 +49,6 @@ export default function AccountPage() {
     }
   }
 
-  const accountName = user?.name || user?.email || 'Account'
-
   return (
     <div className="home">
       <header className="home-top">
@@ -71,7 +69,6 @@ export default function AccountPage() {
           >
             <span className="home-user">
               <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-              <Text size="sm">{accountName}</Text>
               <Icons.IconChevronDown size={14} />
             </span>
           </Dropdown>
