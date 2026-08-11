@@ -172,8 +172,11 @@ export default function AppsHome() {
                 <div className="home-grid">
                   {list.map((a) => (
                     <Link key={a.id} to={`/apps/${a.id}`} className="home-card">
-                      <span className="home-card__icon" style={{ background: accentFor(a.name) }}>
-                        {a.name.charAt(0).toUpperCase()}
+                      <span
+                        className="home-card__icon"
+                        style={a.icon_url ? undefined : { background: accentFor(a.name) }}
+                      >
+                        {a.icon_url ? <img src={a.icon_url} alt="" /> : a.name.charAt(0).toUpperCase()}
                       </span>
                       <div className="home-card__meta">
                         <div className="home-card__name">{a.name}</div>

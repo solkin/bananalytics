@@ -160,16 +160,56 @@ object StorageService {
         deleteFiles(listOf(key))
     }
 
+    // Icon storage
+
     /**
-     * Everything an app owns lives under these two prefixes, one object per
-     * version. Sweeping by prefix rather than by the paths stored on the rows
-     * also collects what a version never recorded: uploads happen outside the
-     * transaction that writes the path, and a mapping re-uploaded before the
-     * gzip switch left the plain object behind.
+     * An icon is a few kilobytes, so it needs none of the streaming an APK
+     * does. The extension follows the content type: replacing a PNG with a
+     * JPEG writes a different key, and the caller drops the object left behind.
+     */
+    fun uploadIcon(appId: String, file: File, contentType: String): String {
+        val key = "icons/$appId/icon${iconExtension(contentType)}"
+
+        s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .build(),
+            RequestBody.fromFile(file)
+        )
+
+        return key
+    }
+
+    fun getIcon(key: String): ByteArray? = try {
+        s3Client.getObjectAsBytes(
+            GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build()
+        ).asByteArray()
+    } catch (e: NoSuchKeyException) {
+        null
+    }
+
+    private fun iconExtension(contentType: String) = when (contentType) {
+        "image/jpeg" -> ".jpg"
+        "image/webp" -> ".webp"
+        else -> ".png"
+    }
+
+    /**
+     * Everything an app owns lives under these three prefixes: one APK and one
+     * mapping per version, one icon per app. Sweeping by prefix rather than by
+     * the paths stored on the rows also collects what a row never recorded:
+     * uploads happen outside the transaction that writes the path, and a
+     * mapping re-uploaded before the gzip switch left the plain object behind.
      */
     fun deleteAppFiles(appId: String) {
         deleteByPrefix("apks/$appId/")
         deleteByPrefix("mappings/$appId/")
+        deleteByPrefix("icons/$appId/")
     }
 
     private fun deleteByPrefix(prefix: String) {

@@ -23,6 +23,12 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
+/** An icon is a small square image; anything bigger arrived by mistake. */
+private const val MAX_ICON_BYTES = 1L * 1024 * 1024
+
+/** The URL carries the upload time, so what a browser caches cannot go stale. */
+private const val ICON_CACHE_CONTROL = "private, max-age=86400"
+
 fun Route.appRoutes() {
     route("/apps") {
         // List apps user has access to
@@ -113,6 +119,82 @@ fun Route.appRoutes() {
             val deleted = AppRepository.delete(appId)
             if (!deleted) {
                 throw NotFoundException("App not found")
+            }
+
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        // --- Icon ---
+
+        // Serve the icon. Anyone who can see the app can see its icon.
+        get("/{id}/icon") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAccess(appId, user)
+
+            val icon = dbIO { AppRepository.getIcon(appId) }
+                ?: throw NotFoundException("Icon not found")
+
+            call.response.header(HttpHeaders.CacheControl, ICON_CACHE_CONTROL)
+            // The content type was taken from the bytes at upload, so there is
+            // nothing left for a browser to sniff its way into.
+            call.response.header("X-Content-Type-Options", "nosniff")
+            call.respondBytes(icon.bytes, ContentType.parse(icon.contentType))
+        }
+
+        // Upload or replace the icon
+        put("/{id}/icon") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAdmin(appId, user)
+
+            var received: Pair<File, String>? = null
+
+            try {
+                val multipart = call.receiveMultipart()
+                multipart.forEachPart { part ->
+                    when (part) {
+                        is PartData.FileItem -> {
+                            // Only the first icon part counts; a second one
+                            // would otherwise leave its temp file behind.
+                            if (part.name == "icon" && received == null) {
+                                received = part.receiveIcon(MAX_ICON_BYTES)
+                            }
+                        }
+                        else -> {}
+                    }
+                    part.dispose()
+                }
+
+                val (file, contentType) = received
+                    ?: throw BadRequestException("Icon file is required")
+
+                val updated = dbIO { AppRepository.updateIcon(appId, file, contentType) }
+                if (!updated) {
+                    throw NotFoundException("App not found")
+                }
+
+                call.respond(AppRepository.findById(appId)!!)
+            } finally {
+                received?.first?.delete()
+            }
+        }
+
+        // Remove the icon — the app falls back to its generated initial
+        delete("/{id}/icon") {
+            val user = call.getUser()
+            val appId = call.parameters["id"]?.toUUIDOrNull()
+                ?: throw BadRequestException("Invalid app ID")
+
+            call.requireAppAdmin(appId, user)
+
+            val deleted = dbIO { AppRepository.deleteIcon(appId) }
+            if (!deleted) {
+                throw NotFoundException("Icon not found")
             }
 
             call.respond(HttpStatusCode.NoContent)

@@ -28,6 +28,21 @@ export async function deleteApp(id: string): Promise<void> {
   await api.delete(`/apps/${id}`)
 }
 
+/** Icons are normalized to a square PNG before upload — see `@/next/icon`. */
+export async function uploadAppIcon(id: string, icon: Blob): Promise<App> {
+  const formData = new FormData()
+  formData.append('icon', icon, 'icon.png')
+
+  const response = await api.put<App>(`/apps/${id}/icon`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export async function deleteAppIcon(id: string): Promise<void> {
+  await api.delete(`/apps/${id}/icon`)
+}
+
 // API keys
 export async function getApiKeys(appId: string): Promise<ApiKey[]> {
   const response = await api.get<ApiKey[]>(`/apps/${appId}/keys`)

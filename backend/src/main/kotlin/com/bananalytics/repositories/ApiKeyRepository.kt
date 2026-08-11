@@ -121,12 +121,7 @@ object ApiKeyRepository {
 
         touch(row[ApiKeys.id].value)
 
-        AppResponse(
-            id = row[Apps.id].value.toString(),
-            name = row[Apps.name],
-            packageName = row[Apps.packageName],
-            createdAt = row[Apps.createdAt].toString()
-        )
+        row.toAppResponse()
     }
 
     private fun touch(keyId: UUID) {

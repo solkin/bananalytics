@@ -439,6 +439,36 @@
   gap: 4px;
 }
 
+/* Settings — app icon */
+.set-icon {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.set-icon__preview {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--bnn-radius-lg);
+  color: #fff;
+  font-weight: 700;
+  font-size: 22px;
+}
+.set-icon__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.set-icon__actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
 /* Settings maintenance */
 .set-maint {
   display: flex;
@@ -522,6 +552,13 @@
   .set-maint__row {
     align-items: stretch;
     flex-direction: column;
+  }
+  .set-icon {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .set-icon__actions {
+    margin-left: 0;
   }
   .iss-picker {
     align-items: flex-end;

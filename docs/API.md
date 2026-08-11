@@ -304,10 +304,14 @@ List apps accessible to current user.
     "id": "uuid",
     "name": "My App",
     "package_name": "com.example.app",
-    "created_at": "2026-01-10T12:00:00Z"
+    "created_at": "2026-01-10T12:00:00Z",
+    "icon_url": "/api/v1/apps/uuid/icon?v=1767960000"
   }
 ]
 ```
+
+`icon_url` is `null` until an icon is uploaded. Its query string carries the
+upload time, so the URL changes whenever the icon does and may be cached.
 
 ### POST /apps
 Create a new app.
@@ -337,6 +341,28 @@ that ever contains a key value — keys are stored hashed.
 
 ### DELETE /apps/{id}
 Delete an application and all associated data (crashes, events, versions, access).
+
+**Response:** `204 No Content`
+
+### GET /apps/{id}/icon
+Serve the app icon. Available to every user with access to the app; responds
+`404` when no icon is uploaded.
+
+**Response:** the image bytes, with the `Content-Type` detected at upload.
+
+### PUT /apps/{id}/icon
+Upload or replace the icon. Requires the `admin` role.
+
+**Request:** `multipart/form-data`
+- `icon` — PNG, JPEG or WebP image, up to 1 MB. The format is read from the
+  file itself, not from the part headers. The web UI crops it to a square and
+  scales it down to 256×256 before sending; other clients are stored as sent.
+
+**Response:** the updated app object.
+
+### DELETE /apps/{id}/icon
+Remove the icon — the UI falls back to a letter generated from the app name.
+Requires the `admin` role.
 
 **Response:** `204 No Content`
 

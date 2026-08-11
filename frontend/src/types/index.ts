@@ -3,6 +3,9 @@ export interface App {
   name: string
   package_name: string
   created_at: string
+  /** Where to read the uploaded icon, absent when the app has none. The URL
+   *  changes whenever the icon does, so it is safe to cache. */
+  icon_url?: string | null
   /** Only present in the response that created the app — keys are stored
    *  hashed and can never be read back. */
   api_key?: string | null

@@ -16,6 +16,8 @@ export interface ShellContext {
   setDetail: (label: string | null) => void
   role: string | null
   app: App | null
+  /** Refetches the app so the sidebar follows a rename or a new icon. */
+  reloadApp: () => void
 }
 
 /* Lands on the right start page for the viewer's role. */
@@ -30,6 +32,7 @@ function SidebarContent({
   appName,
   initial,
   accent,
+  iconUrl,
   top,
   groups,
   hideApp,
@@ -39,6 +42,7 @@ function SidebarContent({
   appName: string
   initial: string
   accent: string
+  iconUrl: string | null
   top: NavLeaf[]
   groups: NavGroup[]
   hideApp?: boolean
@@ -48,7 +52,9 @@ function SidebarContent({
     <>
       {!hideApp && (
         <Link to={base} className="ac-app" onClick={onNavigate}>
-          <span className="ac-app__icon" style={{ background: accent }}>{initial}</span>
+          <span className="ac-app__icon" style={iconUrl ? undefined : { background: accent }}>
+            {iconUrl ? <img src={iconUrl} alt="" /> : initial}
+          </span>
           <div className="ac-app__meta">
             <div className="ac-app__name">{appName}</div>
             <div className="ac-app__platform">Android</div>
@@ -133,7 +139,7 @@ export default function AppShell() {
   }
   if (detail) crumbs.push({ label: detail })
 
-  const sidebar = { base, appName, initial, accent, top, groups }
+  const sidebar = { base, appName, initial, accent, iconUrl: app?.icon_url ?? null, top, groups }
 
   return (
     <div className="ac">
@@ -175,7 +181,7 @@ export default function AppShell() {
           <SidebarContent {...sidebar} />
         </aside>
         <main className="ac-main">
-          <Outlet context={{ setDetail, role, app } satisfies ShellContext} />
+          <Outlet context={{ setDetail, role, app, reloadApp: appState.reload } satisfies ShellContext} />
         </main>
       </div>
 

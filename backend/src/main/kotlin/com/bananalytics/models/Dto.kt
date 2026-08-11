@@ -78,6 +78,9 @@ data class AppResponse(
     val name: String,
     @SerialName("package_name") val packageName: String,
     @SerialName("created_at") val createdAt: String,
+    // Where to read the uploaded icon, null when the app has none. The query
+    // string carries the upload time, so a replaced icon is a different URL.
+    @SerialName("icon_url") val iconUrl: String? = null,
     // Only filled in the app creation response — API keys are stored hashed
     // and can never be read back afterwards.
     @SerialName("api_key") val apiKey: String? = null

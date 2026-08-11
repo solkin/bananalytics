@@ -1,5 +1,6 @@
 package com.bananalytics.routes
 
+import com.bananalytics.config.BadRequestException
 import com.bananalytics.config.PayloadTooLargeException
 import io.ktor.http.content.*
 import io.ktor.utils.io.*
@@ -56,6 +57,41 @@ internal suspend fun PartData.FileItem.receiveMapping(limit: Long): File? {
         received.delete()
     }
 }
+
+/**
+ * Receives an app icon together with the content type it will be served as.
+ * That type is read from the bytes, never from the part headers: the download
+ * endpoint hands it straight to the browser, so a mislabelled upload must not
+ * be what decides how the response is interpreted. The caller owns the file.
+ */
+internal suspend fun PartData.FileItem.receiveIcon(limit: Long): Pair<File, String> {
+    val received = receiveFile(limit, "Icon", ".tmp")
+
+    val contentType = received.imageContentType()
+    if (contentType == null) {
+        received.delete()
+        throw BadRequestException("Icon must be a PNG, JPEG or WebP image")
+    }
+
+    return received to contentType
+}
+
+/** Magic bytes of the three formats every browser renders. */
+private fun File.imageContentType(): String? {
+    val header = inputStream().use { it.readNBytes(12) }
+    if (header.size < 12) return null
+
+    return when {
+        header.startsWith(0x89, 0x50, 0x4E, 0x47) -> "image/png"
+        header.startsWith(0xFF, 0xD8, 0xFF) -> "image/jpeg"
+        header.startsWith(0x52, 0x49, 0x46, 0x46) &&
+            header.copyOfRange(8, 12).contentEquals("WEBP".toByteArray()) -> "image/webp"
+        else -> null
+    }
+}
+
+private fun ByteArray.startsWith(vararg prefix: Int): Boolean =
+    prefix.withIndex().all { (i, byte) -> this[i] == byte.toByte() }
 
 private suspend fun ByteReadChannel.copyToFile(target: File, limit: Long, what: String): Long =
     withContext(Dispatchers.IO) {

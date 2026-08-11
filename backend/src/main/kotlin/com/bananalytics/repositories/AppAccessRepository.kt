@@ -29,14 +29,7 @@ object AppAccessRepository {
             .selectAll()
             .where { AppAccess.userId eq userId }
             .orderBy(Apps.createdAt, SortOrder.DESC)
-            .map {
-                AppResponse(
-                    id = it[Apps.id].value.toString(),
-                    name = it[Apps.name],
-                    packageName = it[Apps.packageName],
-                    createdAt = it[Apps.createdAt].toString()
-                )
-            }
+            .map { it.toAppResponse() }
     }
 
     fun getUserRole(appId: UUID, userId: UUID): String? = transaction {

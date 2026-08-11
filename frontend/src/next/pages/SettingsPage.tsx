@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRef, useState } from 'react'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Form, FormItem, Icons, Input, Modal, Popconfirm, Statistic, Text, toast } from '@/ui'
 import type { App } from '@/types'
-import { deleteApp, getApp, updateApp } from '@/api/apps'
+import { deleteApp, deleteAppIcon, getApp, updateApp, uploadAppIcon } from '@/api/apps'
 import {
   cleanupOrphanedCrashes,
   getRetentionPreview,
@@ -14,7 +14,10 @@ import {
   type TrimTarget,
 } from '@/api/crashes'
 import { useAsync, Loaded, errorText } from '../async'
+import { accentFor } from '../colors'
 import { fmtK } from '../format'
+import { ICON_ACCEPT, squareIconPng } from '../icon'
+import type { ShellContext } from '../layout/AppShell'
 import './pages.css'
 
 const TRIM_STEPS: Array<{ target: TrimTarget; label: string; count: keyof RetentionPreview }> = [
@@ -274,6 +277,94 @@ function MaintenanceCard({ appId }: { appId: string }) {
   )
 }
 
+function IconCard({ app, onChanged }: { app: App; onChanged: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  // Which action is running, so the spinner lands on the button that started it.
+  const [busy, setBusy] = useState<'upload' | 'remove' | null>(null)
+
+  const upload = async (file?: File) => {
+    if (!file) return
+    setBusy('upload')
+    try {
+      await uploadAppIcon(app.id, await squareIconPng(file))
+      toast.success('Icon updated')
+      onChanged()
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to upload the icon'))
+    } finally {
+      setBusy(null)
+      // Clear the picker, so choosing the same file again still fires onChange.
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const remove = async () => {
+    setBusy('remove')
+    try {
+      await deleteAppIcon(app.id)
+      toast.success('Icon removed')
+      onChanged()
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to remove the icon'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Card title="App icon" subtitle="Shown in the app list and the sidebar.">
+      <div className="set-icon">
+        <span className="set-icon__preview" style={app.icon_url ? undefined : { background: accentFor(app.name) }}>
+          {app.icon_url ? <img src={app.icon_url} alt="" /> : app.name.charAt(0).toUpperCase()}
+        </span>
+        <div>
+          <Text strong>{app.icon_url ? 'Custom icon' : 'Generated from the app name'}</Text>
+          <div>
+            <Text type="secondary" size="sm">
+              PNG, JPEG or WebP. Cropped to a square and scaled down to 256×256 before upload.
+            </Text>
+          </div>
+        </div>
+        <span className="set-icon__actions">
+          {app.icon_url && (
+            <Popconfirm
+              title="Remove the icon?"
+              description="The app falls back to the letter icon generated from its name."
+              okDanger
+              okText="Remove"
+              onConfirm={remove}
+            >
+              <Button
+                variant="danger"
+                icon={<Icons.IconTrash size={15} />}
+                loading={busy === 'remove'}
+                disabled={busy !== null}
+              >
+                Remove
+              </Button>
+            </Popconfirm>
+          )}
+          <Button
+            icon={<Icons.IconUpload size={15} />}
+            loading={busy === 'upload'}
+            disabled={busy !== null}
+            onClick={() => fileRef.current?.click()}
+          >
+            {app.icon_url ? 'Replace' : 'Upload'}
+          </Button>
+        </span>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ICON_ACCEPT}
+        hidden
+        onChange={(e) => void upload(e.target.files?.[0])}
+      />
+    </Card>
+  )
+}
+
 function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
   const navigate = useNavigate()
   const [name, setName] = useState(app.name)
@@ -307,6 +398,8 @@ function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
           </div>
         </Form>
       </Card>
+
+      <IconCard app={app} onChanged={onChanged} />
 
       <Card title="API keys" subtitle="Used by the SDK to submit crashes and events.">
         <div className="set-maint__row">
@@ -343,10 +436,18 @@ function SettingsForm({ app, onChanged }: { app: App; onChanged: () => void }) {
 
 export default function SettingsPage() {
   const { appId } = useParams()
+  const { reloadApp } = useOutletContext<ShellContext>()
   const state = useAsync(() => getApp(appId!), [appId])
+
+  // The sidebar reads the app too, so a rename or a new icon has to reach both.
+  const reload = () => {
+    state.reload()
+    reloadApp()
+  }
+
   return (
     <div className="pg">
-      <Loaded state={state}>{(app) => <SettingsForm app={app} onChanged={state.reload} />}</Loaded>
+      <Loaded state={state}>{(app) => <SettingsForm app={app} onChanged={reload} />}</Loaded>
     </div>
   )
 }

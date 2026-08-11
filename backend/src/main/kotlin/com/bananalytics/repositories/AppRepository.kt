@@ -8,8 +8,33 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.time.OffsetDateTime
 import java.util.*
+
+/** Icon bytes together with the content type they must be served as. */
+class StoredIcon(val bytes: ByteArray, val contentType: String)
+
+/**
+ * Every repository that reads an app row — directly or out of a join — maps it
+ * here, so a field added to the response reaches all of them at once.
+ */
+internal fun ResultRow.toAppResponse() = AppResponse(
+    id = this[Apps.id].value.toString(),
+    name = this[Apps.name],
+    packageName = this[Apps.packageName],
+    createdAt = this[Apps.createdAt].toString(),
+    iconUrl = iconUrl(this[Apps.id].value, this[Apps.iconPath], this[Apps.iconUpdatedAt])
+)
+
+/**
+ * Icons are served by an endpoint rather than straight from the bucket, so the
+ * URL of an app never changes on its own. The upload time in the query string
+ * is what tells a browser cache that a replaced icon is a different image —
+ * in milliseconds, because two uploads can easily land in the same second.
+ */
+private fun iconUrl(id: UUID, path: String?, updatedAt: OffsetDateTime?): String? =
+    if (path == null) null else "/api/v1/apps/$id/icon?v=${updatedAt?.toInstant()?.toEpochMilli() ?: 0}"
 
 object AppRepository {
     private val logger = LoggerFactory.getLogger(AppRepository::class.java)
@@ -59,6 +84,66 @@ object AppRepository {
     }
 
     /**
+     * Stores an icon and points the app at it. The previous object is dropped
+     * only once the row points somewhere else — a format change moves the key,
+     * and deleting first would leave the app with an icon nobody can read if
+     * the upload failed.
+     */
+    fun updateIcon(id: UUID, file: File, contentType: String): Boolean {
+        val row = transaction {
+            Apps.select(Apps.iconPath).where { Apps.id eq id }.singleOrNull()
+        } ?: return false
+        val previousKey = row[Apps.iconPath]
+
+        val key = StorageService.uploadIcon(id.toString(), file, contentType)
+
+        val updated = transaction {
+            Apps.update({ Apps.id eq id }) {
+                it[iconPath] = key
+                it[iconContentType] = contentType
+                it[iconUpdatedAt] = OffsetDateTime.now()
+            } > 0
+        }
+
+        if (updated && previousKey != null && previousKey != key) {
+            StorageService.deleteFiles(listOf(previousKey))
+        }
+        return updated
+    }
+
+    /**
+     * Clears the icon. Storage goes first, as in [delete]: the two cannot be
+     * made atomic, and an unreachable bucket must not leave an app carrying an
+     * icon that refuses to be removed.
+     */
+    fun deleteIcon(id: UUID): Boolean {
+        val key = transaction {
+            Apps.select(Apps.iconPath).where { Apps.id eq id }.singleOrNull()?.get(Apps.iconPath)
+        } ?: return false
+
+        StorageService.deleteFiles(listOf(key))
+
+        return transaction {
+            Apps.update({ Apps.id eq id }) {
+                it[iconPath] = null
+                it[iconContentType] = null
+                it[iconUpdatedAt] = null
+            } > 0
+        }
+    }
+
+    fun getIcon(id: UUID): StoredIcon? {
+        val row = transaction {
+            Apps.select(Apps.iconPath, Apps.iconContentType).where { Apps.id eq id }.singleOrNull()
+        } ?: return null
+
+        val key = row[Apps.iconPath] ?: return null
+        val bytes = StorageService.getIcon(key) ?: return null
+
+        return StoredIcon(bytes, row[Apps.iconContentType] ?: "image/png")
+    }
+
+    /**
      * Every app-scoped table cascades from `apps` except `events` and its
      * `device_stats_daily` rollup: neither carries a foreign key, so an app
      * deletion leaves their rows behind forever. Clear both here, in the same
@@ -95,11 +180,4 @@ object AppRepository {
         )
         return deleted
     }
-
-    private fun ResultRow.toAppResponse() = AppResponse(
-        id = this[Apps.id].value.toString(),
-        name = this[Apps.name],
-        packageName = this[Apps.packageName],
-        createdAt = this[Apps.createdAt].toString()
-    )
 }

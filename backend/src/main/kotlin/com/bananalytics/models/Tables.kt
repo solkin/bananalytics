@@ -9,6 +9,9 @@ import kotlinx.serialization.json.Json
 object Apps : UUIDTable("apps") {
     val name = varchar("name", 255)
     val packageName = varchar("package_name", 255).uniqueIndex()
+    val iconPath = varchar("icon_path", 512).nullable()
+    val iconContentType = varchar("icon_content_type", 64).nullable()
+    val iconUpdatedAt = timestampWithTimeZone("icon_updated_at").nullable()
     val createdAt = timestampWithTimeZone("created_at")
 }
 
