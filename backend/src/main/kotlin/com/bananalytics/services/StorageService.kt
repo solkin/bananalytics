@@ -160,16 +160,23 @@ object StorageService {
         deleteFiles(listOf(key))
     }
 
-    // Icon storage
+    // Image storage — app icons and user avatars
+
+    /** An app icon: one object per app, replaced in place. */
+    fun uploadIcon(appId: String, file: File, contentType: String): String =
+        uploadImage("icons/$appId/icon${imageExtension(contentType)}", file, contentType)
+
+    /** A user avatar: the same kind of object, keyed by the person instead. */
+    fun uploadAvatar(userId: String, file: File, contentType: String): String =
+        uploadImage("avatars/$userId/avatar${imageExtension(contentType)}", file, contentType)
 
     /**
-     * An icon is a few kilobytes, so it needs none of the streaming an APK
-     * does. The extension follows the content type: replacing a PNG with a
-     * JPEG writes a different key, and the caller drops the object left behind.
+     * An icon or an avatar is a few kilobytes, so it needs none of the
+     * streaming an APK does. The extension follows the content type: replacing
+     * a PNG with a JPEG writes a different key, and the caller drops the object
+     * left behind.
      */
-    fun uploadIcon(appId: String, file: File, contentType: String): String {
-        val key = "icons/$appId/icon${iconExtension(contentType)}"
-
+    private fun uploadImage(key: String, file: File, contentType: String): String {
         s3Client.putObject(
             PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -182,7 +189,7 @@ object StorageService {
         return key
     }
 
-    fun getIcon(key: String): ByteArray? = try {
+    fun getImage(key: String): ByteArray? = try {
         s3Client.getObjectAsBytes(
             GetObjectRequest.builder()
                 .bucket(bucketName)
@@ -193,7 +200,7 @@ object StorageService {
         null
     }
 
-    private fun iconExtension(contentType: String) = when (contentType) {
+    private fun imageExtension(contentType: String) = when (contentType) {
         "image/jpeg" -> ".jpg"
         "image/webp" -> ".webp"
         else -> ".png"

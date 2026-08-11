@@ -7,6 +7,9 @@ object Users : UUIDTable("users") {
     val email = varchar("email", 255).uniqueIndex()
     val passwordHash = varchar("password_hash", 255)
     val name = varchar("name", 255).nullable()
+    val avatarPath = varchar("avatar_path", 512).nullable()
+    val avatarContentType = varchar("avatar_content_type", 64).nullable()
+    val avatarUpdatedAt = timestampWithTimeZone("avatar_updated_at").nullable()
     val createdAt = timestampWithTimeZone("created_at")
 }
 

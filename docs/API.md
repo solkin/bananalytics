@@ -131,10 +131,35 @@ Get current user.
     "id": "uuid",
     "email": "user@example.com",
     "name": "John Doe",
+    "avatar_url": "/api/v1/users/uuid/avatar?v=1767960000000",
     "created_at": "2026-01-10T12:00:00Z"
   }
 }
 ```
+
+`avatar_url` is `null` until an avatar is uploaded. Its query string carries the
+upload time, so the URL changes whenever the avatar does and may be cached.
+
+### PUT /auth/me/avatar
+Upload or replace the avatar of the signed-in user.
+
+**Request:** `multipart/form-data`
+- `avatar` — PNG, JPEG or WebP image, up to 1 MB. The format is read from the
+  file itself, not from the part headers. The web UI crops it to a square and
+  scales it down to 256×256 before sending; other clients are stored as sent.
+
+**Response:** the updated user, in the same shape as `GET /auth/me`.
+
+### DELETE /auth/me/avatar
+Remove the avatar — the UI falls back to a letter generated from the name.
+
+**Response:** the updated user. Responds `404` when no avatar is uploaded.
+
+### GET /users/{id}/avatar
+Serve a person's avatar. Available to every signed-in user, since members of an
+app see each other; responds `404` when no avatar is uploaded.
+
+**Response:** the image bytes, with the `Content-Type` detected at upload.
 
 ---
 
@@ -865,6 +890,7 @@ List users and pending invitations for an app.
     "user_id": "uuid",
     "user_email": "user@example.com",
     "user_name": "John Doe",
+    "user_avatar_url": "/api/v1/users/uuid/avatar?v=1767960000000",
     "role": "admin",
     "status": "active",
     "created_at": "2026-01-10T12:00:00Z"
@@ -875,6 +901,7 @@ List users and pending invitations for an app.
     "user_id": null,
     "user_email": "invited@example.com",
     "user_name": null,
+    "user_avatar_url": null,
     "role": "viewer",
     "status": "invited",
     "created_at": "2026-01-10T12:00:00Z"
@@ -884,7 +911,8 @@ List users and pending invitations for an app.
 
 **Notes:**
 - `status` is `active` for registered users, `invited` for pending invitations
-- `user_id` and `user_name` are `null` for invitations
+- `user_id`, `user_name` and `user_avatar_url` are `null` for invitations
+- `user_avatar_url` is also `null` until that person uploads an avatar
 
 ### POST /apps/{id}/access
 Grant access to a user or send invitation.

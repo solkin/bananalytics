@@ -59,18 +59,19 @@ internal suspend fun PartData.FileItem.receiveMapping(limit: Long): File? {
 }
 
 /**
- * Receives an app icon together with the content type it will be served as.
- * That type is read from the bytes, never from the part headers: the download
- * endpoint hands it straight to the browser, so a mislabelled upload must not
- * be what decides how the response is interpreted. The caller owns the file.
+ * Receives an image — an app icon or a user avatar — together with the content
+ * type it will be served as. That type is read from the bytes, never from the
+ * part headers: the download endpoint hands it straight to the browser, so a
+ * mislabelled upload must not be what decides how the response is interpreted.
+ * The caller owns the file.
  */
-internal suspend fun PartData.FileItem.receiveIcon(limit: Long): Pair<File, String> {
-    val received = receiveFile(limit, "Icon", ".tmp")
+internal suspend fun PartData.FileItem.receiveImage(limit: Long, what: String): Pair<File, String> {
+    val received = receiveFile(limit, what, ".tmp")
 
     val contentType = received.imageContentType()
     if (contentType == null) {
         received.delete()
-        throw BadRequestException("Icon must be a PNG, JPEG or WebP image")
+        throw BadRequestException("$what must be a PNG, JPEG or WebP image")
     }
 
     return received to contentType

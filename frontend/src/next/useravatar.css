@@ -1,0 +1,7 @@
+/* Round person mark — see UserAvatar.tsx. The kit's Avatar provides the
+   circle; this is only what an uploaded image does inside it. */
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

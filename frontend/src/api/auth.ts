@@ -50,6 +50,22 @@ export async function updateProfile(name: string): Promise<User> {
   return response.data.user
 }
 
+/** Avatars are normalized to a square PNG before upload — see `@/next/image`. */
+export async function uploadAvatar(avatar: Blob): Promise<User> {
+  const formData = new FormData()
+  formData.append('avatar', avatar, 'avatar.png')
+
+  const response = await api.put<AuthResponse>('/auth/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data.user
+}
+
+export async function deleteAvatar(): Promise<User> {
+  const response = await api.delete<AuthResponse>('/auth/me/avatar')
+  return response.data.user
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await api.post('/auth/change-password', {
     current_password: currentPassword,

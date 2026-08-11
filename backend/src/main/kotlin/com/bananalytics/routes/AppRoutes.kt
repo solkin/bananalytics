@@ -162,7 +162,7 @@ fun Route.appRoutes() {
                             // Only the first icon part counts; a second one
                             // would otherwise leave its temp file behind.
                             if (part.name == "icon" && received == null) {
-                                received = part.receiveIcon(MAX_ICON_BYTES)
+                                received = part.receiveImage(MAX_ICON_BYTES, "Icon")
                             }
                         }
                         else -> {}
@@ -314,6 +314,7 @@ fun Route.appRoutes() {
                     userId = access.userId,
                     userEmail = access.userEmail,
                     userName = access.userName,
+                    userAvatarUrl = access.userAvatarUrl,
                     role = access.role,
                     status = "active",
                     createdAt = access.createdAt

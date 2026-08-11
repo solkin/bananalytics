@@ -16,7 +16,7 @@ import {
 import { useAsync, Loaded, errorText } from '../async'
 import { AppIcon } from '../AppIcon'
 import { fmtK } from '../format'
-import { ICON_ACCEPT, squareIconPng } from '../icon'
+import { IMAGE_ACCEPT, squarePng } from '../image'
 import type { ShellContext } from '../layout/AppShell'
 import './pages.css'
 
@@ -286,7 +286,7 @@ function IconCard({ app, onChanged }: { app: App; onChanged: () => void }) {
     if (!file) return
     setBusy('upload')
     try {
-      await uploadAppIcon(app.id, await squareIconPng(file))
+      await uploadAppIcon(app.id, await squarePng(file))
       toast.success('Icon updated')
       onChanged()
     } catch (e) {
@@ -355,7 +355,7 @@ function IconCard({ app, onChanged }: { app: App; onChanged: () => void }) {
       <input
         ref={fileRef}
         type="file"
-        accept={ICON_ACCEPT}
+        accept={IMAGE_ACCEPT}
         hidden
         onChange={(e) => void upload(e.target.files?.[0])}
       />

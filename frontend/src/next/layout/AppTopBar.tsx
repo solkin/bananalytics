@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Avatar, Dropdown, Icons, TopBar } from '@/ui'
+import { Dropdown, Icons, TopBar } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
+import { UserAvatar } from '../UserAvatar'
 import { Brand } from './Brand'
 
 /** The application header, identical on every page: brand, whatever context
@@ -16,7 +17,7 @@ export function AppTopBar({
   children?: ReactNode
 }) {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const onDocs = useLocation().pathname.startsWith('/docs')
 
   return (
@@ -50,9 +51,7 @@ export function AppTopBar({
             ]}
           >
             <span className="bnn-topbar__user">
-              <Avatar size={26}>
-                <Icons.IconUser size={14} />
-              </Avatar>
+              <UserAvatar size={26} name={user?.name || user?.email || '?'} avatarUrl={user?.avatar_url} />
               <Icons.IconChevronDown size={14} />
             </span>
           </Dropdown>

@@ -124,6 +124,7 @@ object AppAccessRepository {
         userId = this[AppAccess.userId].value.toString(),
         userEmail = this[Users.email],
         userName = this[Users.name],
+        userAvatarUrl = avatarUrl(this[Users.id].value, this[Users.avatarPath], this[Users.avatarUpdatedAt]),
         role = this[AppAccess.role],
         createdAt = this[AppAccess.createdAt].toString()
     )

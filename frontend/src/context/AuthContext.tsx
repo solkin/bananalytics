@@ -6,6 +6,8 @@ import {
   logout as apiLogout,
   register as apiRegister,
   updateProfile as apiUpdateProfile,
+  uploadAvatar as apiUploadAvatar,
+  deleteAvatar as apiDeleteAvatar,
   getConfig,
 } from '@/api/auth'
 
@@ -17,6 +19,10 @@ interface AuthContextType {
   register: (email: string, password: string, name?: string, inviteToken?: string) => Promise<void>
   logout: () => Promise<void>
   updateProfile: (name: string) => Promise<void>
+  /** The avatar is part of the user, so every header and list that reads it
+   *  from here updates the moment it changes. */
+  updateAvatar: (avatar: Blob) => Promise<void>
+  removeAvatar: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -63,8 +69,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
   }
 
+  const updateAvatar = async (avatar: Blob) => {
+    setUser(await apiUploadAvatar(avatar))
+  }
+
+  const removeAvatar = async () => {
+    setUser(await apiDeleteAvatar())
+  }
+
   return (
-    <AuthContext.Provider value={{ user, config, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{ user, config, loading, login, register, logout, updateProfile, updateAvatar, removeAvatar }}
+    >
       {children}
     </AuthContext.Provider>
   )

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Alert, Avatar, Button, Card, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
+import { Alert, Button, Card, Form, FormItem, Icons, Input, Modal, Tag, Text, Title, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { createApp, getApps } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { AppIcon } from '../AppIcon'
+import { UserAvatar } from '../UserAvatar'
 import { KeyReveal } from './ApiKeysPage'
 import { AppTopBar } from '../layout/AppTopBar'
 import './appshome.css'
@@ -138,9 +139,7 @@ export default function AppsHome() {
             return (
               <>
                 <div className="home-owner">
-                  <Avatar size={22}>
-                    <Icons.IconUser size={12} />
-                  </Avatar>
+                  <UserAvatar size={22} name={accountName} avatarUrl={user?.avatar_url} />
                   <Text strong>{accountName}</Text>
                   <Text type="tertiary" size="sm">{list.length} {list.length === 1 ? 'app' : 'apps'}</Text>
                 </div>

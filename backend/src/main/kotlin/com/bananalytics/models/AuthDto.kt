@@ -14,6 +14,7 @@ data class UserResponse(
     val id: String,
     val email: String,
     val name: String?,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
     @SerialName("created_at") val createdAt: String
 )
 
@@ -29,6 +30,7 @@ data class AppAccessResponse(
     @SerialName("user_id") val userId: String,
     @SerialName("user_email") val userEmail: String,
     @SerialName("user_name") val userName: String?,
+    @SerialName("user_avatar_url") val userAvatarUrl: String? = null,
     val role: String,
     @SerialName("created_at") val createdAt: String
 )
@@ -66,6 +68,7 @@ data class AccessListItemResponse(
     @SerialName("user_id") val userId: String?,
     @SerialName("user_email") val userEmail: String,
     @SerialName("user_name") val userName: String?,
+    @SerialName("user_avatar_url") val userAvatarUrl: String? = null,
     val role: String,
     val status: String,  // "active" or "invited"
     @SerialName("created_at") val createdAt: String

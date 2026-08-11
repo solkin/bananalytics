@@ -62,6 +62,7 @@ fun Application.configureRouting() {
             
             // Admin routes (authenticated by session)
             authenticated {
+                userRoutes()
                 appRoutes()
                 crashRoutes()
                 eventRoutes()

@@ -6,10 +6,28 @@ import com.bananalytics.repositories.UserRepository
 import com.bananalytics.services.AuthService
 import com.bananalytics.services.EmailService
 import io.ktor.http.*
+import io.ktor.http.content.*
+import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.io.File
 import java.util.*
+
+/** An avatar is a small square image; anything bigger arrived by mistake. */
+private const val MAX_AVATAR_BYTES = 1L * 1024 * 1024
+
+/**
+ * These routes sit outside the authenticated block — login and registration
+ * live here too — so the ones that act on the signed-in person resolve the
+ * session themselves.
+ */
+private fun ApplicationCall.requireSessionUser(): UserResponse {
+    val sessionId = getSessionId()
+        ?: throw UnauthorizedException("Not authenticated")
+    return AuthService.getUserBySession(sessionId)
+        ?: throw UnauthorizedException("Session expired")
+}
 
 fun Route.authRoutes() {
     route("/auth") {
@@ -97,33 +115,69 @@ fun Route.authRoutes() {
 
         // Get current user
         get("/me") {
-            val sessionId = call.getSessionId()
-                ?: throw UnauthorizedException("Not authenticated")
-
-            val user = AuthService.getUserBySession(sessionId)
-                ?: throw UnauthorizedException("Session expired")
-
-            call.respond(AuthResponse(user = user))
+            call.respond(AuthResponse(user = call.requireSessionUser()))
         }
 
         // Update current user's profile (name)
         put("/me") {
-            val sessionId = call.getSessionId()
-                ?: throw UnauthorizedException("Not authenticated")
-            val user = AuthService.getUserBySession(sessionId)
-                ?: throw UnauthorizedException("Session expired")
+            val user = call.requireSessionUser()
 
             val request = call.receive<UpdateProfileRequest>()
             val updated = AuthService.updateProfile(UUID.fromString(user.id), request.name)
             call.respond(AuthResponse(user = updated))
         }
 
+        // Upload or replace the current user's avatar
+        put("/me/avatar") {
+            val user = call.requireSessionUser()
+
+            var received: Pair<File, String>? = null
+
+            try {
+                val multipart = call.receiveMultipart()
+                multipart.forEachPart { part ->
+                    when (part) {
+                        is PartData.FileItem -> {
+                            // Only the first avatar part counts; a second one
+                            // would otherwise leave its temp file behind.
+                            if (part.name == "avatar" && received == null) {
+                                received = part.receiveImage(MAX_AVATAR_BYTES, "Avatar")
+                            }
+                        }
+                        else -> {}
+                    }
+                    part.dispose()
+                }
+
+                val (file, contentType) = received
+                    ?: throw BadRequestException("Avatar file is required")
+
+                val userId = UUID.fromString(user.id)
+                if (!dbIO { UserRepository.updateAvatar(userId, file, contentType) }) {
+                    throw UnauthorizedException("User not found")
+                }
+
+                call.respond(AuthResponse(user = UserRepository.findById(userId)!!))
+            } finally {
+                received?.first?.delete()
+            }
+        }
+
+        // Remove the avatar — the UI falls back to the generated initial
+        delete("/me/avatar") {
+            val user = call.requireSessionUser()
+            val userId = UUID.fromString(user.id)
+
+            if (!dbIO { UserRepository.deleteAvatar(userId) }) {
+                throw NotFoundException("Avatar not found")
+            }
+
+            call.respond(AuthResponse(user = UserRepository.findById(userId)!!))
+        }
+
         // Change current user's password
         post("/change-password") {
-            val sessionId = call.getSessionId()
-                ?: throw UnauthorizedException("Not authenticated")
-            val user = AuthService.getUserBySession(sessionId)
-                ?: throw UnauthorizedException("Session expired")
+            val user = call.requireSessionUser()
 
             val request = call.receive<ChangePasswordRequest>()
             AuthService.changePassword(

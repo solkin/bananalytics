@@ -32,14 +32,7 @@ object SessionRepository {
             .selectAll()
             .where { (Sessions.id eq sessionId) and (Sessions.expiresAt greater now) }
             .singleOrNull()
-            ?.let {
-                UserResponse(
-                    id = it[Users.id].value.toString(),
-                    email = it[Users.email],
-                    name = it[Users.name],
-                    createdAt = it[Users.createdAt].toString()
-                )
-            }
+            ?.toUserResponse()
     }
 
     fun delete(sessionId: UUID): Boolean = transaction {

@@ -1,14 +1,15 @@
-/* App icons are stored exactly as they arrive, so the browser normalizes them
-   first: a center-cropped square PNG keeps every uploaded logo the same shape
-   as the slot it renders in, and a few kilobytes rather than a few megabytes. */
+/* App icons and user avatars are stored exactly as they arrive, so the browser
+   normalizes them first: a center-cropped square PNG keeps every uploaded image
+   the same shape as the slot it renders in, and a few kilobytes rather than a
+   few megabytes. */
 
-/** Icons render at 44px at most, so this survives any display density. */
+/** Both render at 72px at most, so this survives any display density. */
 const MAX_SIDE = 256
 
-export const ICON_ACCEPT = 'image/png,image/jpeg,image/webp'
+export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp'
 
 /** Rejects anything the browser cannot decode as an image. */
-export async function squareIconPng(file: File): Promise<Blob> {
+export async function squarePng(file: File): Promise<Blob> {
   // `accept` on the picker is a hint, not a guarantee — a renamed file reaches
   // here and must fail with something the user can act on.
   const bitmap = await createImageBitmap(file).catch(() => {

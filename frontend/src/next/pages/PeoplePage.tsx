@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Alert,
-  Avatar,
   Button,
   Card,
   Descriptions,
@@ -32,6 +31,7 @@ import {
 } from '@/api/auth'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync, Loaded, errorText } from '../async'
+import { UserAvatar } from '../UserAvatar'
 import { cap, fmtDateTime, shortDate } from '../format'
 import { roleTone } from '../tones'
 import './pages.css'
@@ -233,7 +233,7 @@ function MemberModal({
     >
       <div className="people-detail">
         <div className="people-detail__identity">
-          <Avatar size={44}>{displayName.charAt(0).toUpperCase()}</Avatar>
+          <UserAvatar size={44} name={displayName} avatarUrl={access.user_avatar_url} />
           <div>
             <div className="people-detail__name">{displayName}</div>
             {access.user_name && <Text type="secondary">{access.user_email}</Text>}
@@ -324,7 +324,7 @@ export default function PeoplePage() {
       key: 'name', title: 'Member',
       render: (r) => (
         <div className="pg-person">
-          <Avatar size={28}>{(r.user_name || r.user_email).charAt(0).toUpperCase()}</Avatar>
+          <UserAvatar size={28} name={r.user_name || r.user_email} avatarUrl={r.user_avatar_url} />
           <div>
             <div className="pg-person__name">
               {r.user_name || r.user_email}

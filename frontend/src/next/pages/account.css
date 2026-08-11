@@ -1,12 +1,6 @@
-/* Account / profile page (top-level, own chrome). */
-.acct {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: var(--bnn-sp-6) var(--bnn-sp-5) var(--bnn-sp-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--bnn-sp-4);
-}
+/* Account / profile page (top-level, own chrome). It shares the page frame of
+   the app list — see .home-main in appshome.css — so the two pages a person
+   lands on outside an app line up. */
 .acct-back {
   display: inline-flex;
   align-items: center;
@@ -24,10 +18,54 @@
   outline: none;
   box-shadow: var(--bnn-focus-ring);
 }
+
+/* Two columns at the width the app grid uses; one below that. Cards keep
+   their own height instead of stretching to the tallest in the row. */
+.acct-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  align-items: start;
+  gap: var(--bnn-sp-4);
+}
+.acct-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-4);
+}
+
+/* Avatar, what it is, and the buttons that change it. The column is half the
+   page, so the buttons drop to their own line rather than squeezing the text
+   into a narrow ribbon. */
+.acct-avatar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--bnn-sp-4);
+}
+.acct-avatar__meta {
+  flex: 1 1 200px;
+  min-width: 200px;
+}
+.acct-avatar__actions {
+  display: flex;
+  gap: var(--bnn-sp-2);
+  margin-left: auto;
+}
+
 .acct-signout {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--bnn-sp-4);
   flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .acct-avatar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .acct-avatar__actions {
+    margin-left: 0;
+  }
 }

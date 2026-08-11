@@ -12,8 +12,8 @@ import java.io.File
 import java.time.OffsetDateTime
 import java.util.*
 
-/** Icon bytes together with the content type they must be served as. */
-class StoredIcon(val bytes: ByteArray, val contentType: String)
+/** App icon or user avatar bytes, with the content type they are served as. */
+class StoredImage(val bytes: ByteArray, val contentType: String)
 
 /**
  * Every repository that reads an app row — directly or out of a join — maps it
@@ -132,15 +132,15 @@ object AppRepository {
         }
     }
 
-    fun getIcon(id: UUID): StoredIcon? {
+    fun getIcon(id: UUID): StoredImage? {
         val row = transaction {
             Apps.select(Apps.iconPath, Apps.iconContentType).where { Apps.id eq id }.singleOrNull()
         } ?: return null
 
         val key = row[Apps.iconPath] ?: return null
-        val bytes = StorageService.getIcon(key) ?: return null
+        val bytes = StorageService.getImage(key) ?: return null
 
-        return StoredIcon(bytes, row[Apps.iconContentType] ?: "image/png")
+        return StoredImage(bytes, row[Apps.iconContentType] ?: "image/png")
     }
 
     /**
