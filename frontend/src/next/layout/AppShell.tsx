@@ -9,6 +9,7 @@ import { getMyRole } from '@/api/auth'
 import { useAsync } from '../async'
 import { accentFor } from '../colors'
 import { findActive, navForRole, type NavGroup, type NavLeaf } from '../nav'
+import { Brand } from './Brand'
 import './appshell.css'
 
 export interface ShellContext {
@@ -141,10 +142,7 @@ export default function AppShell() {
           <button className="ac-burger" type="button" aria-label="Open menu" onClick={() => setNavOpen(true)}>
             <Icons.IconMenu size={18} />
           </button>
-          <Link to="/" className="ac-brand">
-            <img className="ac-brand__logo" src="/banana.svg" width={22} height={22} alt="" />
-            <span className="ac-brand__name">Bananalytics</span>
-          </Link>
+          <Brand />
           <span className="ac-top__sep" />
           <Breadcrumb items={crumbs} />
         </div>

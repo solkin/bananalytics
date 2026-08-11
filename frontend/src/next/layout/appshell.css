@@ -24,19 +24,6 @@
   gap: 12px;
   min-width: 0;
 }
-.ac-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: var(--bnn-primary);
-  font-weight: 700;
-  font-size: var(--bnn-fs-base);
-  white-space: nowrap;
-}
-.ac-brand__logo {
-  display: block;
-}
 .ac-top__sep {
   width: 1px;
   height: 18px;
@@ -294,8 +281,5 @@
   }
   .ac-main {
     padding: 18px 16px 48px;
-  }
-  .ac-brand__name {
-    display: none;
   }
 }

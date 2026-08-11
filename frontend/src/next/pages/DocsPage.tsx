@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Avatar, Dropdown, Icons, Tag, Text, Title } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { CodeBlock } from '../CodeBlock'
+import { Brand } from '../layout/Brand'
 import './appshome.css'
 import './docs.css'
 
@@ -133,10 +134,7 @@ export default function DocsPage() {
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/" className="home-brand">
-          <img src="/banana.svg" width={22} height={22} alt="" />
-          <span>Bananalytics</span>
-        </Link>
+        <Brand />
         <div className="home-top__right">
           <button className="home-iconbtn" type="button" aria-label="Help">
             <Icons.IconHelp size={17} />

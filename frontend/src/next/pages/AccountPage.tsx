@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Avatar, Button, Card, Dropdown, Form, FormItem, Icons, Input, Password, Text, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { changePassword } from '@/api/auth'
+import { Brand } from '../layout/Brand'
 import './appshome.css'
 import './account.css'
 
@@ -53,10 +54,7 @@ export default function AccountPage() {
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/" className="home-brand">
-          <img src="/banana.svg" width={22} height={22} alt="" />
-          <span>Bananalytics</span>
-        </Link>
+        <Brand />
         <div className="home-top__right">
           <Link className="home-docs" to="/docs">
             <Icons.IconBook size={15} />

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { createApp, getApps } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { accentFor } from '../colors'
+import { Brand } from '../layout/Brand'
 import './appshome.css'
 
 const PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/i
@@ -67,10 +68,7 @@ export default function AppsHome() {
   return (
     <div className="home">
       <header className="home-top">
-        <Link to="/" className="home-brand">
-          <img src="/banana.svg" width={22} height={22} alt="" />
-          <span>Bananalytics</span>
-        </Link>
+        <Brand />
         <div className="home-top__right">
           <Link className="home-docs" to="/docs">
             <Icons.IconBook size={15} />

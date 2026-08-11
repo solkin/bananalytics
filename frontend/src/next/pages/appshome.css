@@ -16,18 +16,6 @@
   background: var(--bnn-surface);
   border-bottom: 1px solid var(--bnn-border);
 }
-.home-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: var(--bnn-primary);
-  font-weight: 700;
-  font-size: var(--bnn-fs-base);
-}
-.home-brand img {
-  display: block;
-}
 .home-top__right {
   display: flex;
   align-items: center;
