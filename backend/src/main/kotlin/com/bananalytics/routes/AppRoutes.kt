@@ -490,8 +490,7 @@ fun Route.appRoutes() {
             val invitation = InvitationRepository.findById(invitationId, appId)
                 ?: throw NotFoundException("Invitation not found")
 
-            val baseUrl = System.getenv("BASE_URL") ?: "http://localhost:5173"
-            val inviteUrl = "$baseUrl/register?invite=${invitation.token}"
+            val inviteUrl = "${AppConfig.baseUrl}/register?invite=${invitation.token}"
 
             call.respond(mapOf("url" to inviteUrl))
         }

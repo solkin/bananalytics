@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button, Card, Form, FormItem, Icons, Input, Password, toast } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import { errorText } from '../async'
 import { AuthFrame } from './AuthFrame'
+import { redirectTarget } from '../redirect'
 
 export default function LoginPage() {
   const { login, config } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email.trim(), password)
-      navigate('/')
+      navigate(redirectTarget(location), { replace: true })
     } catch (e) {
       toast.error(errorText(e, 'Login failed'))
     } finally {

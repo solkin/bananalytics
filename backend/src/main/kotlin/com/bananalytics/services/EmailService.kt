@@ -1,5 +1,6 @@
 package com.bananalytics.services
 
+import com.bananalytics.config.AppConfig
 import org.simplejavamail.api.mailer.Mailer
 import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.email.EmailBuilder
@@ -15,7 +16,7 @@ object EmailService {
     private val smtpPassword: String? = System.getenv("SMTP_PASSWORD")
     private val smtpFrom: String = System.getenv("SMTP_FROM") ?: "noreply@bananalytics.local"
     private val smtpFromName: String = System.getenv("SMTP_FROM_NAME") ?: "Bananalytics"
-    private val baseUrl: String = System.getenv("BASE_URL") ?: "http://localhost:5173"
+    private val baseUrl: String get() = AppConfig.baseUrl
 
     val isConfigured: Boolean
         get() = !smtpHost.isNullOrBlank() && !smtpUser.isNullOrBlank() && !smtpPassword.isNullOrBlank()
@@ -47,7 +48,7 @@ object EmailService {
         }
 
         val versionDisplay = if (versionName != null) "$versionName ($versionCode)" else "Build $versionCode"
-        val distributionUrl = "$baseUrl/apps/$appId/distribution"
+        val distributionUrl = "$baseUrl/apps/$appId/distribution/releases"
 
         val htmlContent = """
             <!DOCTYPE html>

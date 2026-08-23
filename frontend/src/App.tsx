@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Spin, ToastViewport } from '@/ui'
+import { redirectTarget } from './next/redirect'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import UiKitPage from './pages/UiKitPage'
 import AppShell, { IndexRedirect } from './next/layout/AppShell'
@@ -31,15 +32,18 @@ function CenteredSpin() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <CenteredSpin />
-  if (!user) return <Navigate to="/login" replace />
+  /* Links from email land here logged out; remember where they were headed. */
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />
   return <>{children}</>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <CenteredSpin />
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to={redirectTarget(location)} replace />
   return <>{children}</>
 }
 
