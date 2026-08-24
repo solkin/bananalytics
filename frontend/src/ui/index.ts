@@ -76,4 +76,7 @@ export type { ChartPoint, ChartSeries } from './charts'
 export { BarList } from './barlist'
 export type { BarListItem } from './barlist'
 
+export { WorldMap } from './geomap'
+export type { WorldMapProps } from './geomap'
+
 export * as Icons from './Icon'

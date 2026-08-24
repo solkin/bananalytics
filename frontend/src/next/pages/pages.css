@@ -53,6 +53,35 @@
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--bnn-sp-4);
 }
+.pg-grid3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--bnn-sp-4);
+}
+/* Map and its ranked list. The map is the wide half and shrinks with the
+   card; the list keeps a readable fixed column until they stack. */
+.pg-geo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--bnn-sp-5);
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .pg-geo {
+    grid-template-columns: 1fr;
+  }
+}
+/* Country names are longer than the kit's default label column, and there is
+   no bar here to compete with them for room. */
+.pg-geo .bnn-barlist__label {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.pg-geo__flag {
+  margin-right: 6px;
+}
+
 .pg-affected {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

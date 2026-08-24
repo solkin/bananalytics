@@ -67,3 +67,28 @@ export function fillDaily(rows: { date: string; count: number }[], days: number)
   const m = new Map(rows.map((r) => [r.date.slice(0, 10), r.count] as const))
   return dayAxis(days).map((d) => ({ label: shortDate(d), value: m.get(d) ?? 0 }))
 }
+
+/* Country codes come off the SDK as ISO 3166-1 alpha-2 (Locale.getDefault()),
+   or the literal "Unknown" when the device did not report one. */
+const REGIONS =
+  typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null
+
+export const isCountryCode = (code: string): boolean => /^[A-Z]{2}$/.test(code)
+
+/** "US" -> "United States". Anything unrecognised passes through as-is. */
+export function countryName(code: string): string {
+  if (!isCountryCode(code)) return code
+  try {
+    return REGIONS?.of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+/** "US" -> the flag emoji, built from regional indicator symbols. */
+export function countryFlag(code: string): string {
+  if (!isCountryCode(code)) return ''
+  return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+}

@@ -44,6 +44,7 @@ import {
   TopBar,
   UploadDragger,
   toast,
+  WorldMap,
   type ChartPoint,
   type Column,
 } from '@/ui'
@@ -122,7 +123,18 @@ const NAV = [
   ['feedback', 'Feedback'],
   ['overlays', 'Overlays'],
   ['charts', 'Charts'],
+  ['map', 'Map'],
 ]
+
+const countryValues: Record<string, number> = {
+  US: 4820, IN: 3140, BR: 1980, DE: 1420, GB: 1180, RU: 960, FR: 720, JP: 610,
+  ID: 540, NG: 430, MX: 380, TR: 310, ES: 260, PL: 210, CA: 190, AU: 160,
+  IT: 150, KR: 120, VN: 110, EG: 90, ZA: 70, AR: 60, SG: 55, HK: 40, SE: 30,
+}
+const COUNTRY_NAMES: Record<string, string> = {
+  US: 'United States', IN: 'India', BR: 'Brazil', DE: 'Germany',
+  GB: 'United Kingdom', RU: 'Russia', SG: 'Singapore', HK: 'Hong Kong',
+}
 
 /* ============================================================== page */
 export default function UiKitPage() {
@@ -506,6 +518,18 @@ export default function UiKitPage() {
             </Row>
             <Card title="Top devices">
               <BarChart data={deviceData} horizontal height={200} />
+            </Card>
+          </Section>
+
+          {/* Map */}
+          <Section id="map" title="Map" description="Country choropleth — outlines projected at build time.">
+            <Card title="Country / Region">
+              <WorldMap
+                values={countryValues}
+                nameOf={(c) => COUNTRY_NAMES[c] ?? c}
+                format={(v) => `${v} sessions`}
+                height={280}
+              />
             </Card>
           </Section>
 

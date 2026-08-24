@@ -429,3 +429,55 @@
 .bnn-chart__tip-row .bnn-chart__tip-value {
   font-size: 11px;
 }
+
+/* ===== World map ===== */
+.bnn-geomap {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+.bnn-geomap__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.bnn-geomap__shape,
+.bnn-geomap__dot {
+  stroke: var(--bnn-surface);
+  stroke-width: 0.75;
+  /* The viewBox is scaled to the card, so borders must not scale with it. */
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.15s;
+}
+.bnn-geomap__shape:hover,
+.bnn-geomap__dot:hover {
+  stroke: var(--bnn-ink);
+  stroke-width: 1;
+}
+.bnn-geomap__tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+.bnn-geomap__legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: var(--bnn-fs-xs);
+  color: var(--bnn-text-tertiary);
+}
+.bnn-geomap__legend i {
+  width: 22px;
+  height: 8px;
+  border-radius: 1px;
+}
+.bnn-geomap__legend span:first-child {
+  margin-right: 2px;
+}
+.bnn-geomap__legend span:last-child {
+  margin-left: 2px;
+}

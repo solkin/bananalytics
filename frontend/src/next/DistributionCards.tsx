@@ -1,6 +1,9 @@
-import { BarList, Card, Empty, Icons, Tooltip, type BarListItem } from '@/ui'
+import { BarList, Card, Empty, Icons, Tooltip, WorldMap, type BarListItem } from '@/ui'
 import type { DeviceStats, DeviceStatItem } from '@/api/events'
-import { fmtK } from './format'
+import { countryFlag, countryName, fmtK, isCountryCode } from './format'
+
+/** How many rows the list beside the map shows; the map itself uses them all. */
+const COUNTRY_ROWS = 8
 
 /** Counts to a share-of-total bar list. */
 export function toBars(items: DeviceStatItem[]): BarListItem[] {
@@ -37,38 +40,80 @@ const CARDS = [
     help: 'Android versions those sessions ran on.',
   },
   {
-    key: 'countries' as const,
-    title: 'Country / Region',
-    help: 'Where the sessions came from, by device locale region.',
-  },
-  {
     key: 'languages' as const,
     title: 'Languages',
     help: 'Device language of those sessions.',
   },
 ]
 
-/** The four device breakdowns, shared by Overview and Devices so the two
- *  pages cannot drift apart in wording or layout. */
+/** Sessions per ISO country code. "Unknown" has no place on a map, so it is
+ *  dropped here and stays visible in the list beside it. */
+function mapValues(items: DeviceStatItem[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const i of items) if (isCountryCode(i.name)) out[i.name] = i.count
+  return out
+}
+
+function countryRows(items: DeviceStatItem[]): BarListItem[] {
+  const total = items.reduce((s, i) => s + i.count, 0) || 1
+  return items.slice(0, COUNTRY_ROWS).map((i) => ({
+    label: (
+      <>
+        {isCountryCode(i.name) && (
+          <span className="pg-geo__flag" aria-hidden>
+            {countryFlag(i.name)}
+          </span>
+        )}
+        {countryName(i.name)}
+      </>
+    ),
+    value: i.count,
+    display: fmtK(i.count),
+    secondary: `${Math.round((i.count / total) * 100)}%`,
+  }))
+}
+
+/** Where the sessions came from: the map answers "where", the list "how many". */
+function CountryCard({ items }: { items: DeviceStatItem[] }) {
+  return (
+    <Card
+      title="Country / Region"
+      extra={<CardHelp text="Where the sessions came from, by device locale region." />}
+    >
+      {items.length ? (
+        <div className="pg-geo">
+          <WorldMap
+            values={mapValues(items)}
+            nameOf={countryName}
+            format={(v) => `${fmtK(v)} sessions`}
+            height={320}
+          />
+          {/* The map already encodes magnitude by shade; bars would say it twice. */}
+          <BarList items={countryRows(items)} showBar={false} />
+        </div>
+      ) : (
+        <Empty description="No data yet" />
+      )}
+    </Card>
+  )
+}
+
+/** The device breakdowns, shared by Overview and Devices so the two pages
+ *  cannot drift apart in wording or layout. */
 export function DistributionCards({ stats }: { stats: DeviceStats }) {
   return (
     <>
-      {[CARDS.slice(0, 2), CARDS.slice(2)].map((row, i) => (
-        <div className="pg-grid2" key={i}>
-          {row.map((c) => {
-            const items = stats[c.key]
-            return (
-              <Card key={c.key} title={c.title} extra={<CardHelp text={c.help} />}>
-                {items.length ? (
-                  <BarList items={toBars(items)} />
-                ) : (
-                  <Empty description="No data yet" />
-                )}
-              </Card>
-            )
-          })}
-        </div>
-      ))}
+      <CountryCard items={stats.countries} />
+      <div className="pg-grid3">
+        {CARDS.map((c) => {
+          const items = stats[c.key]
+          return (
+            <Card key={c.key} title={c.title} extra={<CardHelp text={c.help} />}>
+              {items.length ? <BarList items={toBars(items)} /> : <Empty description="No data yet" />}
+            </Card>
+          )
+        })}
+      </div>
     </>
   )
 }

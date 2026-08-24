@@ -92,6 +92,15 @@
   --bnn-chart-8: #5c6470;
   --bnn-chart-grid: var(--bnn-track);
 
+  /* Choropleth ramp — sequential, one hue, so darker always means more.
+     Step 0 is "no data", deliberately grey rather than the palest blue. */
+  --bnn-geo-0: #eef1f4;
+  --bnn-geo-1: #dbe8fd;
+  --bnn-geo-2: #b3cffa;
+  --bnn-geo-3: #77a8f1;
+  --bnn-geo-4: #3d7ee4;
+  --bnn-geo-5: #1a56b0;
+
   /* Radii */
   --bnn-radius-xs: 2px;
   --bnn-radius-sm: 4px;

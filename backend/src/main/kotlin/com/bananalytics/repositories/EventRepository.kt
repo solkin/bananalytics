@@ -241,7 +241,10 @@ object EventRepository {
             osVersions = topDeviceStats(appId, "os", versionCode, limit) { name ->
                 if (name == "Unknown") name else "Android $name"
             },
-            countries = topDeviceStats(appId, "country", versionCode, limit),
+            // The map paints every country it is given, so the country list is
+            // not cut to the caller's top-N. There are ~250 ISO codes, a few
+            // kilobytes at worst.
+            countries = topDeviceStats(appId, "country", versionCode, maxOf(limit, 300)),
             languages = topDeviceStats(appId, "language", versionCode, limit)
         )
     }
