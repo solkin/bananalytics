@@ -5,7 +5,7 @@ import { useAsync, Loaded } from '../async'
 import { DistributionCards } from '../DistributionCards'
 import { fromTo, versionLabel } from '../format'
 import { useStickyFilters } from '../filters'
-import { versionSeries } from '../series'
+import { forVersion, versionSeries } from '../series'
 import './pages.css'
 
 const DAY_OPTIONS = [
@@ -21,7 +21,11 @@ export default function DevicesPage() {
   const version = get('version') ? Number(get('version')) : undefined
 
   const versions = useAsync(() => getEventVersions(appId!), [appId], { key: `event-versions:${appId}` })
-  const dev = useAsync(() => getDeviceStats(appId!, { limit: 8, version }), [appId, version], { key: `device-stats:${appId}:8:${version ?? 'all'}` })
+  const dev = useAsync(
+    () => getDeviceStats(appId!, { limit: 8, version, ...fromTo(days) }),
+    [appId, version, days],
+    { key: `device-stats:${appId}:8:${version ?? 'all'}:${days}` },
+  )
   const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days], { key: `sessions-unique:${appId}:${days}` })
 
   return (
@@ -45,7 +49,9 @@ export default function DevicesPage() {
       </div>
 
       <Card title="Active devices per version">
-        <MultiAreaChart height={220} series={versionSeries(sess.data ?? [], days)} />
+        {/* The endpoint returns every version; the page filter narrows it here
+            rather than refetching a subset of the same rows. */}
+        <MultiAreaChart height={220} series={versionSeries(forVersion(sess.data ?? [], version), days)} />
       </Card>
 
       <Loaded state={dev}>{(d) => <DistributionCards stats={d} />}</Loaded>

@@ -8,6 +8,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 
 /**
  * Run a blocking Exposed transaction off the request coroutine so slow
@@ -20,6 +22,23 @@ suspend fun <T> dbIO(block: () -> T): T = withContext(Dispatchers.IO) { block() 
  */
 fun ApplicationCall.cacheStatsFor(seconds: Int = 60) {
     response.header(HttpHeaders.CacheControl, "private, max-age=$seconds")
+}
+
+fun String.toOffsetDateTimeOrNull(): OffsetDateTime? = try {
+    OffsetDateTime.parse(this)
+} catch (e: DateTimeParseException) {
+    null
+}
+
+/**
+ * The from/to window every analytics endpoint accepts. Both ends are optional
+ * and fall back to the last [defaultDays] days, so a page that filters by
+ * period can pass the same range to all of its queries.
+ */
+fun ApplicationCall.dateRange(defaultDays: Long = 14): Pair<OffsetDateTime, OffsetDateTime> {
+    val now = OffsetDateTime.now()
+    return (request.queryParameters["from"]?.toOffsetDateTimeOrNull() ?: now.minusDays(defaultDays)) to
+        (request.queryParameters["to"]?.toOffsetDateTimeOrNull() ?: now)
 }
 
 fun Application.configureRouting() {

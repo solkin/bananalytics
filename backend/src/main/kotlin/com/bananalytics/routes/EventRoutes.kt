@@ -9,8 +9,6 @@ import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.repositories.EventRepository
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import java.time.OffsetDateTime
-import java.time.format.DateTimeParseException
 import java.util.*
 
 fun Route.eventRoutes() {
@@ -22,20 +20,7 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val fromParam = call.request.queryParameters["from"]
-        val toParam = call.request.queryParameters["to"]
-        
-        val now = OffsetDateTime.now()
-        val toDate = if (toParam != null) {
-            OffsetDateTime.parse(toParam)
-        } else {
-            now
-        }
-        val fromDate = if (fromParam != null) {
-            OffsetDateTime.parse(fromParam)
-        } else {
-            now.minusDays(14)
-        }
+        val (fromDate, toDate) = call.dateRange()
 
         val stats = dbIO { AppSessionRepository.getUniqueSessionsByVersion(appId, fromDate, toDate) }
             .map { SessionVersionStats(it.date, it.versionCode, it.versionName, it.count) }
@@ -51,12 +36,7 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val fromParam = call.request.queryParameters["from"]
-        val toParam = call.request.queryParameters["to"]
-
-        val now = OffsetDateTime.now()
-        val toDate = if (toParam != null) OffsetDateTime.parse(toParam) else now
-        val fromDate = if (fromParam != null) OffsetDateTime.parse(fromParam) else now.minusDays(14)
+        val (fromDate, toDate) = call.dateRange()
 
         val stats = dbIO { AppSessionRepository.getDailyActivity(appId, fromDate, toDate) }
             .map { DailyActivityResponse(it.date, it.sessions, it.users) }
@@ -73,7 +53,8 @@ fun Route.eventRoutes() {
         requireAppAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
-        val summary = dbIO { EventRepository.getEventSummary(appId, versionCode) }
+        val (fromDate, toDate) = call.dateRange()
+        val summary = dbIO { EventRepository.getEventSummary(appId, versionCode, fromDate, toDate) }
         call.cacheStatsFor()
         call.respond(summary)
     }
@@ -104,12 +85,16 @@ fun Route.eventRoutes() {
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50
+        val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
+        val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
 
         val result = dbIO {
             EventRepository.findByAppIdAndName(
                 appId = appId,
                 eventName = eventName,
                 versionCode = versionCode,
+                fromTime = fromTime,
+                toTime = toTime,
                 page = page,
                 pageSize = pageSize
             )
@@ -128,22 +113,10 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val fromParam = call.request.queryParameters["from"]
-        val toParam = call.request.queryParameters["to"]
-        
-        val now = java.time.OffsetDateTime.now()
-        val toDate = if (toParam != null) {
-            java.time.OffsetDateTime.parse(toParam)
-        } else {
-            now
-        }
-        val fromDate = if (fromParam != null) {
-            java.time.OffsetDateTime.parse(fromParam)
-        } else {
-            now.minusDays(14)
-        }
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val (fromDate, toDate) = call.dateRange()
 
-        val stats = dbIO { EventRepository.getEventStatsByName(appId, eventName, fromDate, toDate) }
+        val stats = dbIO { EventRepository.getEventStatsByName(appId, eventName, fromDate, toDate, versionCode) }
         call.cacheStatsFor()
         call.respond(stats)
     }
@@ -158,7 +131,10 @@ fun Route.eventRoutes() {
 
         requireAppAccess(appId, user)
 
-        val versions = dbIO { EventRepository.getVersionsForEvent(appId, eventName) }
+        val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
+        val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
+
+        val versions = dbIO { EventRepository.getVersionsForEvent(appId, eventName, fromTime, toTime) }
         call.cacheStatsFor()
         call.respond(versions)
     }
@@ -227,8 +203,10 @@ fun Route.eventRoutes() {
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
+        val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
+        val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
 
-        val stats = dbIO { EventRepository.getDeviceStats(appId, versionCode, limit) }
+        val stats = dbIO { EventRepository.getDeviceStats(appId, versionCode, limit, fromTime, toTime) }
         call.cacheStatsFor()
         call.respond(stats)
     }
@@ -237,12 +215,6 @@ fun Route.eventRoutes() {
 private fun String.toUUIDOrNull(): UUID? = try {
     UUID.fromString(this)
 } catch (e: IllegalArgumentException) {
-    null
-}
-
-private fun String.toOffsetDateTimeOrNull(): OffsetDateTime? = try {
-    OffsetDateTime.parse(this)
-} catch (e: DateTimeParseException) {
     null
 }
 

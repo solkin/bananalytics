@@ -1,15 +1,18 @@
 import { BarList, Card, Empty, Icons, Tooltip, WorldMap, type BarListItem } from '@/ui'
 import type { DeviceStats, DeviceStatItem } from '@/api/events'
-import { countryFlag, countryName, fmtK, isCountryCode } from './format'
+import { androidVersion, countryFlag, countryName, fmtK, isCountryCode } from './format'
 
 /** How many rows the list beside the map shows; the map itself uses them all. */
 const COUNTRY_ROWS = 8
 
 /** Counts to a share-of-total bar list. */
-export function toBars(items: DeviceStatItem[]): BarListItem[] {
+export function toBars(
+  items: DeviceStatItem[],
+  label: (name: string) => string = (n) => n,
+): BarListItem[] {
   const total = items.reduce((s, i) => s + i.count, 0) || 1
   return items.map((i) => ({
-    label: i.name,
+    label: label(i.name),
     value: i.count,
     display: fmtK(i.count),
     secondary: `${Math.round((i.count / total) * 100)}%`,
@@ -37,7 +40,8 @@ const CARDS = [
   {
     key: 'os_versions' as const,
     title: 'OS versions',
-    help: 'Android versions those sessions ran on.',
+    help: 'Android versions those sessions ran on. Devices report an API level; the release it belongs to is shown alongside it.',
+    label: androidVersion,
   },
   {
     key: 'languages' as const,
@@ -109,7 +113,11 @@ export function DistributionCards({ stats }: { stats: DeviceStats }) {
           const items = stats[c.key]
           return (
             <Card key={c.key} title={c.title} extra={<CardHelp text={c.help} />}>
-              {items.length ? <BarList items={toBars(items)} /> : <Empty description="No data yet" />}
+              {items.length ? (
+                <BarList items={toBars(items, c.label)} />
+              ) : (
+                <Empty description="No data yet" />
+              )}
             </Card>
           )
         })}

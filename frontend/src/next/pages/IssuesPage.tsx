@@ -29,7 +29,7 @@ export default function IssuesPage() {
     [appId, days, status, version],
   )
   const stats = useAsync(() => getAppCrashStats(appId!, { ...fromTo(days), version }), [appId, days, version])
-  const crashFree = useAsync(() => getCrashFreeStats(appId!, fromTo(days)), [appId, days])
+  const crashFree = useAsync(() => getCrashFreeStats(appId!, { ...fromTo(days), version }), [appId, days, version])
 
   const series: ChartPoint[] = fillDaily(stats.data ?? [], days)
   const total = (stats.data ?? []).reduce((s, d) => s + d.count, 0)

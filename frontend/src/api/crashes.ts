@@ -105,7 +105,7 @@ export interface SessionVersionStats {
 
 export async function getCrashFreeStats(
   appId: string,
-  options?: { from?: string; to?: string }
+  options?: { from?: string; to?: string; version?: number }
 ): Promise<CrashFreeStats[]> {
   const response = await api.get<CrashFreeStats[]>(`/apps/${appId}/sessions/crash-free`, {
     params: options,

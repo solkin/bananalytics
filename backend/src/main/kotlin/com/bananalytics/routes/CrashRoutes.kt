@@ -25,22 +25,10 @@ fun Route.crashRoutes() {
 
         requireAppAccess(appId, user)
 
-        val fromParam = call.request.queryParameters["from"]
-        val toParam = call.request.queryParameters["to"]
-        
-        val now = java.time.OffsetDateTime.now()
-        val toDate = if (toParam != null) {
-            java.time.OffsetDateTime.parse(toParam)
-        } else {
-            now
-        }
-        val fromDate = if (fromParam != null) {
-            java.time.OffsetDateTime.parse(fromParam)
-        } else {
-            now.minusDays(14)
-        }
+        val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
+        val (fromDate, toDate) = call.dateRange()
 
-        val stats = dbIO { AppSessionRepository.getCrashFreeStats(appId, fromDate, toDate) }
+        val stats = dbIO { AppSessionRepository.getCrashFreeStats(appId, fromDate, toDate, versionCode) }
             .map { CrashFreeStatsResponse(it.date, it.totalSessions, it.crashFreeSessions, it.crashFreeRate) }
         call.cacheStatsFor()
         call.respond(stats)

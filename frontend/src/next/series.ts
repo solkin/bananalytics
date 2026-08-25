@@ -34,3 +34,10 @@ export function versionSeries(rows: VersionRow[], days: number, maxSeries = 6): 
       data: axis.map((d) => ({ label: shortDate(d), value: v.counts.get(d) ?? 0 })),
     }))
 }
+
+/** Keeps only the rows of the selected version; no selection keeps them all.
+ *  The per-version endpoints return every version at once, so a page filter
+ *  narrows the same cached response instead of refetching. */
+export function forVersion<T extends { version_code: number }>(rows: T[], version?: number): T[] {
+  return version == null ? rows : rows.filter((r) => r.version_code === version)
+}

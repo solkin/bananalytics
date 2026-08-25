@@ -32,7 +32,7 @@ import {
   updateCrashGroupStatus,
 } from '@/api/crashes'
 import { useAsync, Loaded, errorText } from '../async'
-import { cap, fillDaily, fmtDateTime, fmtK, fromTo, relTime, versionLabel } from '../format'
+import { androidVersion, cap, fillDaily, fmtDateTime, fmtK, fromTo, relTime, versionLabel } from '../format'
 import { useDetailCrumb } from '../layout/useDetailCrumb'
 import { issueStatusTone } from '../tones'
 import './pages.css'
@@ -121,7 +121,7 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
       column={2}
       items={[
         { label: 'Model', value: `${crash.device_info.manufacturer} ${crash.device_info.model}` },
-        { label: 'OS version', value: `Android ${crash.device_info.os_version}` },
+        { label: 'OS version', value: androidVersion(crash.device_info.os_version) },
         { label: 'Country', value: crash.device_info.country || '—' },
         { label: 'Language', value: crash.device_info.language || '—' },
         { label: 'Thread', value: crash.thread || 'main' },
@@ -245,7 +245,7 @@ export default function IssueDetailPage() {
         {({ group, stats, crashes, total }) => {
           const series: ChartPoint[] = fillDaily(stats, days)
           const devices = rank(crashes, (c) => c.device_info?.model ?? null)
-          const oses = rank(crashes, (c) => (c.device_info ? `Android ${c.device_info.os_version}` : null))
+          const oses = rank(crashes, (c) => (c.device_info ? androidVersion(c.device_info.os_version) : null))
           const selIndex = Math.max(0, crashes.findIndex((c) => c.id === selId))
           const selected = crashes[selIndex] ? patch[crashes[selIndex].id] ?? crashes[selIndex] : null
 

@@ -6,9 +6,10 @@ export type { DailyStat, VersionInfo }
 
 export interface EventSummary {
   name: string
+  /** Occurrences inside the requested range. */
   total: number
-  this_month: number
-  today: number
+  /** Per-day counts inside that range, for the row's trend line. */
+  daily: DailyStat[]
 }
 
 export interface EventVersionStats {
@@ -19,10 +20,10 @@ export interface EventVersionStats {
 
 export async function getEventSummary(
   appId: string,
-  versionCode?: number
+  options?: { version?: number; from?: string; to?: string }
 ): Promise<EventSummary[]> {
   const response = await api.get<EventSummary[]>(`/apps/${appId}/events/summary`, {
-    params: versionCode ? { version: versionCode } : undefined,
+    params: options,
   })
   return response.data
 }
@@ -37,6 +38,8 @@ export async function getEventsByName(
   eventName: string,
   options?: {
     version?: number
+    from?: string
+    to?: string
     page?: number
     pageSize?: number
   }
@@ -50,10 +53,12 @@ export async function getEventsByName(
 
 export async function getEventVersionStats(
   appId: string,
-  eventName: string
+  eventName: string,
+  options?: { from?: string; to?: string }
 ): Promise<EventVersionStats[]> {
   const response = await api.get<EventVersionStats[]>(
-    `/apps/${appId}/events/by-name/${encodeURIComponent(eventName)}/versions`
+    `/apps/${appId}/events/by-name/${encodeURIComponent(eventName)}/versions`,
+    { params: options }
   )
   return response.data
 }
@@ -88,7 +93,7 @@ export async function getEventCount(appId: string): Promise<number> {
 export async function getEventStats(
   appId: string,
   eventName: string,
-  options?: { from?: string; to?: string }
+  options?: { from?: string; to?: string; version?: number }
 ): Promise<DailyStat[]> {
   const response = await api.get<DailyStat[]>(
     `/apps/${appId}/events/by-name/${encodeURIComponent(eventName)}/stats`,
@@ -146,7 +151,7 @@ export interface DeviceStats {
 
 export async function getDeviceStats(
   appId: string,
-  options?: { version?: number; limit?: number }
+  options?: { version?: number; limit?: number; from?: string; to?: string }
 ): Promise<DeviceStats> {
   const response = await api.get<DeviceStats>(`/apps/${appId}/devices/stats`, {
     params: options,

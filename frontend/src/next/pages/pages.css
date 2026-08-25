@@ -31,11 +31,6 @@
 }
 
 /* Controls grouped in a card header */
-.pg-card-extra {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--bnn-sp-3);
-}
 /* Explains the number the card shows — always wrapped in a Tooltip. */
 .pg-help {
   display: inline-flex;

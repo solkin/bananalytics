@@ -16,9 +16,9 @@ import {
   type DescItem,
 } from '@/ui'
 import type { Event } from '@/types'
-import { getEventStats, getEventVersionStats, getEventsByName, type EventVersionStats } from '@/api/events'
+import { getEventStats, getEventVersionStats, getEventVersions, getEventsByName, type EventVersionStats } from '@/api/events'
 import { useAsync, Loaded } from '../async'
-import { fillDaily, fmtDateTime, fmtK, fromTo, versionLabel } from '../format'
+import { androidVersion, fillDaily, fmtDateTime, fmtK, fromTo, versionLabel } from '../format'
 import { useDetailCrumb } from '../layout/useDetailCrumb'
 import './pages.css'
 
@@ -52,7 +52,7 @@ function EventDrawer({ event, onClose }: { event: Event; onClose: () => void }) 
   const device: DescItem[] = event.device_info
     ? [
         { label: 'Model', value: `${event.device_info.manufacturer} ${event.device_info.model}` },
-        { label: 'OS version', value: `Android ${event.device_info.os_version}` },
+        { label: 'OS version', value: androidVersion(event.device_info.os_version) },
         { label: 'Country', value: event.device_info.country || '—' },
         { label: 'Language', value: event.device_info.language || '—' },
       ]
@@ -89,11 +89,14 @@ export default function EventDetailPage() {
   const [page, setPage] = useState(1)
   const [sel, setSel] = useState<Event | null>(null)
 
-  const stats = useAsync(() => getEventStats(appId!, decoded, fromTo(days)), [appId, decoded, days])
-  const byVersion = useAsync(() => getEventVersionStats(appId!, decoded), [appId, decoded])
+  /* One toolbar drives every card below: the chart, the version breakdown and
+     the event list all describe the same slice. */
+  const versions = useAsync(() => getEventVersions(appId!), [appId], { key: `event-versions:${appId}` })
+  const stats = useAsync(() => getEventStats(appId!, decoded, { ...fromTo(days), version }), [appId, decoded, days, version])
+  const byVersion = useAsync(() => getEventVersionStats(appId!, decoded, fromTo(days)), [appId, decoded, days])
   const events = useAsync(
-    () => getEventsByName(appId!, decoded, { version, page, pageSize: PAGE_SIZE }),
-    [appId, decoded, version, page],
+    () => getEventsByName(appId!, decoded, { version, ...fromTo(days), page, pageSize: PAGE_SIZE }),
+    [appId, decoded, version, days, page],
   )
 
   const versionTotal = (byVersion.data ?? []).reduce((s, v) => s + v.count, 0)
@@ -122,19 +125,37 @@ export default function EventDetailPage() {
     <div className="pg">
       <Title level={3}>{decoded}</Title>
 
-      <Card
-        title="Count"
-        extra={
+      <div className="pg-toolbar">
+        <div className="pg-filter">
+          <span className="pg-filter__label">Version</span>
           <Select
-            size="sm"
-            style={{ width: 140 }}
+            style={{ width: 180 }}
+            placeholder="All versions"
+            allowClear
+            value={version ?? null}
+            onChange={(v) => {
+              setVersion(v === '' ? undefined : Number(v))
+              setPage(1)
+            }}
+            options={(versions.data ?? []).map((v) => ({ label: versionLabel(v), value: v.version_code }))}
+          />
+        </div>
+        <div className="pg-filter">
+          <span className="pg-filter__label">Time</span>
+          <Select
+            style={{ width: 150 }}
             value={String(days)}
-            onChange={(v) => setDays(Number(v) || 28)}
+            onChange={(v) => {
+              setDays(Number(v) || 28)
+              setPage(1)
+            }}
             options={DAY_OPTIONS}
           />
-        }
-      >
-        <Loaded state={stats} emptyText="No data for this event yet">
+        </div>
+      </div>
+
+      <Card title="Count">
+        <Loaded state={stats} emptyText="No data for this event in this period">
           {(rows) => {
             const series: ChartPoint[] = fillDaily(rows, days)
             const total = rows.reduce((s, d) => s + d.count, 0)
@@ -156,25 +177,8 @@ export default function EventDetailPage() {
         </Loaded>
       </Card>
 
-      <Card
-        title="Recent events"
-        padded={false}
-        extra={
-          <Select
-            size="sm"
-            style={{ width: 170 }}
-            placeholder="All versions"
-            allowClear
-            value={version ?? null}
-            onChange={(v) => {
-              setVersion(v === '' ? undefined : Number(v))
-              setPage(1)
-            }}
-            options={(byVersion.data ?? []).map((v) => ({ label: versionLabel(v), value: v.version_code }))}
-          />
-        }
-      >
-        <Loaded state={events} emptyText="No events yet">
+      <Card title="Recent events" padded={false}>
+        <Loaded state={events} emptyText="No events in this period">
           {(pageData) => (
             <Table<Event>
               columns={eventColumns}

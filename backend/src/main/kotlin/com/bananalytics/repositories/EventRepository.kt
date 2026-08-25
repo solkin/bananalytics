@@ -6,61 +6,54 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.temporal.ChronoUnit
 import java.util.*
 
 object EventRepository {
 
+    /**
+     * Per-event totals and daily counts over a date range. One pass over the
+     * range gives both, so the table and its trend lines can never disagree.
+     */
     fun getEventSummary(
         appId: UUID,
-        versionCode: Long? = null
+        versionCode: Long? = null,
+        fromDate: OffsetDateTime,
+        toDate: OffsetDateTime
     ): List<EventSummaryResponse> = transaction {
-        val now = OffsetDateTime.now(ZoneOffset.UTC)
-        val startOfDay = now.truncatedTo(ChronoUnit.DAYS)
-        val startOfMonth = now.withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS)
-
-        // Build base condition
-        val baseCondition = if (versionCode != null) {
-            Op.build { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
-        } else {
-            Op.build { Events.appId eq appId }
+        val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
+        val args = buildList {
+            add(Events.appId.columnType to appId)
+            add(Events.createdAt.columnType to fromDate)
+            add(Events.createdAt.columnType to toDate)
+            if (versionCode != null) add(Events.id.columnType to versionCode)
         }
-
-        // Get all unique event names with total count
-        val totals = Events
-            .select(Events.name, Events.name.count())
-            .where { baseCondition }
-            .groupBy(Events.name)
-            .associate { it[Events.name] to it[Events.name.count()] }
-
-        // Get counts for this month
-        val monthCounts = Events
-            .select(Events.name, Events.name.count())
-            .where { baseCondition and (Events.createdAt greaterEq startOfMonth) }
-            .groupBy(Events.name)
-            .associate { it[Events.name] to it[Events.name.count()] }
-
-        // Get counts for today
-        val dayCounts = Events
-            .select(Events.name, Events.name.count())
-            .where { baseCondition and (Events.createdAt greaterEq startOfDay) }
-            .groupBy(Events.name)
-            .associate { it[Events.name] to it[Events.name.count()] }
-
-        totals.map { (name, total) ->
-            EventSummaryResponse(
-                name = name,
-                total = total,
-                thisMonth = monthCounts[name] ?: 0,
-                today = dayCounts[name] ?: 0
-            )
-        }.sortedByDescending { it.total }
+        exec(
+            """
+            SELECT name, (created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*) AS count
+            FROM events
+            WHERE app_id = ? AND created_at >= ? AND created_at <= ? $versionFilter
+            GROUP BY 1, 2
+            ORDER BY 1, 2
+            """.trimIndent(),
+            args
+        ) { rs ->
+            val byName = linkedMapOf<String, MutableList<DailyStat>>()
+            while (rs.next()) {
+                byName.getOrPut(rs.getString("name")) { mutableListOf() }
+                    .add(DailyStat(rs.getString("day"), rs.getLong("count")))
+            }
+            byName
+                .map { (name, days) -> EventSummaryResponse(name, days.sumOf { it.count }, days) }
+                .sortedByDescending { it.total }
+        } ?: emptyList()
     }
 
     fun findByAppIdAndName(
         appId: UUID,
         eventName: String,
         versionCode: Long? = null,
+        fromTime: OffsetDateTime? = null,
+        toTime: OffsetDateTime? = null,
         page: Int = 1,
         pageSize: Int = 50
     ): PaginatedResponse<EventResponse> = transaction {
@@ -68,6 +61,8 @@ object EventRepository {
             .where { (Events.appId eq appId) and (Events.name eq eventName) }
 
         versionCode?.let { query = query.andWhere { Events.versionCode eq it } }
+        fromTime?.let { query = query.andWhere { Events.createdAt greaterEq it } }
+        toTime?.let { query = query.andWhere { Events.createdAt lessEq it } }
 
         val total = query.count()
         val items = query
@@ -82,22 +77,26 @@ object EventRepository {
         appId: UUID,
         eventName: String,
         fromDate: OffsetDateTime,
-        toDate: OffsetDateTime
+        toDate: OffsetDateTime,
+        versionCode: Long? = null
     ): List<DailyStat> = transaction {
+        val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
+        val args = buildList {
+            add(Events.appId.columnType to appId)
+            add(Events.name.columnType to eventName)
+            add(Events.createdAt.columnType to fromDate)
+            add(Events.createdAt.columnType to toDate)
+            if (versionCode != null) add(Events.id.columnType to versionCode)
+        }
         exec(
             """
             SELECT (created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*) AS count
             FROM events
-            WHERE app_id = ? AND name = ? AND created_at >= ? AND created_at <= ?
+            WHERE app_id = ? AND name = ? AND created_at >= ? AND created_at <= ? $versionFilter
             GROUP BY 1
             ORDER BY 1
             """.trimIndent(),
-            listOf(
-                Events.appId.columnType to appId,
-                Events.name.columnType to eventName,
-                Events.createdAt.columnType to fromDate,
-                Events.createdAt.columnType to toDate
-            )
+            args
         ) { rs ->
             val results = mutableListOf<DailyStat>()
             while (rs.next()) {
@@ -107,10 +106,18 @@ object EventRepository {
         } ?: emptyList()
     }
 
-    fun getVersionsForEvent(appId: UUID, eventName: String): List<EventVersionStats> = transaction {
-        val eventVersions = Events
+    fun getVersionsForEvent(
+        appId: UUID,
+        eventName: String,
+        fromTime: OffsetDateTime? = null,
+        toTime: OffsetDateTime? = null
+    ): List<EventVersionStats> = transaction {
+        var scope = Events
             .select(Events.versionCode, Events.versionCode.count())
             .where { (Events.appId eq appId) and (Events.name eq eventName) and Events.versionCode.isNotNull() }
+        fromTime?.let { scope = scope.andWhere { Events.createdAt greaterEq it } }
+        toTime?.let { scope = scope.andWhere { Events.createdAt lessEq it } }
+        val eventVersions = scope
             .groupBy(Events.versionCode)
             .associate { row ->
                 row[Events.versionCode]!! to row[Events.versionCode.count()]
@@ -234,40 +241,52 @@ object EventRepository {
     fun getDeviceStats(
         appId: UUID,
         versionCode: Long? = null,
-        limit: Int = 10
+        limit: Int = 10,
+        fromDate: OffsetDateTime? = null,
+        toDate: OffsetDateTime? = null
     ): DeviceStatsResponse = transaction {
         DeviceStatsResponse(
-            models = topDeviceStats(appId, "model", versionCode, limit),
-            osVersions = topDeviceStats(appId, "os", versionCode, limit) { name ->
-                if (name == "Unknown") name else "Android $name"
-            },
+            models = topDeviceStats(appId, "model", versionCode, limit, fromDate, toDate),
+            // The raw SDK_INT travels as-is: "34" is an API level, not a version
+            // number, and only the UI knows how to name it.
+            osVersions = topDeviceStats(appId, "os", versionCode, limit, fromDate, toDate),
             // The map paints every country it is given, so the country list is
             // not cut to the caller's top-N. There are ~250 ISO codes, a few
             // kilobytes at worst.
-            countries = topDeviceStats(appId, "country", versionCode, maxOf(limit, 300)),
-            languages = topDeviceStats(appId, "language", versionCode, limit)
+            countries = topDeviceStats(appId, "country", versionCode, maxOf(limit, 300), fromDate, toDate),
+            languages = topDeviceStats(appId, "language", versionCode, limit, fromDate, toDate)
         )
     }
+
+    /** The rollup keys days in UTC, so a range in any offset is read there. */
+    private fun OffsetDateTime.utcDay(): String =
+        withOffsetSameInstant(ZoneOffset.UTC).toLocalDate().toString()
 
     private fun Transaction.topDeviceStats(
         appId: UUID,
         dimension: String,
         versionCode: Long?,
         limit: Int,
-        display: (String) -> String = { it }
+        fromDate: OffsetDateTime?,
+        toDate: OffsetDateTime?
     ): List<DeviceStatItem> {
         val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
+        // The rollup buckets by UTC day, so the range is compared as dates.
+        val fromFilter = if (fromDate != null) "AND day >= ?::date" else ""
+        val toFilter = if (toDate != null) "AND day <= ?::date" else ""
         val args = buildList {
             add(Events.appId.columnType to appId)
             add(Events.name.columnType to dimension)
             if (versionCode != null) add(Events.id.columnType to versionCode)
+            fromDate?.let { add(Events.name.columnType to it.utcDay()) }
+            toDate?.let { add(Events.name.columnType to it.utcDay()) }
             add(Events.id.columnType to limit.toLong())
         }
         return exec(
             """
             SELECT name, SUM(count) AS count
             FROM device_stats_daily
-            WHERE app_id = ? AND dimension = ? $versionFilter
+            WHERE app_id = ? AND dimension = ? $versionFilter $fromFilter $toFilter
             GROUP BY name
             ORDER BY count DESC
             LIMIT ?
@@ -276,7 +295,7 @@ object EventRepository {
         ) { rs ->
             val results = mutableListOf<DeviceStatItem>()
             while (rs.next()) {
-                results.add(DeviceStatItem(display(rs.getString("name") ?: "Unknown"), rs.getLong("count")))
+                results.add(DeviceStatItem(rs.getString("name") ?: "Unknown", rs.getLong("count")))
             }
             results
         } ?: emptyList()

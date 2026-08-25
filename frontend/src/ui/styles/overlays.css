@@ -481,3 +481,8 @@
 .bnn-geomap__legend span:last-child {
   margin-left: 2px;
 }
+
+.bnn-sparkline {
+  display: block;
+  overflow: visible;
+}

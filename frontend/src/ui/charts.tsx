@@ -477,3 +477,41 @@ export function BarChart({
     </Svg>
   )
 }
+
+/* ------------------------------------------------------------- Sparkline */
+/** A trend line small enough to live inside a table row: no axes, no labels,
+ *  no hover — the row's own number is the value, this only shows its shape. */
+export function Sparkline({
+  data,
+  width = 88,
+  height = 22,
+  color = 'var(--bnn-chart-1)',
+  className,
+}: {
+  /** Values in chronological order; gaps must already be zero-filled. */
+  data: number[]
+  width?: number
+  height?: number
+  color?: string
+  className?: string
+}) {
+  if (!data.length) return null
+  const max = Math.max(1, ...data)
+  const stepX = data.length > 1 ? width / (data.length - 1) : 0
+  const y = (v: number) => height - 1 - (v / max) * (height - 2)
+  const points = data.map((v, i) => `${(i * stepX).toFixed(1)},${y(v).toFixed(1)}`)
+  const line = `M${points.join('L')}`
+  const area = `${line}L${width},${height}L0,${height}Z`
+  return (
+    <svg
+      className={cn('bnn-sparkline', className)}
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden
+    >
+      <path d={area} fill={color} opacity={0.12} />
+      <path d={line} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+    </svg>
+  )
+}

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { MultiAreaChart, BarChart, Card, Segmented, Statistic, type ChartPoint } from '@/ui'
 import { getDeviceStats, getDailyActivity, getUniqueSessionsByVersion } from '@/api/events'
@@ -6,6 +5,7 @@ import { getCrashFreeStats } from '@/api/crashes'
 import { useAsync, Loaded } from '../async'
 import { CardHelp, DistributionCards } from '../DistributionCards'
 import { fmtK, fromTo, shortDate } from '../format'
+import { useStickyFilters } from '../filters'
 import './pages.css'
 
 function byVersion(rows: { version_code: number; version_name: string | null; count: number }[]): ChartPoint[] {
@@ -19,10 +19,13 @@ function byVersion(rows: { version_code: number; version_name: string | null; co
 
 export default function OverviewPage() {
   const { appId } = useParams()
-  const [range, setRange] = useState(28)
-  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(28)), [appId], { key: `sessions-unique:${appId}:28` })
+  const { get, set } = useStickyFilters(`overview_filters_${appId}`)
+  const range = Number(get('days', '28')) || 28
+  /* Every card on the page reads the same window, so the filter cannot leave
+     part of the page describing a different period. */
+  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(range)), [appId, range], { key: `sessions-unique:${appId}:${range}` })
   const act = useAsync(() => getDailyActivity(appId!, fromTo(range)), [appId, range], { key: `activity:${appId}:${range}` })
-  const dev = useAsync(() => getDeviceStats(appId!, { limit: 6 }), [appId], { key: `device-stats:${appId}:6:all` })
+  const dev = useAsync(() => getDeviceStats(appId!, { limit: 6, ...fromTo(range) }), [appId, range], { key: `device-stats:${appId}:6:${range}` })
   const cf = useAsync(() => getCrashFreeStats(appId!, fromTo(range)), [appId, range], { key: `crash-free:${appId}:${range}` })
 
   const sessRows = sess.data ?? []
@@ -36,24 +39,25 @@ export default function OverviewPage() {
 
   return (
     <div className="pg">
+      <div className="pg-toolbar">
+        <div className="pg-filter">
+          <span className="pg-filter__label">Time</span>
+          <Segmented<number>
+            value={range}
+            onChange={(v) => set({ days: String(v) })}
+            options={[
+              { label: '7d', value: 7 },
+              { label: '28d', value: 28 },
+              { label: '90d', value: 90 },
+              { label: '1y', value: 365 },
+            ]}
+          />
+        </div>
+      </div>
+
       <Card
         title="Active users"
-        extra={
-          <span className="pg-card-extra">
-            <Segmented<number>
-              size="sm"
-              value={range}
-              onChange={setRange}
-              options={[
-                { label: '7d', value: 7 },
-                { label: '28d', value: 28 },
-                { label: '90d', value: 90 },
-                { label: '1y', value: 365 },
-              ]}
-            />
-            <CardHelp text="Distinct devices and sessions per day over the selected period." />
-          </span>
-        }
+        extra={<CardHelp text="Distinct devices and sessions per day over the selected period." />}
       >
         <div className="pg-split">
           <div className="pg-split__chart">
@@ -75,7 +79,7 @@ export default function OverviewPage() {
 
       <Card
         title="Sessions per version"
-        extra={<CardHelp text="Unique sessions in the last 28 days, grouped by app version." />}
+        extra={<CardHelp text={`Unique sessions in the last ${range} days, grouped by app version.`} />}
       >
         <BarChart data={byVersion(sessRows)} color="var(--bnn-warning)" height={220} />
       </Card>

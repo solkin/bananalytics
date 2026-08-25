@@ -70,7 +70,7 @@ export type { MenuItem, TabItem } from './overlays'
 
 export { toast, message, ToastViewport } from './toast'
 
-export { AreaChart, MultiAreaChart, LineChart, BarChart } from './charts'
+export { AreaChart, MultiAreaChart, LineChart, BarChart, Sparkline } from './charts'
 export type { ChartPoint, ChartSeries } from './charts'
 
 export { BarList } from './barlist'

@@ -265,7 +265,8 @@ Submit crash reports from mobile app.
 ### GET /apps/{id}/sessions/crash-free
 Get crash-free session statistics by day.
 
-**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days),
+`version` (filter by version code)
 
 **Response:**
 ```json
@@ -1028,9 +1029,11 @@ Get current user's role for an app.
 ## Events Endpoints
 
 ### GET /apps/{id}/events/summary
-Get aggregated event statistics.
+Get aggregated event statistics over a date range, with per-day counts for
+trend lines.
 
-**Query params:** `version` (filter by version code)
+**Query params:** `version` (filter by version code), `from`, `to` (ISO
+datetime, defaults to last 14 days)
 
 **Response:**
 ```json
@@ -1038,8 +1041,10 @@ Get aggregated event statistics.
   {
     "name": "button_click",
     "total": 15420,
-    "this_month": 3200,
-    "today": 150
+    "daily": [
+      { "date": "2026-01-10", "count": 540 },
+      { "date": "2026-01-11", "count": 610 }
+    ]
   }
 ]
 ```
@@ -1055,7 +1060,7 @@ Get available version codes for filtering.
 ### GET /apps/{id}/events/by-name/{eventName}
 Get events by name with pagination.
 
-**Query params:** `version`, `page`, `pageSize`
+**Query params:** `version`, `from`, `to` (ISO datetime), `page`, `pageSize`
 
 **Response:**
 ```json
@@ -1081,6 +1086,8 @@ Get events by name with pagination.
 ### GET /apps/{id}/events/by-name/{eventName}/versions
 Get version statistics for a specific event.
 
+**Query params:** `from`, `to` (ISO datetime; unset means all time)
+
 **Response:**
 ```json
 [
@@ -1092,7 +1099,8 @@ Get version statistics for a specific event.
 ### GET /apps/{id}/events/by-name/{eventName}/stats
 Get event statistics over time.
 
-**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days)
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days),
+`version` (filter by version code)
 
 **Response:**
 ```json

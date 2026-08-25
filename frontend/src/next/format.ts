@@ -92,3 +92,21 @@ export function countryFlag(code: string): string {
   if (!isCountryCode(code)) return ''
   return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
 }
+
+/* Devices report Build.VERSION.SDK_INT, so the stats carry API levels: "34",
+   not "14". Nobody thinks in API levels, but developers still need them, so
+   both are shown. */
+const ANDROID_RELEASES: Record<number, string> = {
+  16: '4.1', 17: '4.2', 18: '4.3', 19: '4.4', 20: '4.4W', 21: '5.0', 22: '5.1',
+  23: '6.0', 24: '7.0', 25: '7.1', 26: '8.0', 27: '8.1', 28: '9', 29: '10',
+  30: '11', 31: '12', 32: '12L', 33: '13', 34: '14', 35: '15', 36: '16',
+}
+
+/** "34" -> "Android 14 (API 34)". Unknown levels keep the raw number. */
+export function androidVersion(sdk: number | string | null | undefined): string {
+  if (sdk == null || sdk === '') return 'Unknown'
+  const api = Number(sdk)
+  if (!Number.isInteger(api)) return String(sdk)
+  const release = ANDROID_RELEASES[api]
+  return release ? `Android ${release} (API ${api})` : `API ${api}`
+}

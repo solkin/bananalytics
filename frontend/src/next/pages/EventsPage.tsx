@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Card, Icons, Input, MultiAreaChart, Select, Table, Text, type Column } from '@/ui'
+import { Card, Icons, Input, MultiAreaChart, Select, Sparkline, Table, Text, type Column } from '@/ui'
 import { getEventSummary, getEventVersions, getUniqueSessionsByVersion, type EventSummary } from '@/api/events'
 import { useAsync, Loaded } from '../async'
-import { fmtK, fromTo, versionLabel } from '../format'
+import { fillDaily, fmtK, fromTo, versionLabel } from '../format'
 import { useStickyFilters } from '../filters'
-import { versionSeries } from '../series'
+import { forVersion, versionSeries } from '../series'
 import './pages.css'
 
 const DAY_OPTIONS = [
@@ -23,14 +23,22 @@ export default function EventsPage() {
   const version = get('version') ? Number(get('version')) : undefined
 
   const versions = useAsync(() => getEventVersions(appId!), [appId], { key: `event-versions:${appId}` })
-  const state = useAsync(() => getEventSummary(appId!, version), [appId, version], { key: `event-summary:${appId}:${version ?? 'all'}` })
+  const state = useAsync(
+    () => getEventSummary(appId!, { version, ...fromTo(days) }),
+    [appId, version, days],
+    { key: `event-summary:${appId}:${version ?? 'all'}:${days}` },
+  )
   const sessions = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(days)), [appId, days], { key: `sessions-unique:${appId}:${days}` })
 
   const columns: Column<EventSummary>[] = [
     { key: 'name', title: 'Name', render: (r) => <Text mono>{r.name}</Text> },
+    {
+      /* Three raw numbers said less about an event than its shape does; the
+         count is still there, the trend is what ranks it. */
+      key: 'trend', title: 'Trend', width: 120,
+      render: (r) => <Sparkline data={fillDaily(r.daily, days).map((d) => d.value)} />,
+    },
     { key: 'total', title: 'Count', align: 'right', sorter: (a, b) => a.total - b.total, render: (r) => <Text strong>{fmtK(r.total)}</Text> },
-    { key: 'month', title: 'This month', align: 'right', sorter: (a, b) => a.this_month - b.this_month, render: (r) => fmtK(r.this_month) },
-    { key: 'today', title: 'Today', align: 'right', sorter: (a, b) => a.today - b.today, render: (r) => fmtK(r.today) },
   ]
 
   return (
@@ -54,7 +62,7 @@ export default function EventsPage() {
       </div>
 
       <Card title="Unique sessions per version">
-        <MultiAreaChart height={200} series={versionSeries(sessions.data ?? [], days)} />
+        <MultiAreaChart height={200} series={versionSeries(forVersion(sessions.data ?? [], version), days)} />
       </Card>
 
       <Card title="Events" padded={false}>
@@ -68,7 +76,7 @@ export default function EventsPage() {
             onClear={() => setQuery('')}
           />
         </div>
-        <Loaded state={state} emptyText="No events yet">
+        <Loaded state={state} emptyText="No events in this period">
           {(events) => {
             const rows = events.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
             return (

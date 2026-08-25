@@ -220,8 +220,8 @@ data class PaginatedResponse<T>(
 data class EventSummaryResponse(
     val name: String,
     val total: Long,
-    @SerialName("this_month") val thisMonth: Long,
-    val today: Long
+    /** Per-day counts over the requested range, for the row's trend line. */
+    val daily: List<DailyStat>
 )
 
 @Serializable
