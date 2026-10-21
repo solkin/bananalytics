@@ -711,12 +711,12 @@ fun Route.appRoutes() {
 
                 val mapping = mappingFile ?: throw BadRequestException("Mapping file is required")
 
-                val updated = VersionRepository.updateMapping(versionId, mapping)
+                val updated = VersionRepository.updateMapping(appId, versionId, mapping)
                 if (!updated) {
                     throw NotFoundException("Version not found")
                 }
 
-                val version = VersionRepository.findById(versionId)!!
+                val version = VersionRepository.findById(appId, versionId)!!
                 call.respond(version)
             } finally {
                 mappingFile?.delete()
@@ -733,7 +733,7 @@ fun Route.appRoutes() {
 
             call.requireAppAccess(appId, user)
 
-            val version = VersionRepository.findById(versionId)
+            val version = VersionRepository.findById(appId, versionId)
                 ?: throw NotFoundException("Version not found")
 
             val mappingContent = VersionRepository.getMappingContent(appId, version.versionCode)
@@ -762,6 +762,7 @@ fun Route.appRoutes() {
             val request = call.receive<UpdateVersionMuteRequest>()
 
             val updated = VersionRepository.updateMuteSettings(
+                appId,
                 versionId,
                 request.muteCrashes,
                 request.muteEvents
@@ -770,7 +771,7 @@ fun Route.appRoutes() {
                 throw NotFoundException("Version not found")
             }
 
-            val version = VersionRepository.findById(versionId)!!
+            val version = VersionRepository.findById(appId, versionId)!!
             call.respond(version)
         }
 
@@ -805,6 +806,7 @@ fun Route.appRoutes() {
             val request = call.receive<UpdateVersionRequest>()
 
             val updated = VersionRepository.update(
+                appId,
                 versionId,
                 releaseNotes = request.releaseNotes,
                 publishedForTesters = request.publishedForTesters,
@@ -815,7 +817,7 @@ fun Route.appRoutes() {
                 throw NotFoundException("Version not found")
             }
 
-            val version = VersionRepository.findById(versionId)!!
+            val version = VersionRepository.findById(appId, versionId)!!
             call.respond(version)
         }
 
@@ -849,12 +851,12 @@ fun Route.appRoutes() {
 
                 val apk = apkFile ?: throw BadRequestException("APK file is required")
 
-                val updated = VersionRepository.uploadApk(versionId, apk, apkFilename)
+                val updated = VersionRepository.uploadApk(appId, versionId, apk, apkFilename)
                 if (!updated) {
                     throw NotFoundException("Version not found")
                 }
 
-                val version = VersionRepository.findById(versionId)!!
+                val version = VersionRepository.findById(appId, versionId)!!
                 call.respond(version)
             } finally {
                 apkFile?.delete()
@@ -871,7 +873,7 @@ fun Route.appRoutes() {
 
             call.requireAppAccess(appId, user)
 
-            call.respondApk(versionId)
+            call.respondApk(appId, versionId)
         }
 
         // Delete APK
@@ -884,7 +886,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val deleted = VersionRepository.deleteApk(versionId)
+            val deleted = VersionRepository.deleteApk(appId, versionId)
             if (!deleted) {
                 throw NotFoundException("Version not found")
             }
@@ -903,8 +905,9 @@ fun Route.appRoutes() {
             call.requireAppAdmin(appId, user)
 
             // Check if APK exists
-            val apkInfo = VersionRepository.getApkInfo(versionId)
-            if (apkInfo?.first == null) {
+            val apkInfo = VersionRepository.getApkInfo(appId, versionId)
+                ?: throw NotFoundException("Version not found")
+            if (apkInfo.first == null) {
                 throw BadRequestException("No APK uploaded for this version")
             }
 
@@ -968,6 +971,9 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
+            val version = VersionRepository.findById(appId, versionId)
+                ?: throw NotFoundException("Version not found")
+
             if (!EmailService.isConfigured) {
                 throw BadRequestException("SMTP is not configured")
             }
@@ -980,9 +986,6 @@ fun Route.appRoutes() {
 
             val app = AppRepository.findById(appId)
                 ?: throw NotFoundException("App not found")
-
-            val version = VersionRepository.findById(versionId)
-                ?: throw NotFoundException("Version not found")
 
             var sent = 0
             var failed = 0

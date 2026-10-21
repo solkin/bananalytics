@@ -146,10 +146,10 @@ object CrashRepository {
             .sortedByDescending { it.versionCode }
     }
 
-    fun getVersionCodesByGroup(groupId: UUID): List<VersionInfo> = transaction {
+    fun getVersionCodesByGroup(appId: UUID, groupId: UUID): List<VersionInfo> = transaction {
         val crashVersionCodes = Crashes
             .select(Crashes.versionCode)
-            .where { (Crashes.groupId eq groupId) and Crashes.versionCode.isNotNull() }
+            .where { (Crashes.appId eq appId) and (Crashes.groupId eq groupId) and Crashes.versionCode.isNotNull() }
             .withDistinct()
             .mapNotNull { it[Crashes.versionCode] }
             .toSet()
@@ -159,7 +159,7 @@ object CrashRepository {
         // Get version names from AppVersions
         val versionNames = AppVersions
             .select(AppVersions.versionCode, AppVersions.versionName)
-            .where { AppVersions.versionCode inList crashVersionCodes }
+            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode inList crashVersionCodes) }
             .associate { it[AppVersions.versionCode] to it[AppVersions.versionName] }
 
         crashVersionCodes.map { code ->

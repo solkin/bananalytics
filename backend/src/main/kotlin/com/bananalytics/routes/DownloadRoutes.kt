@@ -9,7 +9,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.InputStream
 import java.util.*
 
 private val APK_CONTENT_TYPE = ContentType.parse("application/vnd.android.package-archive")
@@ -23,7 +22,7 @@ fun Route.downloadRoutes() {
         val tokenInfo = DownloadTokenRepository.findValidByToken(token)
             ?: throw NotFoundException("Invalid or expired download link")
 
-        call.respondApk(tokenInfo.versionId)
+        call.respondApk(tokenInfo.appId, tokenInfo.versionId)
     }
 }
 
@@ -32,14 +31,14 @@ fun Route.downloadRoutes() {
  * megabytes, so it is streamed rather than read into memory — otherwise every
  * concurrent tester download would cost another copy of it in heap.
  */
-internal suspend fun ApplicationCall.respondApk(versionId: UUID) {
-    val apkInfo = VersionRepository.getApkInfo(versionId)
+internal suspend fun ApplicationCall.respondApk(appId: UUID, versionId: UUID) {
+    val apkInfo = VersionRepository.getApkInfo(appId, versionId)
         ?: throw NotFoundException("Version not found")
     if (apkInfo.first == null) {
         throw NotFoundException("APK not found")
     }
 
-    val stream = VersionRepository.openApk(versionId)
+    val stream = VersionRepository.openApk(appId, versionId)
         ?: throw NotFoundException("APK not found")
 
     response.header(

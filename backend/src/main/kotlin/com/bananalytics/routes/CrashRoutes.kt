@@ -182,7 +182,7 @@ fun Route.crashRoutes() {
 
         requireAppAccess(UUID.fromString(group.appId), user)
 
-        val versions = CrashRepository.getVersionCodesByGroup(id)
+        val versions = CrashRepository.getVersionCodesByGroup(UUID.fromString(group.appId), id)
         call.respond(versions)
     }
 

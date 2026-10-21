@@ -26,9 +26,9 @@ object VersionRepository {
             .map { it.toVersionResponse() }
     }
 
-    fun findById(id: UUID): AppVersionResponse? = transaction {
+    fun findById(appId: UUID, id: UUID): AppVersionResponse? = transaction {
         AppVersions.selectAll()
-            .where { AppVersions.id eq id }
+            .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
             .singleOrNull()
             ?.toVersionResponse()
     }
@@ -182,7 +182,7 @@ object VersionRepository {
                     it[AppVersions.createdAt] = now
                 }
             } else {
-                AppVersions.update({ AppVersions.id eq existingId }) {
+                AppVersions.update({ (AppVersions.id eq existingId) and (AppVersions.appId eq appId) }) {
                     versionName?.let { value -> it[AppVersions.versionName] = value }
                     mappingPath?.let { value -> it[AppVersions.mappingPath] = value }
                     releaseNotes?.let { value -> it[AppVersions.releaseNotes] = value }
@@ -201,23 +201,22 @@ object VersionRepository {
         }
     }
 
-    fun updateMapping(id: UUID, mappingFile: File): Boolean {
-        // First get the version to know appId and versionCode
+    fun updateMapping(appId: UUID, id: UUID, mappingFile: File): Boolean {
+        // Check ownership before accessing storage.
         val version = transaction {
             AppVersions.selectAll()
-                .where { AppVersions.id eq id }
+                .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
                 .singleOrNull()
         } ?: return false
 
-        val appId = version[AppVersions.appId].value.toString()
         val versionCode = version[AppVersions.versionCode]
 
         // Upload to S3
-        val mappingPath = StorageService.uploadMapping(appId, versionCode, mappingFile)
+        val mappingPath = StorageService.uploadMapping(appId.toString(), versionCode, mappingFile)
 
         // Update path in database
         return transaction {
-            AppVersions.update({ AppVersions.id eq id }) {
+            AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
                 it[AppVersions.mappingPath] = mappingPath
             } > 0
         }
@@ -264,7 +263,7 @@ object VersionRepository {
             AppSessions.deleteWhere { (AppSessions.appId eq appId) and (AppSessions.versionCode eq versionCode) }
 
             // Delete the version record
-            AppVersions.deleteWhere { AppVersions.id eq id } > 0
+            AppVersions.deleteWhere { (AppVersions.id eq id) and (AppVersions.appId eq appId) } > 0
         }
         val databaseDurationMs = (System.nanoTime() - databaseStartedAt) / 1_000_000
 
@@ -275,21 +274,22 @@ object VersionRepository {
         return deleted
     }
 
-    fun updateMuteSettings(id: UUID, muteCrashes: Boolean?, muteEvents: Boolean?): Boolean = transaction {
-        AppVersions.update({ AppVersions.id eq id }) {
+    fun updateMuteSettings(appId: UUID, id: UUID, muteCrashes: Boolean?, muteEvents: Boolean?): Boolean = transaction {
+        AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
             muteCrashes?.let { value -> it[AppVersions.muteCrashes] = value }
             muteEvents?.let { value -> it[AppVersions.muteEvents] = value }
         } > 0
     }
 
     fun update(
+        appId: UUID,
         id: UUID,
         releaseNotes: String? = null,
         publishedForTesters: Boolean? = null,
         muteCrashes: Boolean? = null,
         muteEvents: Boolean? = null
     ): Boolean = transaction {
-        AppVersions.update({ AppVersions.id eq id }) {
+        AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
             releaseNotes?.let { value -> it[AppVersions.releaseNotes] = value }
             publishedForTesters?.let { value -> it[AppVersions.publishedForTesters] = value }
             muteCrashes?.let { value -> it[AppVersions.muteCrashes] = value }
@@ -297,20 +297,19 @@ object VersionRepository {
         } > 0
     }
 
-    fun uploadApk(id: UUID, apkFile: File, apkFilename: String): Boolean {
+    fun uploadApk(appId: UUID, id: UUID, apkFile: File, apkFilename: String): Boolean {
         val version = transaction {
             AppVersions.selectAll()
-                .where { AppVersions.id eq id }
+                .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
                 .singleOrNull()
         } ?: return false
 
-        val appId = version[AppVersions.appId].value.toString()
         val versionCode = version[AppVersions.versionCode]
 
-        val apkPath = StorageService.uploadApk(appId, versionCode, apkFile)
+        val apkPath = StorageService.uploadApk(appId.toString(), versionCode, apkFile)
 
         return transaction {
-            AppVersions.update({ AppVersions.id eq id }) {
+            AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
                 it[AppVersions.apkPath] = apkPath
                 it[AppVersions.apkSize] = apkFile.length()
                 it[AppVersions.apkFilename] = apkFilename
@@ -320,40 +319,37 @@ object VersionRepository {
     }
 
     /** Opens the stored APK for streaming; the caller must close the stream. */
-    fun openApk(id: UUID): InputStream? {
+    fun openApk(appId: UUID, id: UUID): InputStream? {
         val apkPath = transaction {
             AppVersions.select(AppVersions.apkPath)
-                .where { AppVersions.id eq id }
+                .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
                 .singleOrNull()
                 ?.get(AppVersions.apkPath)
         }
         return apkPath?.let { StorageService.openApk(it) }
     }
 
-    fun getApkInfo(id: UUID): Triple<String?, Long?, String?>? = transaction {
+    fun getApkInfo(appId: UUID, id: UUID): Triple<String?, Long?, String?>? = transaction {
         AppVersions.select(AppVersions.apkPath, AppVersions.apkSize, AppVersions.apkFilename)
-            .where { AppVersions.id eq id }
+            .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
             .singleOrNull()
             ?.let {
                 Triple(it[AppVersions.apkPath], it[AppVersions.apkSize], it[AppVersions.apkFilename])
             }
     }
 
-    fun deleteApk(id: UUID): Boolean {
+    fun deleteApk(appId: UUID, id: UUID): Boolean {
         val version = transaction {
             AppVersions.selectAll()
-                .where { AppVersions.id eq id }
+                .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
                 .singleOrNull()
-        }
+        } ?: return false
 
-        version?.let {
-            val appId = it[AppVersions.appId].value.toString()
-            val versionCode = it[AppVersions.versionCode]
-            StorageService.deleteApk(appId, versionCode)
-        }
+        val versionCode = version[AppVersions.versionCode]
+        StorageService.deleteApk(appId.toString(), versionCode)
 
         return transaction {
-            AppVersions.update({ AppVersions.id eq id }) {
+            AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
                 it[AppVersions.apkPath] = null
                 it[AppVersions.apkSize] = null
                 it[AppVersions.apkFilename] = null
