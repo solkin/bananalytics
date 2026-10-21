@@ -256,6 +256,13 @@ data class RetraceRequest(
 // ============ Session Stats DTOs ============
 
 @Serializable
+data class SessionOverviewResponse(
+    val activity: List<DailyActivityResponse>,
+    val versions: List<SessionVersionStats>,
+    @SerialName("crash_free") val crashFree: List<CrashFreeStatsResponse>
+)
+
+@Serializable
 data class CrashFreeStatsResponse(
     val date: String,
     @SerialName("total_sessions") val totalSessions: Long,

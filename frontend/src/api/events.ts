@@ -1,6 +1,7 @@
 import api from './client'
 import type { Event, PaginatedResponse } from '@/types'
 import type { DailyStat, VersionInfo } from './crashes'
+import type { CrashFreeStats } from './crashes'
 
 export type { DailyStat, VersionInfo }
 
@@ -103,6 +104,17 @@ export async function getEventStats(
 }
 
 // Session statistics
+export interface SessionOverview {
+  activity: DailyActivityStat[]
+  versions: SessionVersionStats[]
+  crash_free: CrashFreeStats[]
+}
+
+export async function getSessionOverview(appId: string, options: { from: string; to: string }): Promise<SessionOverview> {
+  const response = await api.get<SessionOverview>(`/apps/${appId}/sessions/overview`, { params: options })
+  return response.data
+}
+
 export interface SessionVersionStats {
   date: string
   version_code: number

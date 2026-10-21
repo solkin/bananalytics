@@ -169,6 +169,7 @@ object AppRepository {
             if (Apps.deleteWhere { Apps.id eq id } == 0) return@transaction false
 
             Events.deleteWhere { Events.appId eq id }
+            exec("DELETE FROM event_stats_daily WHERE app_id = '$id'::uuid")
             exec("DELETE FROM device_stats_daily WHERE app_id = '$id'::uuid")
             true
         }

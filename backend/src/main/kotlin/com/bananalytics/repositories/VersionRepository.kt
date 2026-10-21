@@ -252,6 +252,8 @@ object VersionRepository {
             // Delete events for this app and version_code
             Events.deleteWhere { (Events.appId eq appId) and (Events.versionCode eq versionCode) }
 
+            exec("DELETE FROM event_stats_daily WHERE app_id = '$appId'::uuid AND version_code = $versionCode")
+
             // Keep pre-aggregated device statistics consistent with raw events.
             exec(
                 "DELETE FROM device_stats_daily " +

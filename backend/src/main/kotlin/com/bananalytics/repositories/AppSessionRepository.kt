@@ -2,6 +2,11 @@ package com.bananalytics.repositories
 
 import com.bananalytics.models.AppSessions
 import com.bananalytics.models.Events
+import com.bananalytics.models.AppVersions
+import com.bananalytics.models.CrashFreeStatsResponse
+import com.bananalytics.models.DailyActivityResponse
+import com.bananalytics.models.SessionOverviewResponse
+import com.bananalytics.models.SessionVersionStats
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
@@ -28,6 +33,53 @@ data class DailyActivityStats(
 )
 
 object AppSessionRepository {
+
+    /** One scan for the three session cards. Daily users span all versions. */
+    fun getOverview(appId: UUID, fromDate: OffsetDateTime, toDate: OffsetDateTime): SessionOverviewResponse = transaction {
+        // Device identifiers use byte identity, so avoid locale-aware comparisons.
+        exec("SET LOCAL work_mem = '64MB'")
+        exec("SET LOCAL plan_cache_mode = force_custom_plan")
+        val names = AppVersions.select(AppVersions.versionCode, AppVersions.versionName)
+            .where { AppVersions.appId eq appId }
+            .associate { it[AppVersions.versionCode] to it[AppVersions.versionName] }
+        exec(
+            """
+            SELECT (first_seen AT TIME ZONE 'UTC')::date AS day, version_code,
+                   GROUPING(version_code) AS daily,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE NOT has_crash) AS crash_free,
+                   COUNT(*) FILTER (WHERE has_event) AS sessions,
+                   COUNT(DISTINCT device_id COLLATE "C") FILTER (WHERE has_event) AS users
+            FROM app_sessions
+            WHERE app_id = ? AND first_seen >= ? AND first_seen <= ?
+            GROUP BY GROUPING SETS ((1), (1, version_code))
+            ORDER BY 1, version_code
+            """.trimIndent(),
+            listOf(
+                Events.appId.columnType to appId,
+                AppSessions.firstSeen.columnType to fromDate,
+                AppSessions.firstSeen.columnType to toDate
+            )
+        ) { rs ->
+            val activity = mutableListOf<DailyActivityResponse>()
+            val versions = mutableListOf<SessionVersionStats>()
+            val crashFree = mutableListOf<CrashFreeStatsResponse>()
+            while (rs.next()) {
+                val day = rs.getString("day")
+                val sessions = rs.getLong("sessions")
+                if (rs.getInt("daily") == 1) {
+                    if (sessions > 0) activity.add(DailyActivityResponse(day, sessions, rs.getLong("users")))
+                    val total = rs.getLong("total")
+                    val free = rs.getLong("crash_free")
+                    crashFree.add(CrashFreeStatsResponse(day, total, free, free.toDouble() / total * 100))
+                } else if (sessions > 0) {
+                    val version = rs.getLong("version_code")
+                    versions.add(SessionVersionStats(day, version, names[version], sessions))
+                }
+            }
+            SessionOverviewResponse(activity, versions, crashFree)
+        } ?: SessionOverviewResponse(emptyList(), emptyList(), emptyList())
+    }
 
     /**
      * Record or update a session. Returns true if new session was created.
@@ -180,7 +232,7 @@ object AppSessionRepository {
             """
             SELECT (first_seen AT TIME ZONE 'UTC')::date AS day,
                    COUNT(*) AS sessions,
-                   COUNT(DISTINCT device_id) AS users
+                   COUNT(DISTINCT device_id COLLATE "C") AS users
             FROM app_sessions
             WHERE app_id = ? AND first_seen >= ? AND first_seen <= ? AND has_event
             GROUP BY 1

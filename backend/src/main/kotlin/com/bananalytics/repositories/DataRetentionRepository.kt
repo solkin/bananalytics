@@ -56,17 +56,15 @@ object DataRetentionRepository {
             deleted += deleteBatch(
                 table = partition,
                 where = "app_id = '$appId'::uuid AND created_at < '$cutoff'::timestamptz",
-                limit = limit - deleted.toInt()
+                limit = limit - deleted.toInt(),
+                eventCounters = true
             )
         }
 
-        if (deleted < limit) exec(
-            """
-            DELETE FROM device_stats_daily
-            WHERE app_id = '$appId'::uuid
-              AND day < '${cutoff.toLocalDate()}'::date
-            """.trimIndent()
-        )
+        if (deleted < limit) {
+            exec("DELETE FROM device_stats_daily WHERE app_id = '$appId'::uuid AND count = 0")
+            exec("DELETE FROM event_stats_daily WHERE app_id = '$appId'::uuid AND count = 0")
+        }
         deleted
     }
 
@@ -102,8 +100,35 @@ object DataRetentionRepository {
      * a batch picks is left unordered on purpose: ordering them by age makes the
      * planner read *every* matching row and sort it before applying the limit.
      */
-    private fun Transaction.deleteBatch(table: String, where: String, limit: Int): Long =
-        exec(
+    private fun Transaction.deleteBatch(table: String, where: String, limit: Int, eventCounters: Boolean = false): Long {
+        val returning = if (eventCounters) "app_id, version_code, name, created_at, device_info" else "1"
+        // Match ingest's lock order: event counters, then device counters;
+        // within each table visit keys in the same order as concurrent batches.
+        val counters = if (eventCounters) """
+            , adjusted AS (
+                INSERT INTO event_stats_daily (app_id, day, version_code, name, count)
+                SELECT app_id, (created_at AT TIME ZONE 'UTC')::date AS day, version_code, name, -COUNT(*)
+                FROM deleted GROUP BY 1, 2, 3, 4 ORDER BY 2, 3, 4
+                ON CONFLICT (app_id, day, version_code, name)
+                DO UPDATE SET count = event_stats_daily.count + EXCLUDED.count
+                RETURNING 1
+            ), adjusted_devices AS (
+                INSERT INTO device_stats_daily (app_id, day, version_code, dimension, name, count)
+                SELECT app_id, (created_at AT TIME ZONE 'UTC')::date AS day,
+                       COALESCE(version_code, -1) AS version_code, dimension, value AS name, -COUNT(*)
+                FROM deleted CROSS JOIN LATERAL (VALUES
+                    ('model', COALESCE(NULLIF(TRIM(CONCAT(device_info->>'manufacturer', ' ', device_info->>'model')), ''), 'Unknown')),
+                    ('os', COALESCE(NULLIF(device_info->>'os_version', ''), 'Unknown')),
+                    ('country', COALESCE(NULLIF(UPPER(device_info->>'country'), ''), 'Unknown')),
+                    ('language', COALESCE(NULLIF(device_info->>'language', ''), 'Unknown'))
+                ) dimensions(dimension, value)
+                WHERE device_info IS NOT NULL AND (SELECT COUNT(*) FROM adjusted) >= 0
+                GROUP BY 1, 2, 3, 4, 5 ORDER BY 2, 4, 3, 5
+                ON CONFLICT (app_id, dimension, version_code, day, name)
+                DO UPDATE SET count = device_stats_daily.count + EXCLUDED.count
+            )
+        """.trimIndent() else ""
+        return exec(
             """
             WITH batch AS (
                 SELECT ctid
@@ -114,8 +139,8 @@ object DataRetentionRepository {
                 DELETE FROM $table AS target
                 USING batch
                 WHERE target.ctid = batch.ctid
-                RETURNING 1
-            )
+                RETURNING $returning
+            ) $counters
             SELECT COUNT(*) AS deleted FROM deleted
             """.trimIndent(),
             emptyList(),
@@ -123,4 +148,5 @@ object DataRetentionRepository {
         ) { result ->
             if (result.next()) result.getLong("deleted") else 0L
         } ?: 0L
+    }
 }

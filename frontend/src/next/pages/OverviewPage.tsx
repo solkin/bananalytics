@@ -1,7 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { MultiAreaChart, BarChart, Card, Segmented, Statistic, type ChartPoint } from '@/ui'
-import { getDeviceStats, getDailyActivity, getUniqueSessionsByVersion } from '@/api/events'
-import { getCrashFreeStats } from '@/api/crashes'
+import { getDeviceStats, getSessionOverview } from '@/api/events'
 import { useAsync, Loaded } from '../async'
 import { CardHelp, DistributionCards } from '../DistributionCards'
 import { fmtK, fromTo, shortDate } from '../format'
@@ -23,16 +22,14 @@ export default function OverviewPage() {
   const range = Number(get('days', '28')) || 28
   /* Every card on the page reads the same window, so the filter cannot leave
      part of the page describing a different period. */
-  const sess = useAsync(() => getUniqueSessionsByVersion(appId!, fromTo(range)), [appId, range], { key: `sessions-unique:${appId}:${range}` })
-  const act = useAsync(() => getDailyActivity(appId!, fromTo(range)), [appId, range], { key: `activity:${appId}:${range}` })
+  const sessions = useAsync(() => getSessionOverview(appId!, fromTo(range)), [appId, range], { key: `sessions-overview:${appId}:${range}` })
   const dev = useAsync(() => getDeviceStats(appId!, { limit: 6, ...fromTo(range) }), [appId, range], { key: `device-stats:${appId}:6:${range}` })
-  const cf = useAsync(() => getCrashFreeStats(appId!, fromTo(range)), [appId, range], { key: `crash-free:${appId}:${range}` })
 
-  const sessRows = sess.data ?? []
-  const actRows = act.data ?? []
+  const sessRows = sessions.data?.versions ?? []
+  const actRows = sessions.data?.activity ?? []
   const usersSeries = actRows.map((r) => ({ label: shortDate(r.date), value: r.users }))
   const sessionsSeries = actRows.map((r) => ({ label: shortDate(r.date), value: r.sessions }))
-  const cfRows = cf.data ?? []
+  const cfRows = sessions.data?.crash_free ?? []
   const rangeSessions = actRows.reduce((s, r) => s + r.sessions, 0)
   const totalSessions = cfRows.reduce((s, r) => s + r.total_sessions, 0)
   const crashFree = cfRows.length ? `${cfRows[cfRows.length - 1].crash_free_rate.toFixed(1)}%` : '—'

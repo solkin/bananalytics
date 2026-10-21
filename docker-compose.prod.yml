@@ -6,6 +6,17 @@ services:
     image: postgres:16-alpine
     container_name: bananalytics-postgres
     restart: unless-stopped
+    shm_size: 1gb
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-2GB}
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-8GB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-16MB}
+      - -c
+      - max_wal_size=2GB
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bananalytics}
       POSTGRES_USER: ${POSTGRES_USER:-bananalytics}

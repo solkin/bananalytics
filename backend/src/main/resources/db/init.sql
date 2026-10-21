@@ -159,7 +159,7 @@ BEGIN
     FOR i IN 0..2 LOOP
         partition_date := DATE_TRUNC('month', CURRENT_DATE + (i || ' months')::INTERVAL);
         partition_name := 'events_' || TO_CHAR(partition_date, 'YYYY_MM');
-        start_date := partition_date AT TIME ZONE 'UTC';
+        start_date := partition_date::timestamp AT TIME ZONE 'UTC';
         end_date := (partition_date + INTERVAL '1 month') AT TIME ZONE 'UTC';
 
         IF NOT EXISTS (

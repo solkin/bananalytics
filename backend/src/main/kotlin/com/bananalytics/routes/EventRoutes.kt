@@ -12,6 +12,17 @@ import io.ktor.server.routing.*
 import java.util.*
 
 fun Route.eventRoutes() {
+    get("/apps/{appId}/sessions/overview") {
+        val user = call.getUser()
+        val appId = call.parameters["appId"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid app ID")
+        requireAppAccess(appId, user)
+        val (fromDate, toDate) = call.dateRange()
+        val stats = dbIO { AppSessionRepository.getOverview(appId, fromDate, toDate) }
+        call.cacheStatsFor()
+        call.respond(stats)
+    }
+
     // Get unique sessions by version
     get("/apps/{appId}/sessions/unique") {
         val user = call.getUser()

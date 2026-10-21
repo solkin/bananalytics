@@ -53,6 +53,30 @@ docker compose -f docker-compose.prod.yml up -d
 
 The production setup uses Nginx as a reverse proxy. Only the `bananalytics-nginx` container is exposed to the `reverseproxy` network. Connect your main HTTPS server to proxy requests to it.
 
+PostgreSQL production defaults reserve 2 GB for shared buffers and allow 16 MB
+per sort/hash operation. For smaller hosts, override `POSTGRES_SHARED_BUFFERS`,
+`POSTGRES_EFFECTIVE_CACHE_SIZE` and `POSTGRES_WORK_MEM` in `.env`.
+
+Migration `015_analytics_rollups` backfills daily event counts. Build the images
+first, then stop the backend before applying this migration; leave it stopped
+until the new backend starts. Old backend images do not maintain these counters.
+The backfill is transactional and does not modify raw events. If reverting to an
+old image, rebuild `event_stats_daily` from raw events before upgrading again.
+
+Migration `016_session_covering_index` replaces the session date index with a
+covering index. For an online upgrade, create/drop these indexes with
+`CONCURRENTLY` outside the migration transaction, then record the migration as
+applied. Run `VACUUM (ANALYZE, TRUNCATE FALSE) app_sessions` to refresh the visibility
+map after retention; this allows analytics to use index-only scans.
+
+Analytics integration tests require a disposable PostgreSQL 16 database named
+`bananalytics_test` (the test suite resets its public schema):
+
+```bash
+TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:55432/bananalytics_test \
+TEST_DATABASE_PASSWORD=perf-local gradle -p backend test
+```
+
 ## Configuration
 
 | Variable | Description | Default |

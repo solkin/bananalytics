@@ -262,6 +262,16 @@ Submit crash reports from mobile app.
 
 ## Session Endpoints
 
+### GET /apps/{id}/sessions/overview
+Get the Overview session cards in one database pass.
+
+**Query params:** `from`, `to` (ISO datetime, defaults to last 14 days).
+
+**Response:** an object with `activity` (daily `date`, `sessions`, `users`),
+`versions` (the same rows as `/sessions/unique`) and `crash_free` (the same rows
+as `/sessions/crash-free`). Daily users are distinct across all app versions;
+sessions without events still contribute to crash-free statistics.
+
 ### GET /apps/{id}/sessions/crash-free
 Get crash-free session statistics by day.
 
