@@ -32,6 +32,7 @@ export function Button({
   className,
   children,
   disabled,
+  type = 'button',
   ...rest
 }: ButtonProps) {
   return (
@@ -44,15 +45,16 @@ export function Button({
         loading && 'is-loading',
         className,
       )}
+      type={type}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? (
-        <span className="bnn-btn__spinner" aria-hidden />
-      ) : icon ? (
-        <span className="bnn-btn__icon">{icon}</span>
-      ) : null}
-      {children != null && <span className="bnn-btn__label">{children}</span>}
+      <span className="bnn-btn__content">
+        {icon && <span className="bnn-btn__icon" aria-hidden>{icon}</span>}
+        {children != null && <span className="bnn-btn__label">{children}</span>}
+      </span>
+      {loading && <span className="bnn-btn__spinner" aria-hidden />}
     </button>
   )
 }
@@ -268,8 +270,8 @@ export function Statistic({
   prefix?: ReactNode
   trend?: ReactNode
   trendTone?: 'up' | 'down'
-  /** `kpi` is the headline readout next to a chart: label set in small caps,
-   *  value large and in the primary colour. */
+  /** `kpi` is the headline readout next to a chart: a readable label,
+   *  value large and neutral. */
   variant?: 'default' | 'kpi'
   className?: string
 }) {

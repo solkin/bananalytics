@@ -341,27 +341,27 @@ function ReleaseDrawer({
 
         <Divider>Settings</Divider>
         <div className="rel-toggles">
-          <div className="rel-toggles__row">
+          <label className="rel-toggles__row">
             <div>
               <Text strong>Published for testers</Text>
               <div><Text type="tertiary" size="sm">Visible on the install page for testers.</Text></div>
             </div>
             <Switch checked={version.published_for_testers} onChange={togglePublished} />
-          </div>
-          <div className="rel-toggles__row">
+          </label>
+          <label className="rel-toggles__row">
             <div>
               <Text strong>Crash reporting</Text>
               <div><Text type="tertiary" size="sm">Accept crash reports from this version.</Text></div>
             </div>
             <Switch checked={!version.mute_crashes} onChange={(on) => void apply({ mute_crashes: !on }, 'Settings updated')} />
-          </div>
-          <div className="rel-toggles__row">
+          </label>
+          <label className="rel-toggles__row">
             <div>
               <Text strong>Analytics events</Text>
               <div><Text type="tertiary" size="sm">Accept analytics events from this version.</Text></div>
             </div>
             <Switch checked={!version.mute_events} onChange={(on) => void apply({ mute_events: !on }, 'Settings updated')} />
-          </div>
+          </label>
         </div>
 
         <Divider>Release notes</Divider>
@@ -538,8 +538,8 @@ function ReleasesList() {
         </div>
       ),
     },
-    { key: 'date', title: 'Created', align: 'right', sorter: (a, b) => a.created_at.localeCompare(b.created_at), render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
-    { key: 'size', title: 'APK', align: 'right', render: (r) => <Text type="secondary">{r.has_apk ? fmtBytes(r.apk_size) : 'No APK'}</Text> },
+    { key: 'date', title: 'Created', width: 100, align: 'right', sorter: (a, b) => a.created_at.localeCompare(b.created_at), render: (r) => <Text type="secondary">{shortDate(r.created_at)}</Text> },
+    { key: 'size', title: 'APK', width: 100, align: 'right', render: (r) => <Text type="secondary">{r.has_apk ? fmtBytes(r.apk_size) : 'No APK'}</Text> },
     { key: 'mapping', title: 'Mapping', align: 'right', render: (r) => <Tag tone={mappingTone(r.has_mapping)}>{r.has_mapping ? 'Available' : 'Missing'}</Tag> },
     { key: 'status', title: 'Status', align: 'right', render: (r) => <Tag tone={r.published_for_testers ? 'primary' : 'neutral'}>{r.published_for_testers ? 'Published' : 'Draft'}</Tag> },
     {

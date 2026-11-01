@@ -54,7 +54,7 @@
 }
 .kit-nav__link:hover {
   background: var(--bnn-primary-soft);
-  color: var(--bnn-primary);
+  color: var(--bnn-primary-strong);
 }
 .kit-nav__link:active {
   background: var(--bnn-primary-soft-strong);
@@ -88,7 +88,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--bnn-sp-3);
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: var(--bnn-sp-3);
 }
 .kit-section > .bnn-card {
@@ -141,11 +141,41 @@
   .kit-topbar__right .bnn-tag {
     display: none;
   }
-  .bnn-navmenu__label {
+  .kit .bnn-navmenu__label {
     display: none;
   }
-  .bnn-navmenu__item {
+  .kit .bnn-navmenu__item {
     padding: 0 9px;
     gap: 0;
   }
+}
+
+.kit-state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+  gap: var(--bnn-sp-3);
+  margin-bottom: var(--bnn-sp-3);
+}
+.kit-control-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--bnn-sp-2);
+  margin-top: var(--bnn-sp-3);
+}
+.kit-control-row > .bnn-input,
+.kit-control-row > .bnn-select {
+  flex: 1 1 100px;
+  min-width: 0;
+}
+.kit-row:not(:has(> .bnn-card)) {
+  align-items: center;
+}
+
+.kit-state-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--bnn-sp-2);
 }

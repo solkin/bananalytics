@@ -1,14 +1,22 @@
 /* Copyable code block (shared by Getting started & Docs). */
 .cb {
-  position: relative;
+  min-width: 0;
   margin: var(--bnn-sp-3) 0;
+  background: var(--bnn-surface-alt);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+  overflow: hidden;
+}
+.cb__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--bnn-sp-2);
+  border-bottom: 1px solid var(--bnn-border);
 }
 .cb pre.stacktrace {
-  padding-right: 84px;
-}
-/* Only the placement is local — the button itself is the kit's. */
-.cb__copy {
-  position: absolute;
-  top: var(--bnn-sp-2);
-  right: var(--bnn-sp-2);
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  white-space: pre;
+  word-break: normal;
 }

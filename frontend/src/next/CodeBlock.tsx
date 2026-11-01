@@ -8,9 +8,11 @@ export function CodeBlock({ code }: { code: string }) {
   }
   return (
     <div className="cb">
-      <Button className="cb__copy" size="sm" icon={<Icons.IconCopy size={13} />} onClick={copy}>
-        Copy
-      </Button>
+      <div className="cb__toolbar">
+        <Button size="sm" icon={<Icons.IconCopy size={13} />} onClick={copy}>
+          Copy
+        </Button>
+      </div>
       <pre className="stacktrace">{code}</pre>
     </div>
   )

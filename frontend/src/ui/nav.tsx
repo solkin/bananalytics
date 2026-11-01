@@ -30,6 +30,7 @@ export function NavMenu({
           key={it.key}
           type="button"
           role="tab"
+          aria-label={typeof it.label === 'string' ? it.label : undefined}
           aria-selected={it.key === activeKey}
           disabled={it.disabled}
           className={cn(

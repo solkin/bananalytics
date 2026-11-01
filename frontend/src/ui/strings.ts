@@ -1,0 +1,15 @@
+export const uiStrings = {
+  accountMenu: 'Account menu',
+  clear: 'Clear',
+  delete: 'Delete',
+  close: 'Close',
+  showPassword: 'Show password',
+  hidePassword: 'Hide password',
+  show: 'Show',
+  hide: 'Hide',
+  select: 'Select…',
+  noOptions: 'No options',
+  previousPage: 'Previous page',
+  nextPage: 'Next page',
+  upload: 'Click or drag file to this area to upload',
+}

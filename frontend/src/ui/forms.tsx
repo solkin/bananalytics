@@ -1,17 +1,18 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useId,
   useRef,
   useState,
   type InputHTMLAttributes,
+  type AriaAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
 } from 'react'
 import { cn } from './primitives'
-import { IconCheck, IconChevronDown, IconClose, IconUpload } from './Icon'
-import { Portal, useDismiss } from './portal'
+import { IconCheck, IconClose, IconUpload } from './Icon'
+import { FieldContext, useField } from './field'
+import { uiStrings } from './strings'
 
 /* -------------------------------------------------------------- Input */
 export interface InputProps
@@ -33,27 +34,29 @@ export function Input({
   onClear,
   className,
   value,
+  disabled,
   ...rest
 }: InputProps) {
+  const field = useField()
   const showClear = allowClear && value != null && String(value).length > 0
   return (
     <span
       className={cn(
         'bnn-input',
         `bnn-input--${size}`,
-        status === 'error' && 'is-error',
+        (status === 'error' || field['aria-invalid']) && 'is-error',
+        disabled && 'is-disabled',
         className,
       )}
     >
       {prefix && <span className="bnn-input__prefix">{prefix}</span>}
-      <input className="bnn-input__el" value={value} {...rest} />
-      {showClear && (
+      <input {...field} className="bnn-input__el" value={value} disabled={disabled} {...rest} />
+      {showClear && !disabled && (
         <button
           type="button"
           className="bnn-input__clear"
           onClick={onClear}
-          tabIndex={-1}
-          aria-label="clear"
+          aria-label={uiStrings.clear}
         >
           <IconClose size={13} />
         </button>
@@ -73,10 +76,12 @@ export function Password({ ...props }: InputProps) {
         <button
           type="button"
           className="bnn-input__toggle"
+          disabled={props.disabled}
+          aria-label={shown ? uiStrings.hidePassword : uiStrings.showPassword}
+          aria-pressed={shown}
           onClick={() => setShown((s) => !s)}
-          tabIndex={-1}
         >
-          {shown ? 'Hide' : 'Show'}
+          {shown ? uiStrings.hide : uiStrings.show}
         </button>
       }
     />
@@ -94,13 +99,15 @@ export function Textarea({
   size?: 'sm' | 'md' | 'lg'
   status?: 'error'
 }) {
+  const field = useField()
   return (
     <textarea
+      {...field}
       rows={rows}
       className={cn(
         'bnn-textarea',
         `bnn-input--${size}`,
-        status === 'error' && 'is-error',
+        (status === 'error' || field['aria-invalid']) && 'is-error',
         className,
       )}
       {...rest}
@@ -108,126 +115,8 @@ export function Textarea({
   )
 }
 
-/* ------------------------------------------------------------- Select */
-export interface SelectOption {
-  label: ReactNode
-  value: string | number
-  disabled?: boolean
-}
-
-export interface SelectProps {
-  options: SelectOption[]
-  value?: string | number | null
-  onChange?: (value: string | number) => void
-  placeholder?: string
-  size?: 'sm' | 'md' | 'lg'
-  disabled?: boolean
-  allowClear?: boolean
-  status?: 'error'
-  style?: React.CSSProperties
-  className?: string
-}
-
-export function Select({
-  options,
-  value,
-  onChange,
-  placeholder = 'Select…',
-  size = 'md',
-  disabled,
-  allowClear,
-  status,
-  style,
-  className,
-}: SelectProps) {
-  const [rect, setRect] = useState<DOMRect | null>(null)
-  const ref = useRef<HTMLDivElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const open = rect != null
-  const close = useCallback(() => setRect(null), [])
-  useDismiss(open, [ref, menuRef], close)
-  const selected = options.find((o) => o.value === value)
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'bnn-select',
-        `bnn-select--${size}`,
-        open && 'is-open',
-        disabled && 'is-disabled',
-        status === 'error' && 'is-error',
-        className,
-      )}
-      style={style}
-    >
-      <button
-        type="button"
-        className="bnn-select__control"
-        disabled={disabled}
-        onClick={() =>
-          setRect((r) => (r ? null : ref.current!.getBoundingClientRect()))
-        }
-      >
-        <span className={cn('bnn-select__value', !selected && 'is-placeholder')}>
-          {selected ? selected.label : placeholder}
-        </span>
-        {allowClear && selected ? (
-          <span
-            className="bnn-select__clear"
-            onClick={(e) => {
-              e.stopPropagation()
-              onChange?.('' as never)
-            }}
-          >
-            <IconClose size={13} />
-          </span>
-        ) : (
-          <IconChevronDown size={15} className="bnn-select__arrow" />
-        )}
-      </button>
-      {open && (
-        <Portal>
-          <div
-            ref={menuRef}
-            className="bnn-select__menu"
-            style={{
-              position: 'fixed',
-              top: rect.bottom + 4,
-              left: rect.left,
-              right: 'auto',
-              minWidth: rect.width,
-              maxWidth: Math.max(rect.width, 360),
-            }}
-          >
-            {options.length === 0 && (
-              <div className="bnn-select__empty">No options</div>
-            )}
-            {options.map((o) => (
-              <button
-                type="button"
-                key={String(o.value)}
-                className={cn(
-                  'bnn-select__option',
-                  o.value === value && 'is-selected',
-                  o.disabled && 'is-disabled',
-                )}
-                disabled={o.disabled}
-                onClick={() => {
-                  onChange?.(o.value)
-                  close()
-                }}
-              >
-                <span>{o.label}</span>
-                {o.value === value && <IconCheck size={14} />}
-              </button>
-            ))}
-          </div>
-        </Portal>
-      )}
-    </div>
-  )
-}
+export { Select } from './Select'
+export type { SelectProps, SelectOption } from './Select'
 
 /* ----------------------------------------------------------- Checkbox */
 export function Checkbox({
@@ -243,9 +132,12 @@ export function Checkbox({
   disabled?: boolean
   className?: string
 }) {
+  const field = useField()
   return (
     <label className={cn('bnn-checkbox', disabled && 'is-disabled', className)}>
       <input
+        {...field}
+        aria-labelledby={children ? undefined : field['aria-labelledby']}
         type="checkbox"
         checked={!!checked}
         disabled={disabled}
@@ -266,16 +158,20 @@ export function Switch({
   disabled,
   size = 'md',
   className,
+  ...aria
 }: {
   checked?: boolean
   onChange?: (checked: boolean) => void
   disabled?: boolean
   size?: 'sm' | 'md'
   className?: string
-}) {
+} & AriaAttributes) {
+  const field = useField()
   return (
     <button
       type="button"
+      {...field}
+      {...aria}
       role="switch"
       aria-checked={!!checked}
       disabled={disabled}
@@ -310,8 +206,10 @@ export function RadioGroup({
   onChange?: (value: string | number) => void
   className?: string
 }) {
+  const field = useField()
+  const name = useId()
   return (
-    <div className={cn('bnn-radio-group', className)} role="radiogroup">
+    <div {...field} className={cn('bnn-radio-group', className)} role="radiogroup">
       {options.map((o) => (
         <label
           key={String(o.value)}
@@ -319,6 +217,7 @@ export function RadioGroup({
         >
           <input
             type="radio"
+            name={name}
             checked={o.value === value}
             disabled={o.disabled}
             onChange={() => onChange?.(o.value)}
@@ -346,9 +245,11 @@ export function DatePicker({
   disabled?: boolean
   className?: string
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'size'>) {
+  const field = useField()
   return (
-    <span className={cn('bnn-input', `bnn-input--${size}`, className)}>
+    <span className={cn('bnn-input', `bnn-input--${size}`, disabled && 'is-disabled', className)}>
       <input
+        {...field}
         type="date"
         className="bnn-input__el bnn-datepicker"
         value={value ?? ''}
@@ -409,30 +310,40 @@ export function FormItem({
 }) {
   const { layout } = useContext(FormContext)
   const id = useId()
+  const labelId = `${id}-label`
+  const descriptionId = error || help ? `${id}-description` : undefined
   return (
-    <div
-      className={cn(
-        'bnn-form-item',
-        `bnn-form-item--${layout}`,
-        Boolean(error) && 'has-error',
-        className,
-      )}
-    >
-      {label && (
-        <label className="bnn-form-item__label" htmlFor={id}>
-          {required && <span className="bnn-form-item__req">*</span>}
-          {label}
-        </label>
-      )}
-      <div className="bnn-form-item__control">
-        {children}
-        {error ? (
-          <div className="bnn-form-item__error">{error}</div>
-        ) : help ? (
-          <div className="bnn-form-item__help">{help}</div>
-        ) : null}
+    <FieldContext.Provider value={{
+      id,
+      labelId: label ? labelId : undefined,
+      descriptionId,
+      required,
+      invalid: Boolean(error),
+    }}>
+      <div
+        className={cn(
+          'bnn-form-item',
+          `bnn-form-item--${layout}`,
+          Boolean(error) && 'has-error',
+          className,
+        )}
+      >
+        {label && (
+          <label id={labelId} className="bnn-form-item__label" htmlFor={id}>
+            {required && <span className="bnn-form-item__req">*</span>}
+            {label}
+          </label>
+        )}
+        <div className="bnn-form-item__control">
+          {children}
+          {error ? (
+            <div id={descriptionId} className="bnn-form-item__error">{error}</div>
+          ) : help ? (
+            <div id={descriptionId} className="bnn-form-item__help">{help}</div>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </FieldContext.Provider>
   )
 }
 
@@ -442,7 +353,7 @@ export function UploadDragger({
   accept,
   multiple,
   hint,
-  title = 'Click or drag file to this area to upload',
+  title = uiStrings.upload,
   disabled,
   className,
 }: {
@@ -454,6 +365,7 @@ export function UploadDragger({
   disabled?: boolean
   className?: string
 }) {
+  const field = useField()
   const [drag, setDrag] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   return (
@@ -464,6 +376,16 @@ export function UploadDragger({
         disabled && 'is-disabled',
         className,
       )}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
+      aria-label={typeof title === 'string' ? title : undefined}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          inputRef.current?.click()
+        }
+      }}
       onClick={() => !disabled && inputRef.current?.click()}
       onDragOver={(e) => {
         e.preventDefault()
@@ -477,12 +399,17 @@ export function UploadDragger({
       }}
     >
       <input
+        {...field}
         ref={inputRef}
+        disabled={disabled}
         type="file"
         accept={accept}
         multiple={multiple}
         hidden
-        onChange={(e) => e.target.files && onFiles?.(e.target.files)}
+        onChange={(e) => {
+          if (e.target.files?.length) onFiles?.(e.target.files)
+          e.target.value = ''
+        }}
       />
       <IconUpload size={26} className="bnn-upload-dragger__icon" />
       <div className="bnn-upload-dragger__title">{title}</div>

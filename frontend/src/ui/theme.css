@@ -34,22 +34,23 @@
 
   /* Borders */
   --bnn-border: #e7e9ed;
-  --bnn-border-strong: #d6dae0;
+  --bnn-border-strong: #ccd3dc;
+  --bnn-control-border: #8793a3;
 
   /* Text */
   --bnn-text: #1b1f24;
-  --bnn-text-secondary: #5c6470;
-  --bnn-text-tertiary: #9aa1ab;
+  --bnn-text-secondary: #505c6c;
+  --bnn-text-tertiary: #657184;
   --bnn-text-inverse: #ffffff;
   /* muted glyphs that are not text: sort arrows, illustration strokes */
-  --bnn-icon-muted: #c2c8d0;
+  --bnn-icon-muted: #7e8a9b;
 
   /* Brand / semantic.
      Each family is base / hover / active / soft / soft-strong / border /
      strong, where `strong` is the text-on-soft shade. */
   --bnn-primary: #1f6feb;
-  --bnn-primary-hover: #387bff;
-  --bnn-primary-active: #1858c4;
+  --bnn-primary-hover: #185fce;
+  --bnn-primary-active: #144fae;
   --bnn-primary-soft: #eaf2ff;
   --bnn-primary-soft-strong: #d4e3ff;
   --bnn-primary-border: #bcd5ff;
@@ -66,7 +67,7 @@
   --bnn-warning-strong: #8a5a00;
 
   --bnn-danger: #d92d3a;
-  --bnn-danger-hover: #e23b47;
+  --bnn-danger-hover: #c32432;
   --bnn-danger-active: #b3232e;
   --bnn-danger-soft: #fdeaec;
   --bnn-danger-soft-strong: #f9d5d9;
@@ -75,6 +76,7 @@
 
   /* Purple carries no semantics — it is the categorical accent. */
   --bnn-purple: #7c5cff;
+  --bnn-purple-strong: #5837b8;
   --bnn-purple-soft: #f1edff;
   --bnn-purple-border: #ddd2ff;
 
@@ -83,11 +85,11 @@
 
   /* Chart palette */
   --bnn-chart-1: #1f6feb;
-  --bnn-chart-2: #16b8c4;
+  --bnn-chart-2: #087f8c;
   --bnn-chart-3: #d92d3a;
-  --bnn-chart-4: #7c5cff;
-  --bnn-chart-5: #2aa775;
-  --bnn-chart-6: #b8902b;
+  --bnn-chart-4: #7050d8;
+  --bnn-chart-5: #22805a;
+  --bnn-chart-6: #896617;
   --bnn-chart-7: #c2417f;
   --bnn-chart-8: #5c6470;
   --bnn-chart-grid: var(--bnn-track);
@@ -126,14 +128,22 @@
   --bnn-sp-8: 32px;
 
   /* Control heights */
-  --bnn-control-sm: 26px;
+  --bnn-control-sm: 28px;
   --bnn-control: 34px;
   --bnn-control-lg: 40px;
   /* square icon-only controls */
   --bnn-icon-control-sm: 28px;
-  --bnn-icon-control: 30px;
+  --bnn-icon-control: var(--bnn-control);
   /* application header */
   --bnn-topbar-h: 52px;
+
+  --bnn-control-font: var(--bnn-fs-md);
+  --bnn-control-icon: 16px;
+  --bnn-control-icon-sm: 14px;
+  --bnn-control-gap: 8px;
+  --bnn-content-pad: var(--bnn-sp-5);
+  --bnn-leading: 1.5;
+  --bnn-leading-tight: 1.25;
 
   /* Motion */
   --bnn-ease: cubic-bezier(0.2, 0, 0, 1);
@@ -159,9 +169,18 @@ body {
   font-family: var(--bnn-font);
   font-size: var(--bnn-fs-base);
   color: var(--bnn-text);
+  line-height: var(--bnn-leading);
   background: var(--bnn-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+button, a, input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Utility helpers used across the kit */

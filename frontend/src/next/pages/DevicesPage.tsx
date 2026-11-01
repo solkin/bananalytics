@@ -51,7 +51,7 @@ export default function DevicesPage() {
       <Card title="Active devices per version">
         {/* The endpoint returns every version; the page filter narrows it here
             rather than refetching a subset of the same rows. */}
-        <MultiAreaChart height={220} series={versionSeries(forVersion(sess.data ?? [], version), days)} />
+        <Loaded state={sess}>{() => <MultiAreaChart height={220} series={versionSeries(forVersion(sess.data ?? [], version), days)} />}</Loaded>
       </Card>
 
       <Loaded state={dev}>{(d) => <DistributionCards stats={d} />}</Loaded>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Dropdown, Icons, TopBar } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
+import { uiStrings } from '@/ui/strings'
 import { UserAvatar } from '../UserAvatar'
 import { Brand } from './Brand'
 
@@ -39,6 +40,7 @@ export function AppTopBar({
             </Link>
           )}
           <Dropdown
+            label={uiStrings.accountMenu}
             items={[
               { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} />, onClick: () => navigate('/account') },
               {

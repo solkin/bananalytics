@@ -103,11 +103,11 @@ export default function IssuesPage() {
       </div>
 
       <div className="pg-grid2">
-        <Card title="Crashes" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--crash">{fmtK(total)}</span><span className="pg-charttotal__label">total</span></span>}>
-          <AreaChart data={series} color="var(--bnn-danger)" height={150} />
+        <Card title="Crashes" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--crash">{stats.data ? fmtK(total) : '—'}</span><span className="pg-charttotal__label">total</span></span>}>
+          <Loaded state={stats}>{() => <AreaChart data={series} color="var(--bnn-danger)" height={150} />}</Loaded>
         </Card>
         <Card title="Crash-free sessions" extra={<span className="pg-charttotal"><span className="pg-charttotal__num pg-charttotal__num--ok">{cfLast}</span><span className="pg-charttotal__label">latest</span></span>}>
-          <AreaChart data={cfSeries} color="var(--bnn-success)" height={150} />
+          <Loaded state={crashFree}>{() => <AreaChart data={cfSeries} color="var(--bnn-success)" height={150} />}</Loaded>
         </Card>
       </div>
 

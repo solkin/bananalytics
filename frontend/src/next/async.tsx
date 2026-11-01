@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Alert, Empty, Spin } from '@/ui'
 
 /* Tiny data-fetching helper for the new pages — loading / error / empty
@@ -92,20 +92,34 @@ export function errorText(e: unknown, fallback: string): string {
 export function Loaded<T>({
   state,
   emptyText = 'No data',
+  preserveHeight = false,
   children,
 }: {
   state: AsyncState<T>
   emptyText?: string
+  preserveHeight?: boolean
   children: (data: T) => ReactNode
 }) {
-  /* Spin already centres itself and brings its own padding. */
-  if (state.loading) return <Spin tip="Loading…" />
+  const ref = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(0)
+  useLayoutEffect(() => {
+    if (!preserveHeight || state.loading || !ref.current) return
+    const element = ref.current
+    const measure = () => setHeight(element.getBoundingClientRect().height)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [preserveHeight, state.loading, state.data])
 
-  if (state.error) {
-    return <Alert type="error" message="Failed to load" description={state.error} />
-  }
-  if (state.data == null || (Array.isArray(state.data) && state.data.length === 0)) {
-    return <Empty description={emptyText} />
-  }
-  return <>{children(state.data)}</>
+  let content: ReactNode
+  if (state.loading) content = <Spin tip="Loading…" />
+  else if (state.error) content = <Alert type="error" message="Failed to load" description={state.error} />
+  else if (state.data == null || (Array.isArray(state.data) && state.data.length === 0)) {
+    content = <Empty description={emptyText} />
+  } else content = children(state.data)
+
+  return preserveHeight
+    ? <div ref={ref} style={{ minHeight: state.loading ? height : undefined }}>{content}</div>
+    : <>{content}</>
 }

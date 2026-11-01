@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: var(--bnn-sp-3);
+  flex-wrap: wrap;
 }
 .home-search {
   width: 240px;
@@ -37,7 +38,7 @@
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: var(--bnn-sp-4);
 }
 /* The card chrome is the kit's <Card hoverable>; this is only the row inside
@@ -71,8 +72,32 @@
   align-items: center;
   gap: var(--bnn-sp-2);
   margin-top: var(--bnn-sp-1);
+  min-width: 0;
 }
 .home-card__arrow {
   flex-shrink: 0;
   color: var(--bnn-text-tertiary);
+}
+
+@media (max-width: 576px) {
+  .home-head__actions {
+    width: 100%;
+  }
+  .home-search {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+  .home-main {
+    padding: var(--bnn-sp-5) var(--bnn-sp-4) var(--bnn-sp-8);
+  }
+}
+
+.home-card__sub .bnn-tag {
+  flex-shrink: 0;
+}
+.home-card__sub .bnn-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

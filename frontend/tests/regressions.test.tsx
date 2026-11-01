@@ -1,8 +1,7 @@
-import { afterEach, test } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
-import { createRoot } from 'react-dom/client'
+import { mount } from './dom'
 import { AsyncCacheProvider, useAsync } from '../src/next/async'
 import { Table } from '../src/ui/Table'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -10,29 +9,6 @@ import IssuesPage from '../src/next/pages/IssuesPage'
 import IssueDetailPage from '../src/next/pages/IssueDetailPage'
 import api from '../src/api/client'
 
-const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' })
-Object.assign(globalThis, {
-  window: dom.window,
-  document: dom.window.document,
-  HTMLElement: dom.window.HTMLElement,
-  ResizeObserver: class { observe() {} disconnect() {} },
-  IS_REACT_ACT_ENVIRONMENT: true,
-})
-Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage })
-const containers: Array<{ root: ReturnType<typeof createRoot>; container: HTMLDivElement }> = []
-function mount(node: React.ReactNode) {
-  const container = document.createElement('div')
-  document.body.append(container)
-  const root = createRoot(container)
-  containers.push({ root, container })
-  return { root, container, render: async (next: React.ReactNode = node) => { await act(async () => root.render(next)) } }
-}
-afterEach(async () => {
-  for (const { root, container } of containers.splice(0)) {
-    await act(async () => root.unmount())
-    container.remove()
-  }
-})
 function Data({ load, cacheKey = 'private' }: { load: () => Promise<string>; cacheKey?: string }) {
   const state = useAsync(load, [], { key: cacheKey })
   return <span>{state.loading ? 'loading' : state.data ?? state.error}</span>

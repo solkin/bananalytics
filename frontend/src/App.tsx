@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useLayoutEffect, useRef } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router-dom'
 import { Spin, ToastViewport } from '@/ui'
 import { redirectTarget } from './next/redirect'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -55,6 +56,18 @@ function NextRedirect() {
 }
 
 function AppRoutes() {
+  const { pathname, hash } = useLocation()
+  const navigation = useNavigationType()
+  const { loading } = useAuth()
+  const previousRoute = useRef<{ pathname: string; hash: string } | null>(null)
+  useLayoutEffect(() => {
+    if (loading) return
+    const previous = previousRoute.current
+    previousRoute.current = { pathname, hash }
+    if (previous?.pathname === pathname && previous.hash === hash) return
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+    else if (navigation !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, hash, navigation, loading])
   return (
     <Routes>
       <Route path="/ui-kit" element={<UiKitPage />} />

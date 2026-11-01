@@ -56,7 +56,7 @@ export default function OverviewPage() {
         title="Active users"
         extra={<CardHelp text="Distinct devices and sessions per day over the selected period." />}
       >
-        <div className="pg-split">
+        <Loaded state={sessions}>{() => <div className="pg-split">
           <div className="pg-split__chart">
             <MultiAreaChart
               height={230}
@@ -71,14 +71,14 @@ export default function OverviewPage() {
             <Statistic variant="kpi" title="Total sessions" value={fmtK(totalSessions)} />
             <Statistic variant="kpi" title="Crash-free" value={crashFree} />
           </div>
-        </div>
+        </div>}</Loaded>
       </Card>
 
       <Card
         title="Sessions per version"
         extra={<CardHelp text={`Unique sessions in the last ${range} days, grouped by app version.`} />}
       >
-        <BarChart data={byVersion(sessRows)} color="var(--bnn-warning)" height={220} />
+        <Loaded state={sessions}>{() => <BarChart data={byVersion(sessRows)} color="var(--bnn-warning)" height={220} />}</Loaded>
       </Card>
 
       <Loaded state={dev}>{(d) => <DistributionCards stats={d} />}</Loaded>

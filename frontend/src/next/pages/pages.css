@@ -45,12 +45,12 @@
 /* Grids */
 .pg-grid2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: var(--bnn-sp-4);
 }
 .pg-grid3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--bnn-sp-4);
 }
 /* Map and its ranked list. The map is the wide half and shrinks with the
@@ -79,7 +79,7 @@
 
 .pg-affected {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--bnn-sp-4);
 }
 
@@ -97,7 +97,7 @@
   color: var(--bnn-danger);
 }
 .pg-charttotal__num--ok {
-  color: var(--bnn-success);
+  color: var(--bnn-success-strong);
 }
 .pg-charttotal__label {
   font-size: var(--bnn-fs-sm);
@@ -110,7 +110,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  max-width: 540px;
+  max-width: clamp(220px, 35vw, 540px);
 }
 .pg-titlecell__main {
   font-weight: 600;
@@ -408,7 +408,7 @@
 }
 .iss-picker__controls {
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--bnn-sp-1);
 }
 .iss-picker__controls .bnn-btn {
@@ -423,7 +423,7 @@
 
 /* Search row embedded in an unpadded table card */
 .pg-tablesearch {
-  padding: var(--bnn-sp-3) var(--bnn-sp-4);
+  padding: var(--bnn-sp-3) var(--bnn-content-pad);
   border-bottom: 1px solid var(--bnn-border);
 }
 
@@ -547,5 +547,65 @@
   .iss-picker {
     align-items: flex-end;
     flex-direction: column;
+  }
+}
+
+.pg-person__name,
+.set-keys__name {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.pg-person > div,
+.set-maint__row > div,
+.pg-danger__row > div,
+.rel-toggles__row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pg-meta__value,
+.pg-charttotal__num {
+  font-variant-numeric: tabular-nums;
+}
+.rel-toggles__row .bnn-switch,
+.set-maint__row > .bnn-btn,
+.pg-danger__row > .bnn-popconfirm {
+  flex-shrink: 0;
+}
+@media (max-width: 576px) {
+  .pg-toolbar {
+    justify-content: flex-start;
+    gap: var(--bnn-sp-3);
+  }
+  .pg-filter {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+  .pg-filter__label {
+    flex-shrink: 0;
+  }
+  .rel-notify__who {
+    flex-direction: column;
+    align-items: flex-start;
+    overflow-wrap: anywhere;
+  }
+  .iss-picker__controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+.set-keys__name {
+  min-width: 200px;
+}
+.pg-person {
+  min-width: 200px;
+}
+@media (max-width: 576px) {
+  .pg-filter__label {
+    flex: 0 0 64px;
+  }
+  .pg-filter > .bnn-select {
+    flex: 1;
+    min-width: 0;
   }
 }

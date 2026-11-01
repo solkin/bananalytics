@@ -4,6 +4,7 @@
   border: 1px solid var(--bnn-border);
   border-radius: var(--bnn-radius-lg);
   box-shadow: var(--bnn-shadow-xs);
+  min-width: 0;
 }
 /* Hover raises the card with light, never with movement. */
 .bnn-card--hover {
@@ -18,12 +19,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  min-height: 60px;
+  padding: var(--bnn-sp-3) var(--bnn-content-pad);
   border-bottom: 1px solid var(--bnn-border);
+  flex-wrap: wrap;
 }
 .bnn-card__head-main {
   flex: 1;
   min-width: 0;
+  flex-basis: 120px;
 }
 .bnn-card__title {
   font-size: var(--bnn-fs-base);
@@ -39,7 +43,7 @@
   flex-shrink: 0;
 }
 .bnn-card__body {
-  padding: 18px;
+  padding: var(--bnn-content-pad);
 }
 .bnn-card__body--flush {
   padding: 0;
@@ -160,7 +164,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 34px;
+  height: var(--bnn-control);
   padding: 0 12px;
   border: none;
   background: transparent;
@@ -174,7 +178,7 @@
   transition: background 0.15s, color 0.15s;
 }
 .bnn-navmenu--sm .bnn-navmenu__item {
-  height: 28px;
+  height: var(--bnn-control-sm);
   padding: 0 10px;
   font-size: var(--bnn-fs-sm);
 }
@@ -189,11 +193,11 @@
 /* selected (weight stays 500 to avoid layout shift) */
 .bnn-navmenu__item.is-active {
   background: var(--bnn-primary-soft);
-  color: var(--bnn-primary);
+  color: var(--bnn-primary-strong);
 }
 .bnn-navmenu__item.is-active:hover {
   background: var(--bnn-primary-soft);
-  color: var(--bnn-primary);
+  color: var(--bnn-primary-strong);
 }
 .bnn-navmenu__item.is-active:active {
   background: var(--bnn-primary-soft-strong);
@@ -258,7 +262,8 @@
   gap: 2px;
 }
 .bnn-segmented__item {
-  padding: 5px 12px;
+  min-height: calc(var(--bnn-control) - 4px);
+  padding: var(--bnn-sp-1) var(--bnn-sp-3);
   border: none;
   background: transparent;
   border-radius: 4px;
@@ -269,7 +274,8 @@
   transition: background 0.15s, color 0.15s;
 }
 .bnn-segmented--sm .bnn-segmented__item {
-  padding: 3px 9px;
+  min-height: calc(var(--bnn-control-sm) - 4px);
+  padding: 2px var(--bnn-sp-2);
   font-size: var(--bnn-fs-sm);
 }
 .bnn-segmented__item:hover {
@@ -287,17 +293,19 @@
 }
 .bnn-table-scroll {
   overflow-x: auto;
+  border-radius: inherit;
 }
 .bnn-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--bnn-fs-md);
+  font-variant-numeric: tabular-nums;
 }
 .bnn-table thead th {
   position: sticky;
   top: 0;
   text-align: left;
-  padding: 10px 14px;
+  padding: var(--bnn-sp-3) var(--bnn-content-pad);
   font-weight: 600;
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-text-secondary);
@@ -306,7 +314,7 @@
   white-space: nowrap;
 }
 .bnn-table--sm thead th {
-  padding: 7px 12px;
+  padding: var(--bnn-sp-2) var(--bnn-sp-4);
 }
 .bnn-table th.is-sortable {
   cursor: pointer;
@@ -344,13 +352,13 @@
   border-top-color: var(--bnn-primary);
 }
 .bnn-table tbody td {
-  padding: 11px 14px;
+  padding: var(--bnn-sp-3) var(--bnn-content-pad);
   border-bottom: 1px solid var(--bnn-border);
   color: var(--bnn-text);
   vertical-align: middle;
 }
 .bnn-table--sm tbody td {
-  padding: 8px 12px;
+  padding: var(--bnn-sp-2) var(--bnn-sp-4);
 }
 .bnn-table tbody tr:last-child td {
   border-bottom: none;
@@ -379,8 +387,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: var(--bnn-sp-3) var(--bnn-content-pad);
   border-top: 1px solid var(--bnn-border);
+  gap: var(--bnn-sp-3);
+  flex-wrap: wrap;
 }
 .bnn-table__page-info {
   font-size: var(--bnn-fs-sm);
@@ -395,8 +405,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--bnn-control-sm);
+  height: var(--bnn-control-sm);
   border: 1px solid var(--bnn-border-strong);
   border-radius: var(--bnn-radius);
   background: var(--bnn-surface);
@@ -431,9 +441,11 @@
 /* ===== Descriptions ===== */
 .bnn-desc {
   display: grid;
-  gap: 0;
+  gap: 0 var(--bnn-sp-4);
 }
 .bnn-desc--bordered {
+  gap: 1px;
+  background: var(--bnn-border);
   border: 1px solid var(--bnn-border);
   border-radius: var(--bnn-radius);
   overflow: hidden;
@@ -441,15 +453,15 @@
 .bnn-desc__cell {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 10px 14px;
+  gap: var(--bnn-sp-1);
+  padding: var(--bnn-sp-3) var(--bnn-sp-4);
+  background: var(--bnn-surface);
 }
 .bnn-desc--sm .bnn-desc__cell {
-  padding: 7px 12px;
+  padding: var(--bnn-sp-2) var(--bnn-sp-3);
 }
-.bnn-desc--bordered .bnn-desc__cell {
-  border-bottom: 1px solid var(--bnn-border);
-  border-right: 1px solid var(--bnn-border);
+.bnn-desc:not(.bnn-desc--bordered) .bnn-desc__cell {
+  padding: var(--bnn-sp-2) 0;
 }
 .bnn-desc__label {
   font-size: var(--bnn-fs-sm);
@@ -458,7 +470,7 @@
 .bnn-desc__value {
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text);
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* ===== BarList ===== */
@@ -469,16 +481,18 @@
 .bnn-barlist__row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--bnn-sp-3);
   padding: 9px 0;
   border-bottom: 1px solid var(--bnn-border);
+  min-width: 0;
 }
 .bnn-barlist__row:last-child {
   border-bottom: none;
 }
 .bnn-barlist__label {
-  flex-shrink: 0;
+  flex-shrink: 1;
   width: 132px;
+  min-width: 72px;
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text);
   white-space: nowrap;
@@ -496,12 +510,12 @@
 .bnn-barlist__fill {
   display: block;
   height: 100%;
-  background: var(--bnn-primary-soft-strong);
+  background: var(--bnn-chart-1);
   border-radius: var(--bnn-radius-pill);
 }
 .bnn-barlist__value {
   flex-shrink: 0;
-  min-width: 52px;
+  min-width: 40px;
   text-align: right;
   font-size: var(--bnn-fs-md);
   font-weight: 600;
@@ -510,9 +524,33 @@
 }
 .bnn-barlist__secondary {
   flex-shrink: 0;
-  min-width: 48px;
+  min-width: 36px;
   text-align: right;
   font-size: var(--bnn-fs-md);
   color: var(--bnn-text-tertiary);
   font-variant-numeric: tabular-nums;
+}
+.bnn-card__title,
+.bnn-card__subtitle {
+  overflow-wrap: anywhere;
+}
+.bnn-table th.is-numeric .bnn-table__th {
+  flex-direction: row-reverse;
+}
+@media (max-width: 480px) {
+  .bnn-card__extra {
+    max-width: 100%;
+  }
+  .bnn-barlist__row {
+    gap: var(--bnn-sp-2);
+  }
+}
+
+.bnn-table th.is-numeric,
+.bnn-table td.is-numeric {
+  white-space: nowrap;
+}
+
+.bnn-card__body--flush > .bnn-alert {
+  margin: var(--bnn-sp-4) var(--bnn-content-pad);
 }

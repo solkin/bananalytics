@@ -62,7 +62,7 @@ export default function EventsPage() {
       </div>
 
       <Card title="Unique sessions per version">
-        <MultiAreaChart height={200} series={versionSeries(forVersion(sessions.data ?? [], version), days)} />
+        <Loaded state={sessions}>{() => <MultiAreaChart height={200} series={versionSeries(forVersion(sessions.data ?? [], version), days)} />}</Loaded>
       </Card>
 
       <Card title="Events" padded={false}>

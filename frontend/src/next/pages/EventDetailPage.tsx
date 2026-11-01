@@ -169,7 +169,7 @@ export default function EventDetailPage() {
         </Loaded>
       </Card>
 
-      <Card title="By version" extra={<Text strong>{fmtK(versionTotal)} total</Text>} padded={false}>
+      <Card title="By version" extra={<Text strong>{byVersion.data ? fmtK(versionTotal) : '—'} total</Text>} padded={false}>
         <Loaded state={byVersion} emptyText="No version data">
           {(rows) => (
             <Table<EventVersionStats> columns={versionColumns} data={rows} rowKey={(r) => r.version_code} size="sm" emptyText="No version data" />

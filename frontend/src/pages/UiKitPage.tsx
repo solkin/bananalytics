@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import './UiKitPage.css'
+import { UiKitStates } from './UiKitStates'
+import { kitStrings } from './uiKit.strings'
 import {
   AreaChart,
   Alert,
@@ -39,7 +41,6 @@ import {
   Text,
   Textarea,
   Title,
-  ToastViewport,
   Tooltip,
   TopBar,
   UploadDragger,
@@ -149,6 +150,7 @@ export default function UiKitPage() {
   const [tab, setTab] = useState('overview')
   const [topNav, setTopNav] = useState('analytics')
   const [loading, setLoading] = useState(true)
+  const [appName, setAppName] = useState('Appteka')
 
   const columns: Column<EventRow>[] = [
     { key: 'name', title: 'Name', dataIndex: 'name', render: (r) => <Text mono>{r.name}</Text> },
@@ -171,8 +173,6 @@ export default function UiKitPage() {
 
   return (
     <div className="kit">
-      <ToastViewport />
-
       {/* Top bar — the kit's own TopBar, same one every page mounts */}
       <TopBar
         left={
@@ -238,7 +238,7 @@ export default function UiKitPage() {
           {/* Foundation */}
           <Section id="foundation" title="Foundation" description="Colors, typography & tags.">
             <Row>
-              <Card title="Palette" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Palette" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <div className="kit-swatches">
                   {[
                     ['Primary', 'var(--bnn-primary)'],
@@ -255,7 +255,7 @@ export default function UiKitPage() {
                   ))}
                 </div>
               </Card>
-              <Card title="Typography" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Typography" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <Title level={1}>Heading 1</Title>
                 <Title level={3}>Heading 3</Title>
                 <Title level={5}>Heading 5</Title>
@@ -298,7 +298,7 @@ export default function UiKitPage() {
                 <Button size="sm" variant="primary" icon={<Icons.IconPlus size={14} />}>Small</Button>
                 <Button size="md" icon={<Icons.IconReload size={15} />}>Medium</Button>
                 <Button size="lg" variant="primary">Large</Button>
-                <Button variant="default" icon={<Icons.IconDownload size={15} />} />
+                <Button variant="default" icon={<Icons.IconDownload size={16} />} aria-label={kitStrings.download} />
                 <Divider vertical />
                 <Tooltip title="Icon button">
                   <IconButton aria-label="Refresh"><Icons.IconReload size={17} /></IconButton>
@@ -317,7 +317,7 @@ export default function UiKitPage() {
                 { title: 'Crashes', value: '1.2k', trend: '-3.1%', tone: 'down' as const },
                 { title: 'Crash-free', value: '99.4%', trend: '+0.2%', tone: 'up' as const },
               ].map((s) => (
-                <Card key={s.title} style={{ flex: 1, minWidth: 200 }}>
+                <Card key={s.title} style={{ flex: 1, minWidth: 'min(100%, 200px)' }}>
                   <Statistic title={s.title} value={s.value} trend={s.trend} trendTone={s.tone} />
                 </Card>
               ))}
@@ -332,7 +332,7 @@ export default function UiKitPage() {
               </Row>
             </Card>
             <Row>
-              <Card title="Crash details" style={{ flex: 2, minWidth: 360 }}>
+              <Card title="Crash details" style={{ flex: 2, minWidth: 'min(100%, 360px)' }}>
                 <Descriptions
                   column={2}
                   items={[
@@ -344,7 +344,7 @@ export default function UiKitPage() {
                   ]}
                 />
               </Card>
-              <Card title="Loading state" style={{ flex: 1, minWidth: 260 }}>
+              <Card title="Loading state" style={{ flex: 1, minWidth: 'min(100%, 260px)' }}>
                 <Skeleton rows={4} />
               </Card>
             </Row>
@@ -371,11 +371,12 @@ export default function UiKitPage() {
 
           {/* Forms */}
           <Section id="forms" title="Forms" description="Inputs, selects, toggles, upload.">
+            <UiKitStates />
             <Row>
-              <Card title="Fields" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Fields" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <Form>
                   <FormItem label="App name" required>
-                    <Input placeholder="My Android app" prefix={<Icons.IconApps size={15} />} allowClear value="Appteka" onChange={() => {}} />
+                    <Input placeholder="My Android app" prefix={<Icons.IconApps size={15} />} allowClear value={appName} onChange={(e) => setAppName(e.target.value)} onClear={() => setAppName('')} />
                   </FormItem>
                   <FormItem label="API base URL" help="Used by the SDK to submit events.">
                     <Input placeholder="https://your-server.com" />
@@ -391,7 +392,7 @@ export default function UiKitPage() {
                   </FormItem>
                 </Form>
               </Card>
-              <Card title="Controls" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Controls" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <Form>
                   <FormItem label="Default tab">
                     <Select
@@ -420,13 +421,10 @@ export default function UiKitPage() {
                     />
                   </FormItem>
                   <FormItem label="Options">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <Checkbox checked={checked} onChange={setChecked}>Enable crash collection</Checkbox>
-                      <div className="bnn-row" style={{ gap: 10 }}>
-                        <Switch checked={sw} onChange={setSw} />
-                        <Text size="sm" type="secondary">Email notifications</Text>
-                      </div>
-                    </div>
+                    <Checkbox checked={checked} onChange={setChecked}>Enable crash collection</Checkbox>
+                  </FormItem>
+                  <FormItem label={kitStrings.notification}>
+                    <Switch checked={sw} onChange={setSw} />
                   </FormItem>
                 </Form>
               </Card>
@@ -443,14 +441,14 @@ export default function UiKitPage() {
           <Section id="feedback" title="Feedback" description="Alerts, toasts, spinners.">
             <Card title="Alerts">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Alert type="info" message="App Center analytics will be supported until June 2026." />
+                <Alert type="info" message={kitStrings.analyticsInfo} />
                 <Alert type="success" message="Mapping file uploaded" description="Stacktraces will be deobfuscated automatically." />
                 <Alert type="warning" message="Collection muted for version 16.0 (820)" />
-                <Alert type="error" message="Failed to load crashes" description="Network error — please retry." action={<Button size="sm">Retry</Button>} />
+                <Alert type="error" message="Failed to load crashes" description="Network error — please retry." action={<Button size="sm" onClick={() => toast.info(kitStrings.retried)}>Retry</Button>} />
               </div>
             </Card>
             <Row>
-              <Card title="Toasts" style={{ flex: 1, minWidth: 280 }}>
+              <Card title="Toasts" style={{ flex: 1, minWidth: 'min(100%, 280px)' }}>
                 <Row>
                   <Button onClick={() => toast.success('Saved successfully')}>Success</Button>
                   <Button onClick={() => toast.error('Something went wrong')}>Error</Button>
@@ -458,7 +456,7 @@ export default function UiKitPage() {
                   <Button onClick={() => toast.warning('Be careful')}>Warning</Button>
                 </Row>
               </Card>
-              <Card title="Spinners" style={{ flex: 1, minWidth: 280 }}>
+              <Card title="Spinners" style={{ flex: 1, minWidth: 'min(100%, 280px)' }}>
                 <Row>
                   <Spinner size="sm" />
                   <Spinner size="md" />
@@ -509,10 +507,10 @@ export default function UiKitPage() {
               <AreaChart data={areaData} height={240} />
             </Card>
             <Row>
-              <Card title="Crashes per day" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Crashes per day" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <BarChart data={barData} color="var(--bnn-chart-3)" height={220} />
               </Card>
-              <Card title="Sessions" style={{ flex: 1, minWidth: 320 }}>
+              <Card title="Sessions" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
                 <LineChart data={areaData} color="var(--bnn-chart-2)" height={220} />
               </Card>
             </Row>

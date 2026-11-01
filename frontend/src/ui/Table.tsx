@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { cn } from './primitives'
 import { Empty } from './primitives'
+import { uiStrings } from './strings'
 import { IconChevronLeft, IconChevronRight } from './Icon'
 
 export interface Column<T> {
@@ -92,14 +93,14 @@ export function Table<T>({
   return (
     <div className={cn('bnn-table-wrap', className)}>
       <div className="bnn-table-scroll">
-        <table className={cn('bnn-table', `bnn-table--${size}`)}>
+        <table aria-busy={loading || undefined} className={cn('bnn-table', `bnn-table--${size}`)}>
           <thead>
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  style={{ width: col.width, textAlign: col.align }}
-                  className={cn(col.sorter && 'is-sortable')}
+                  style={{ width: col.width, minWidth: col.width, textAlign: col.align }}
+                  className={cn(col.sorter && 'is-sortable', col.align === 'right' && 'is-numeric')}
                   tabIndex={col.sorter ? 0 : undefined}
                   role={col.sorter ? 'button' : undefined}
                   aria-sort={
@@ -162,7 +163,7 @@ export function Table<T>({
                   role={onRowClick ? 'button' : undefined}
                   onClick={() => onRowClick?.(row)}
                   onKeyDown={(e) => {
-                    if (!onRowClick) return
+                    if (!onRowClick || e.target !== e.currentTarget) return
                     /* Space would scroll the page, Enter would do nothing —
                        both should open the row like a click does. */
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -172,7 +173,7 @@ export function Table<T>({
                   }}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} style={{ textAlign: col.align }}>
+                    <td key={col.key} className={cn(col.align === 'right' && 'is-numeric')} style={{ textAlign: col.align }}>
                       {col.render
                         ? col.render(row, i)
                         : col.dataIndex
@@ -193,6 +194,8 @@ export function Table<T>({
           </span>
           <div className="bnn-pagination">
             <button
+              type="button"
+              aria-label={uiStrings.previousPage}
               className="bnn-pagination__btn"
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
@@ -203,6 +206,8 @@ export function Table<T>({
               {page} / {pageCount}
             </span>
             <button
+              type="button"
+              aria-label={uiStrings.nextPage}
               className="bnn-pagination__btn"
               disabled={page >= pageCount}
               onClick={() => setPage(page + 1)}

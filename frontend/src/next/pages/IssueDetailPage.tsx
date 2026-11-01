@@ -21,6 +21,7 @@ import {
   type BarListItem,
   type ChartPoint,
 } from '@/ui'
+import { uiStrings } from '@/ui/strings'
 import type { Crash } from '@/types'
 import {
   deleteCrashGroup,
@@ -278,7 +279,7 @@ export default function IssueDetailPage() {
                       okDanger
                       onConfirm={() => void removeGroup()}
                     >
-                      <Button variant="danger" icon={<Icons.IconTrash size={14} />} />
+                      <Button variant="danger" icon={<Icons.IconTrash size={14} />} aria-label={uiStrings.delete} />
                     </Popconfirm>
                   </div>}
                 </div>
@@ -333,7 +334,7 @@ export default function IssueDetailPage() {
                   )
                 }
               >
-                <Loaded state={reports}>
+                <Loaded state={reports} preserveHeight>
                   {() => crash ? (
                     <CrashDetail
                       crash={crash}

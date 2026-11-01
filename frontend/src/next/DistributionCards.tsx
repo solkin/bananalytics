@@ -1,4 +1,4 @@
-import { BarList, Card, Empty, Icons, Tooltip, WorldMap, type BarListItem } from '@/ui'
+import { BarList, Card, Empty, IconButton, Icons, Tooltip, WorldMap, type BarListItem } from '@/ui'
 import type { DeviceStats, DeviceStatItem } from '@/api/events'
 import { androidVersion, countryFlag, countryName, fmtK, isCountryCode } from './format'
 
@@ -24,9 +24,9 @@ export function toBars(
 export function CardHelp({ text }: { text: string }) {
   return (
     <Tooltip title={text}>
-      <span className="pg-help">
-        <Icons.IconHelp size={15} />
-      </span>
+      <IconButton size="sm" className="pg-help" aria-label={text}>
+        <Icons.IconHelp size={14} />
+      </IconButton>
     </Tooltip>
   )
 }

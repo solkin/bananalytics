@@ -2,11 +2,11 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { cn } from './primitives'
+import { cn, Empty } from './primitives'
+import { BarList } from './barlist'
 
 /* Lightweight dependency-free SVG charts (App Center style).
    The container width is measured so the viewBox maps 1:1 to pixels —
@@ -29,25 +29,25 @@ interface Geometry {
 }
 
 function useMeasure() {
-  const ref = useRef<HTMLDivElement>(null)
+  const [element, setElement] = useState<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(600)
   useLayoutEffect(() => {
-    if (!ref.current) return
+    if (!element) return
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width
       if (w && w > 0) setWidth(w)
     })
-    ro.observe(ref.current)
+    ro.observe(element)
     return () => ro.disconnect()
-  }, [])
-  return { ref, width }
+  }, [element])
+  return { ref: setElement, width }
 }
 
 function geometry(w: number, h: number): Geometry {
-  const padL = 40
-  const padR = 14
+  const padL = 48
+  const padR = 20
   const padT = 12
-  const padB = 26
+  const padB = 32
   return { w, h, padL, padR, padT, padB, innerW: w - padL - padR, innerH: h - padT - padB }
 }
 
@@ -193,7 +193,7 @@ function Svg({
   height: number
   className?: string
   children: ReactNode
-  innerRef: React.RefObject<HTMLDivElement>
+  innerRef: React.Ref<HTMLDivElement>
 }) {
   return (
     <div ref={innerRef} className={cn('bnn-chart-box', className)} style={{ height }}>
@@ -228,6 +228,7 @@ export function AreaChart({
           .map((d, i) => `${scale.x(i)},${scale.y(d.value)}`)
           .join(' L ')} L ${scale.x(data.length - 1)},${scale.y(scale.min)} Z`
       : ''
+  if (!data.length) return <div className={cn('bnn-chart-empty', className)} style={{ height }}><Empty /></div>
   return (
     <Svg width={width} height={height} className={className} innerRef={ref}>
       <defs>
@@ -265,7 +266,7 @@ function MultiHover({
 }) {
   const [idx, setIdx] = useState<number | null>(null)
   const slot = g.innerW / Math.max(1, len)
-  const tipH = 18 + series.length * 16
+  const tipH = Math.min(g.innerH, 32 + series.length * 20)
   return (
     <>
       {idx != null && (
@@ -292,9 +293,9 @@ function MultiHover({
       ))}
       {idx != null && (
         <foreignObject
-          x={Math.min(Math.max(scale.x(idx) - 60, 0), g.w - 124)}
+          x={Math.min(Math.max(scale.x(idx) - 80, 0), g.w - 160)}
           y={g.padT}
-          width={124}
+          width={160}
           height={tipH}
           pointerEvents="none"
         >
@@ -343,6 +344,7 @@ export function MultiAreaChart({
     [],
   )
 
+  if (!len) return <div className={cn('bnn-chart-empty', className)} style={{ height }}><Empty /></div>
   return (
     <div className={cn('bnn-chart-multi', className)}>
       <div className="bnn-chart-legend">
@@ -402,6 +404,7 @@ export function LineChart({
   const scale = useScales(data, g)
   const ticks = niceTicks(scale.max)
   const line = data.map((d, i) => `${scale.x(i)},${scale.y(d.value)}`).join(' ')
+  if (!data.length) return <div className={cn('bnn-chart-empty', className)} style={{ height }}><Empty /></div>
   return (
     <Svg width={width} height={height} className={className} innerRef={ref}>
       <ChartFrame g={g} ticks={ticks} scale={scale} data={data}>
@@ -436,30 +439,11 @@ export function BarChart({
   const slot = g.innerW / Math.max(1, data.length)
   const barW = Math.min(slot * 0.62, 46)
 
+  if (!data.length) return <div className={cn('bnn-chart-empty', className)} style={{ height }}><Empty /></div>
   if (horizontal) {
-    const rowH = (g.h - g.padT - g.padB) / Math.max(1, data.length)
-    const maxV = Math.max(1, ...data.map((d) => d.value))
-    const labelW = 90
-    return (
-      <Svg width={width} height={height} className={className} innerRef={ref}>
-        {data.map((d, i) => {
-          const avail = g.w - g.padL - g.padR - labelW
-          const bw = Math.max((d.value / maxV) * avail, 1)
-          const y = g.padT + i * rowH + rowH * 0.2
-          return (
-            <g key={i}>
-              <text x={g.padL + labelW - 8} y={y + rowH * 0.32} className="bnn-chart__axis" textAnchor="end">
-                {d.label}
-              </text>
-              <rect x={g.padL + labelW} y={y} width={bw} height={rowH * 0.6} rx={3} fill={color} className="bnn-chart__bar" />
-              <text x={g.padL + labelW + bw + 6} y={y + rowH * 0.32} className="bnn-chart__axis">
-                {fmt(d.value)}
-              </text>
-            </g>
-          )
-        })}
-      </Svg>
-    )
+    return <div className={className} style={{ minHeight: height }}>
+      <BarList items={data.map((d) => ({ label: d.label, value: d.value, display: fmt(d.value), color }))} />
+    </div>
   }
 
   return (

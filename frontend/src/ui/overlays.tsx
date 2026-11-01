@@ -1,13 +1,17 @@
 import {
   useCallback,
-  useLayoutEffect,
+  cloneElement,
+  isValidElement,
+  type AriaAttributes,
+  useId,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { cn, Button } from './primitives'
 import { IconClose } from './Icon'
-import { Portal, useDismiss, useEsc } from './portal'
+import { Portal, useDismiss, useEsc, usePopoverPosition } from './portal'
+import { uiStrings } from './strings'
 
 /* -------------------------------------------------------------- Modal */
 export function Modal({
@@ -37,21 +41,27 @@ export function Modal({
   okDanger?: boolean
   hideFooter?: boolean
 }) {
-  useEsc(open, onClose)
+  const ref = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useEsc(open, onClose, ref)
   if (!open) return null
   return (
-    <Portal>
+    <Portal modal>
       <div className="bnn-overlay" onMouseDown={onClose}>
         <div
+          ref={ref}
           className="bnn-modal"
           style={{ width }}
           onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
+          tabIndex={-1}
         >
           {title && (
             <div className="bnn-modal__head">
-              <div className="bnn-modal__title">{title}</div>
-              <button className="bnn-iconbtn bnn-iconbtn--sm" onClick={onClose} aria-label="close">
+              <div id={titleId} className="bnn-modal__title">{title}</div>
+              <button type="button" className="bnn-iconbtn bnn-iconbtn--sm" disabled={!onClose} onClick={onClose} aria-label={uiStrings.close}>
                 <IconClose size={16} />
               </button>
             </div>
@@ -96,21 +106,27 @@ export function Drawer({
   placement?: 'left' | 'right'
   footer?: ReactNode
 }) {
-  useEsc(open, onClose)
+  const ref = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useEsc(open, onClose, ref)
   if (!open) return null
   return (
-    <Portal>
+    <Portal modal>
       <div className="bnn-overlay" onMouseDown={onClose}>
         <div
+          ref={ref}
           className={cn('bnn-drawer', `bnn-drawer--${placement}`)}
           style={{ width }}
           onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
+          tabIndex={-1}
         >
           {title && (
             <div className="bnn-drawer__head">
-              <div className="bnn-drawer__title">{title}</div>
-              <button className="bnn-iconbtn bnn-iconbtn--sm" onClick={onClose} aria-label="close">
+              <div id={titleId} className="bnn-drawer__title">{title}</div>
+              <button type="button" className="bnn-iconbtn bnn-iconbtn--sm" disabled={!onClose} onClick={onClose} aria-label={uiStrings.close}>
                 <IconClose size={16} />
               </button>
             </div>
@@ -133,12 +149,26 @@ export function Tooltip({
   children: ReactNode
   placement?: 'top' | 'bottom' | 'left' | 'right'
 }) {
+  const id = useId()
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const trigger = useRef<HTMLSpanElement>(null)
+  const tip = useRef<HTMLSpanElement>(null)
+  const close = useCallback(() => setRect(null), [])
+  const position = usePopoverPosition(rect, tip, 'center', placement)
+  useDismiss(rect != null, [trigger, tip], close)
+  useEsc(rect != null, close, tip)
   return (
-    <span className={cn('bnn-tooltip-wrap')}>
-      {children}
-      <span className={cn('bnn-tooltip', `bnn-tooltip--${placement}`)} role="tooltip">
-        {title}
-      </span>
+    <span ref={trigger} className="bnn-tooltip-wrap"
+      onMouseEnter={(e) => setRect(e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => { if (!trigger.current?.contains(document.activeElement)) close() }}
+      onFocus={(e) => setRect(e.currentTarget.getBoundingClientRect())}
+      onBlur={close}>
+      {isValidElement<AriaAttributes>(children) ? cloneElement(children, {
+        'aria-describedby': [children.props['aria-describedby'], rect ? id : undefined].filter(Boolean).join(' ') || undefined,
+      }) : children}
+      {rect && <Portal>
+        <span ref={tip} id={id} className="bnn-tooltip is-visible" style={position} role="tooltip">{title}</span>
+      </Portal>}
     </span>
   )
 }
@@ -157,22 +187,38 @@ export function Dropdown({
   items,
   children,
   placement = 'bottomRight',
+  label,
 }: {
   items: MenuItem[]
   children: ReactNode
   placement?: 'bottomLeft' | 'bottomRight'
+  label?: string
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const menuId = useId()
   const triggerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const open = rect != null
   const close = useCallback(() => setRect(null), [])
+  const position = usePopoverPosition(rect, menuRef, placement === 'bottomRight' ? 'right' : 'left')
   useDismiss(open, [triggerRef, menuRef], close)
-  useEsc(open, close)
+  useEsc(open, close, menuRef)
   return (
     <div className="bnn-dropdown" ref={triggerRef}>
       <div
         className={cn('bnn-dropdown__trigger', open && 'is-open')}
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        onKeyDown={(e) => {
+          if (['Enter', ' ', 'ArrowDown'].includes(e.key) && triggerRef.current) {
+            e.preventDefault()
+            setRect(triggerRef.current.getBoundingClientRect())
+          }
+        }}
         onClick={() =>
           setRect((r) => (r ? null : triggerRef.current!.getBoundingClientRect()))
         }
@@ -180,21 +226,33 @@ export function Dropdown({
         {children}
       </div>
       {open && (
-        <Portal>
+        <Portal autoFocus>
           <div
             ref={menuRef}
             className="bnn-menu"
-            style={{
-              position: 'fixed',
-              top: rect.bottom + 6,
-              ...(placement === 'bottomLeft'
-                ? { left: Math.max(8, rect.left) }
-                : { right: Math.max(8, window.innerWidth - rect.right) }),
+            id={menuId}
+            role="menu"
+            style={position}
+            onKeyDown={(e) => {
+              const nodes = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])
+              const index = nodes.indexOf(document.activeElement as HTMLButtonElement)
+              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+                e.preventDefault()
+                const next = e.key === 'Home' ? 0 : e.key === 'End' ? nodes.length - 1
+                  : (index + (e.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length
+                nodes[next]?.focus()
+              } else if (e.key === 'Escape' || e.key === 'Tab') {
+                if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation() }
+                close()
+                triggerRef.current?.querySelector<HTMLElement>('[role="button"]')?.focus()
+              }
             }}
           >
             {items.map((it) => (
               <button
                 key={it.key}
+                type="button"
+                role="menuitem"
                 className={cn(
                   'bnn-menu__item',
                   it.danger && 'is-danger',
@@ -236,56 +294,40 @@ export function Popconfirm({
   children: ReactNode
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null)
-  const [top, setTop] = useState(0)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const open = rect != null
   const close = useCallback(() => setRect(null), [])
   useDismiss(open, [triggerRef, popRef], close)
-  useEsc(open, close)
-  const width = 240
-  const gap = 8
-
-  /* The trigger is often the last control of a long form or drawer, where a
-     popover placed below it would hang off the bottom of the viewport with no
-     way to reach it. Measure it once it is mounted and flip it above the
-     trigger when it does not fit underneath. */
-  useLayoutEffect(() => {
-    if (!rect || !popRef.current) return
-    const below = rect.bottom + gap
-    const height = popRef.current.offsetHeight
-    setTop(
-      below + height <= window.innerHeight - gap
-        ? below
-        : Math.max(gap, rect.top - gap - height),
-    )
-  }, [rect])
+  useEsc(open, close, popRef)
+  const position = usePopoverPosition(rect, popRef, 'center')
 
   return (
     <span className="bnn-popconfirm" ref={triggerRef}>
       <span
         onClick={() => {
           const next = rect ? null : triggerRef.current!.getBoundingClientRect()
-          if (next) setTop(next.bottom + gap)
           setRect(next)
         }}
       >
         {children}
       </span>
       {open && (
-        <Portal>
+        <Portal autoFocus>
           <div
             ref={popRef}
             className="bnn-popconfirm__pop"
             role="dialog"
-            style={{
-              position: 'fixed',
-              top,
-              left: Math.min(
-                Math.max(rect.left + rect.width / 2, width / 2 + gap),
-                window.innerWidth - width / 2 - gap,
-              ),
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return
+              const buttons = popRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+              if (!buttons?.length) return
+              const first = buttons[0]
+              const last = buttons[buttons.length - 1]
+              if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+              else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
             }}
+            style={position}
           >
             <div className="bnn-popconfirm__title">{title}</div>
             {description && (
@@ -331,6 +373,7 @@ export function Tabs({
   onChange?: (key: string) => void
   className?: string
 }) {
+  const id = useId()
   const [internal, setInternal] = useState(items[0]?.key)
   const active = activeKey ?? internal
   const set = (k: string) => {
@@ -341,10 +384,23 @@ export function Tabs({
   return (
     <div className={cn('bnn-tabs', className)}>
       <div className="bnn-tabs__nav" role="tablist">
-        {items.map((it) => (
+        {items.map((it, index) => (
           <button
             key={it.key}
+            type="button"
+            id={`${id}-tab-${index}`}
             role="tab"
+            aria-selected={it.key === active}
+            aria-controls={`${id}-panel`}
+            tabIndex={it.key === active ? 0 : -1}
+            onKeyDown={(e) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+              e.preventDefault()
+              const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1
+                : (index + (e.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length
+              set(items[next].key)
+              document.getElementById(`${id}-tab-${next}`)?.focus()
+            }}
             className={cn('bnn-tabs__tab', it.key === active && 'is-active')}
             onClick={() => set(it.key)}
           >
@@ -353,7 +409,7 @@ export function Tabs({
         ))}
       </div>
       {current?.children != null && (
-        <div className="bnn-tabs__panel">{current.children}</div>
+        <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${items.indexOf(current)}`} tabIndex={0} className="bnn-tabs__panel">{current.children}</div>
       )}
     </div>
   )
@@ -378,6 +434,8 @@ export function Segmented<T extends string | number>({
       {options.map((o) => (
         <button
           key={String(o.value)}
+          type="button"
+          aria-pressed={o.value === value}
           className={cn('bnn-segmented__item', o.value === value && 'is-active')}
           onClick={() => onChange?.(o.value)}
         >

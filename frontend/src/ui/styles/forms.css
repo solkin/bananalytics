@@ -4,12 +4,12 @@
      overriding `display` from the outside to get there */
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--bnn-control-gap);
   width: 100%;
   height: var(--bnn-control);
   padding: 0 11px;
   background: var(--bnn-surface);
-  border: 1px solid var(--bnn-border-strong);
+  border: 1px solid var(--bnn-control-border);
   border-radius: var(--bnn-radius);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -21,7 +21,7 @@
   height: var(--bnn-control-lg);
   padding: 0 13px;
 }
-.bnn-input:hover {
+.bnn-input:hover:not(.is-disabled) {
   border-color: var(--bnn-primary);
 }
 .bnn-input:focus-within {
@@ -41,11 +41,12 @@
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: var(--bnn-fs-base);
+  font-size: var(--bnn-control-font);
+  line-height: var(--bnn-leading-tight);
   color: var(--bnn-text);
 }
 .bnn-input--sm .bnn-input__el {
-  font-size: var(--bnn-fs-md);
+  font-size: var(--bnn-fs-sm);
 }
 .bnn-input__el::placeholder {
   color: var(--bnn-text-tertiary);
@@ -86,16 +87,17 @@
   width: 100%;
   padding: 8px 11px;
   background: var(--bnn-surface);
-  border: 1px solid var(--bnn-border-strong);
+  border: 1px solid var(--bnn-control-border);
   border-radius: var(--bnn-radius);
   font-family: inherit;
-  font-size: var(--bnn-fs-base);
+  font-size: var(--bnn-control-font);
+  line-height: var(--bnn-leading);
   color: var(--bnn-text);
   resize: vertical;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.bnn-textarea:hover {
+.bnn-textarea:hover:not(:disabled) {
   border-color: var(--bnn-primary);
 }
 .bnn-textarea:focus {
@@ -115,15 +117,16 @@
 .bnn-select__control {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--bnn-control-gap);
   width: 100%;
   height: var(--bnn-control);
   padding: 0 11px;
   background: var(--bnn-surface);
-  border: 1px solid var(--bnn-border-strong);
+  border: 1px solid var(--bnn-control-border);
   border-radius: var(--bnn-radius);
   font-family: inherit;
-  font-size: var(--bnn-fs-base);
+  font-size: var(--bnn-control-font);
+  line-height: var(--bnn-leading-tight);
   color: var(--bnn-text);
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -131,7 +134,7 @@
 .bnn-select--sm .bnn-select__control {
   height: var(--bnn-control-sm);
   padding: 0 9px;
-  font-size: var(--bnn-fs-md);
+  font-size: var(--bnn-fs-sm);
 }
 .bnn-select--lg .bnn-select__control {
   height: var(--bnn-control-lg);
@@ -147,7 +150,6 @@
   border-color: var(--bnn-danger);
 }
 .bnn-select.is-disabled {
-  opacity: 0.6;
   pointer-events: none;
 }
 .bnn-select__value {
@@ -171,6 +173,18 @@
 .bnn-select__clear {
   display: inline-flex;
   color: var(--bnn-text-tertiary);
+  position: absolute;
+  right: var(--bnn-sp-2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--bnn-radius-sm);
+  background: var(--bnn-surface);
+  cursor: pointer;
 }
 .bnn-select__clear:hover {
   color: var(--bnn-text-secondary);
@@ -181,7 +195,8 @@
   left: 0;
   right: 0;
   z-index: var(--bnn-z-overlay);
-  max-height: 260px;
+  max-width: calc(100vw - 16px);
+  max-height: min(260px, calc(100dvh - 16px));
   overflow-y: auto;
   padding: 4px;
   background: var(--bnn-surface);
@@ -209,7 +224,7 @@
   background: var(--bnn-surface-hover);
 }
 .bnn-select__option.is-selected {
-  color: var(--bnn-primary);
+  color: var(--bnn-primary-strong);
   font-weight: 500;
   background: var(--bnn-primary-soft);
 }
@@ -230,7 +245,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: var(--bnn-fs-base);
+  font-size: var(--bnn-control-font);
   user-select: none;
 }
 .bnn-checkbox input {
@@ -248,7 +263,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  border: 1.5px solid var(--bnn-border-strong);
+  border: 1.5px solid var(--bnn-control-border);
   border-radius: var(--bnn-radius-sm);
   background: var(--bnn-surface);
   color: var(--bnn-text-inverse);
@@ -282,7 +297,7 @@
   padding: 0;
   border: none;
   border-radius: var(--bnn-radius-pill);
-  background: var(--bnn-icon-muted);
+  background: var(--bnn-text-tertiary);
   cursor: pointer;
   transition: background 0.18s;
 }
@@ -330,7 +345,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: var(--bnn-fs-base);
+  font-size: var(--bnn-control-font);
   user-select: none;
 }
 .bnn-radio input {
@@ -349,7 +364,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  border: 1.5px solid var(--bnn-border-strong);
+  border: 1.5px solid var(--bnn-control-border);
   border-radius: 50%;
   background: var(--bnn-surface);
   transition: border-color 0.15s;
@@ -376,12 +391,12 @@
 
 /* ===== Form ===== */
 .bnn-form--vertical .bnn-form-item {
-  margin-bottom: 18px;
+  margin-bottom: var(--bnn-sp-4);
 }
 .bnn-form-item--vertical {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--bnn-sp-2);
 }
 .bnn-form-item--horizontal {
   display: grid;
@@ -404,12 +419,12 @@
   margin-right: 4px;
 }
 .bnn-form-item__error {
-  margin-top: 5px;
+  margin-top: var(--bnn-sp-1);
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-danger);
 }
 .bnn-form-item__help {
-  margin-top: 5px;
+  margin-top: var(--bnn-sp-1);
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-text-tertiary);
 }
@@ -435,7 +450,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--bnn-sp-2);
   padding: 22px 16px;
   background: var(--bnn-surface-alt);
   border: 1.5px dashed var(--bnn-border-strong);
@@ -444,9 +459,9 @@
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
-.bnn-upload-dragger:hover,
-.bnn-upload-dragger.is-drag {
-  border-color: var(--bnn-primary);
+.bnn-upload-dragger:hover:not(.is-disabled),
+.bnn-upload-dragger.is-drag:not(.is-disabled) {
+  border-color: var(--bnn-primary-strong);
   background: var(--bnn-primary-soft);
 }
 .bnn-upload-dragger.is-disabled {
@@ -463,4 +478,112 @@
 .bnn-upload-dragger__hint {
   font-size: var(--bnn-fs-sm);
   color: var(--bnn-text-tertiary);
+}
+
+.bnn-input.is-disabled,
+.bnn-select.is-disabled .bnn-select__control,
+.bnn-textarea:disabled {
+  background: var(--bnn-surface-sunken);
+  border-color: var(--bnn-border-strong);
+  color: var(--bnn-text-tertiary);
+  cursor: not-allowed;
+}
+.bnn-input__el:disabled {
+  color: var(--bnn-text-tertiary);
+  cursor: not-allowed;
+}
+.bnn-input__prefix svg,
+.bnn-input__suffix svg,
+.bnn-select__arrow {
+  width: var(--bnn-control-icon);
+  height: var(--bnn-control-icon);
+}
+.bnn-input__clear,
+.bnn-input__toggle {
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--bnn-radius-sm);
+}
+.bnn-input__clear:focus-visible,
+.bnn-input__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.bnn-textarea.bnn-input--sm,
+.bnn-textarea.bnn-input--lg {
+  height: auto;
+  padding: var(--bnn-sp-2) var(--bnn-sp-3);
+}
+.bnn-form-item__control {
+  min-width: 0;
+}
+.bnn-form > .bnn-form-item:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 480px) {
+  .bnn-form-item--horizontal {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--bnn-sp-2);
+  }
+  .bnn-form-item--horizontal .bnn-form-item__label {
+    text-align: left;
+    padding-top: 0;
+  }
+}
+.bnn-select:has(.bnn-select__clear) .bnn-select__arrow {
+  visibility: hidden;
+}
+.bnn-select__option.is-active:not(.is-disabled) {
+  background: var(--bnn-primary-soft);
+  color: var(--bnn-primary-strong);
+}
+.bnn-select__clear:focus-visible {
+  outline: none;
+  box-shadow: var(--bnn-focus-ring);
+}
+.bnn-select__option.is-disabled:hover {
+  background: transparent;
+}
+.bnn-checkbox,
+.bnn-radio {
+  min-height: 24px;
+}
+.bnn-switch::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.bnn-input--lg .bnn-input__el,
+.bnn-select--lg .bnn-select__control,
+.bnn-textarea.bnn-input--lg {
+  font-size: var(--bnn-fs-base);
+}
+.bnn-input--sm .bnn-input__prefix svg,
+.bnn-input--sm .bnn-input__suffix svg,
+.bnn-select--sm .bnn-select__arrow {
+  width: var(--bnn-control-icon-sm);
+  height: var(--bnn-control-icon-sm);
+}
+
+.bnn-textarea.is-error:focus,
+.bnn-select.is-error .bnn-select__control:focus-visible,
+.bnn-select.is-error.is-open .bnn-select__control {
+  border-color: var(--bnn-danger);
+  box-shadow: var(--bnn-focus-ring-danger);
+}
+.bnn-input__toggle:disabled {
+  color: var(--bnn-text-tertiary);
+  cursor: not-allowed;
+}
+.bnn-checkbox:not(.is-disabled):hover .bnn-checkbox__box,
+.bnn-radio:not(.is-disabled):hover .bnn-radio__dot {
+  border-color: var(--bnn-primary);
+}
+
+.bnn-select__option > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

@@ -23,7 +23,7 @@
    their own height instead of stretching to the tallest in the row. */
 .acct-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   align-items: start;
   gap: var(--bnn-sp-4);
 }
