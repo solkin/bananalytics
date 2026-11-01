@@ -65,6 +65,7 @@ object CrashGroups : UUIDTable("crash_groups") {
 private val jsonSerializer = Json { ignoreUnknownKeys = true }
 
 object Crashes : UUIDTable("crashes") {
+    val reportId = uuid("report_id").nullable()
     val appId = reference("app_id", Apps)
     val versionId = reference("version_id", AppVersions).nullable()
     val groupId = reference("group_id", CrashGroups).nullable()
@@ -98,6 +99,7 @@ object Events : Table("events") {
 object AppSessions : UUIDTable("app_sessions") {
     val appId = reference("app_id", Apps)
     val sessionId = uuid("session_id")
+    val deviceInfo = jsonb<DeviceInfo>("device_info", jsonSerializer).nullable()
     val versionCode = long("version_code")
     val deviceId = varchar("device_id", 64).nullable()
     val hasCrash = bool("has_crash").default(false)

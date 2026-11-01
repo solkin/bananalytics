@@ -175,3 +175,16 @@ export async function trimOldData(
   )
   return response.data
 }
+
+export interface CrashDistribution {
+  models: { name: string; count: number }[]
+  os_versions: { name: string; count: number }[]
+  total: number
+}
+
+export async function getCrashDistributions(
+  groupId: string,
+  options: { from: string; to: string; version?: number },
+): Promise<CrashDistribution> {
+  return (await api.get<CrashDistribution>(`/crash-groups/${groupId}/distributions`, { params: options })).data
+}

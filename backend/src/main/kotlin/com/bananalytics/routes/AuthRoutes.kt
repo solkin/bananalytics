@@ -22,10 +22,10 @@ private const val MAX_AVATAR_BYTES = 1L * 1024 * 1024
  * live here too — so the ones that act on the signed-in person resolve the
  * session themselves.
  */
-private fun ApplicationCall.requireSessionUser(): UserResponse {
+private suspend fun ApplicationCall.requireSessionUser(): UserResponse {
     val sessionId = getSessionId()
         ?: throw UnauthorizedException("Not authenticated")
-    return AuthService.getUserBySession(sessionId)
+    return dbIO { AuthService.getUserBySession(sessionId) }
         ?: throw UnauthorizedException("Session expired")
 }
 
@@ -42,7 +42,7 @@ fun Route.authRoutes() {
         // Check if email exists (for invitation flow)
         post("/check-email") {
             val request = call.receive<CheckEmailRequest>()
-            val exists = UserRepository.findByEmail(request.email) != null
+            val exists = dbIO { UserRepository.findByEmail(request.email) } != null
             call.respond(CheckEmailResponse(
                 exists = exists,
                 smtpConfigured = EmailService.isConfigured
@@ -54,7 +54,7 @@ fun Route.authRoutes() {
             val token = call.parameters["token"]
                 ?: throw BadRequestException("Token is required")
 
-            val email = AuthService.getEmailFromInviteToken(token)
+            val email = dbIO { AuthService.getEmailFromInviteToken(token) }
                 ?: throw NotFoundException("Invalid or expired invitation")
 
             call.respond(mapOf("email" to email))
@@ -64,28 +64,12 @@ fun Route.authRoutes() {
         post("/register") {
             val request = call.receive<RegisterRequest>()
             
-            // Check if registration is allowed
-            val hasInvitation = request.inviteToken?.let { 
-                AuthService.isValidInviteToken(it) 
-            } ?: AuthService.hasValidInvitation(request.email)
-            
-            if (!AppConfig.registrationEnabled && !hasInvitation) {
-                throw BadRequestException("Registration is disabled")
-            }
-
-            // If invite token provided, verify email matches
-            if (request.inviteToken != null) {
-                val inviteEmail = AuthService.getEmailFromInviteToken(request.inviteToken)
-                if (inviteEmail != null && inviteEmail.lowercase() != request.email.lowercase()) {
-                    throw BadRequestException("Email does not match invitation")
-                }
-            }
-
-            val (user, sessionId) = AuthService.register(
+            val (user, sessionId) = dbIO { AuthService.register(
                 email = request.email,
                 password = request.password,
-                name = request.name
-            )
+                name = request.name,
+                inviteToken = request.inviteToken
+            ) }
 
             call.setSessionCookie(sessionId)
             call.respond(HttpStatusCode.Created, AuthResponse(user = user))
@@ -94,10 +78,10 @@ fun Route.authRoutes() {
         // Login
         post("/login") {
             val request = call.receive<LoginRequest>()
-            val (user, sessionId) = AuthService.login(
+            val (user, sessionId) = dbIO { AuthService.login(
                 email = request.email,
                 password = request.password
-            )
+            ) }
 
             call.setSessionCookie(sessionId)
             call.respond(AuthResponse(user = user))
@@ -107,7 +91,7 @@ fun Route.authRoutes() {
         post("/logout") {
             val sessionId = call.getSessionId()
             if (sessionId != null) {
-                AuthService.logout(sessionId)
+                dbIO { AuthService.logout(sessionId) }
             }
             call.clearSessionCookie()
             call.respond(HttpStatusCode.NoContent)
@@ -123,7 +107,7 @@ fun Route.authRoutes() {
             val user = call.requireSessionUser()
 
             val request = call.receive<UpdateProfileRequest>()
-            val updated = AuthService.updateProfile(UUID.fromString(user.id), request.name)
+            val updated = dbIO { AuthService.updateProfile(UUID.fromString(user.id), request.name) }
             call.respond(AuthResponse(user = updated))
         }
 
@@ -136,17 +120,20 @@ fun Route.authRoutes() {
             try {
                 val multipart = call.receiveMultipart()
                 multipart.forEachPart { part ->
-                    when (part) {
-                        is PartData.FileItem -> {
-                            // Only the first avatar part counts; a second one
-                            // would otherwise leave its temp file behind.
-                            if (part.name == "avatar" && received == null) {
-                                received = part.receiveImage(MAX_AVATAR_BYTES, "Avatar")
+                    try {
+                        when (part) {
+                            is PartData.FileItem -> {
+                                // Only the first avatar part counts; a second one
+                                // would otherwise leave its temp file behind.
+                                if (part.name == "avatar" && received == null) {
+                                    received = part.receiveImage(MAX_AVATAR_BYTES, "Avatar")
+                                }
                             }
+                            else -> {}
                         }
-                        else -> {}
+                    } finally {
+                        part.dispose()
                     }
-                    part.dispose()
                 }
 
                 val (file, contentType) = received
@@ -157,7 +144,7 @@ fun Route.authRoutes() {
                     throw UnauthorizedException("User not found")
                 }
 
-                call.respond(AuthResponse(user = UserRepository.findById(userId)!!))
+                call.respond(AuthResponse(user = dbIO { UserRepository.findById(userId) }!!))
             } finally {
                 received?.first?.delete()
             }
@@ -172,7 +159,7 @@ fun Route.authRoutes() {
                 throw NotFoundException("Avatar not found")
             }
 
-            call.respond(AuthResponse(user = UserRepository.findById(userId)!!))
+            call.respond(AuthResponse(user = dbIO { UserRepository.findById(userId) }!!))
         }
 
         // Change current user's password
@@ -180,12 +167,12 @@ fun Route.authRoutes() {
             val user = call.requireSessionUser()
 
             val request = call.receive<ChangePasswordRequest>()
-            AuthService.changePassword(
+            dbIO { AuthService.changePassword(
                 UUID.fromString(user.id),
                 user.email,
                 request.currentPassword,
                 request.newPassword,
-            )
+            ) }
             call.respond(HttpStatusCode.NoContent)
         }
     }

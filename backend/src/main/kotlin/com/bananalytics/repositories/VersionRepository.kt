@@ -51,30 +51,15 @@ object VersionRepository {
             ?.toVersionResponse()
 
         existing ?: run {
-            val now = OffsetDateTime.now()
-            val id = AppVersions.insertAndGetId {
+            AppVersions.insertIgnore {
                 it[AppVersions.appId] = appId
                 it[AppVersions.versionCode] = versionCode
                 it[AppVersions.versionName] = versionName
-                it[AppVersions.mappingPath] = null
-                it[AppVersions.createdAt] = now
+                it[AppVersions.createdAt] = OffsetDateTime.now()
             }
-            AppVersionResponse(
-                id = id.value.toString(),
-                appId = appId.toString(),
-                versionCode = versionCode,
-                versionName = versionName,
-                hasMapping = false,
-                hasApk = false,
-                apkSize = null,
-                apkFilename = null,
-                apkUploadedAt = null,
-                releaseNotes = null,
-                publishedForTesters = false,
-                muteCrashes = false,
-                muteEvents = false,
-                createdAt = now.toString()
-            )
+            AppVersions.selectAll()
+                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                .single().toVersionResponse()
         }
     }
 
@@ -85,16 +70,14 @@ object VersionRepository {
             .map { it.toVersionResponse() }
     }
 
-    fun getMappingContent(appId: UUID, versionCode: Long): String? {
-        val mappingPath = transaction {
-            AppVersions.select(AppVersions.mappingPath)
-                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
-                .singleOrNull()
-                ?.get(AppVersions.mappingPath)
-        }
-
-        return mappingPath?.let { StorageService.getMappingByKey(it) }
+    fun getMappingPath(appId: UUID, versionCode: Long): String? = transaction {
+        AppVersions.select(AppVersions.mappingPath)
+            .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+            .singleOrNull()?.get(AppVersions.mappingPath)
     }
+
+    fun getMappingContent(appId: UUID, versionCode: Long): String? =
+        getMappingPath(appId, versionCode)?.let { StorageService.getMappingByKey(it) }
 
     /** A version created by hand in the UI; its APK, if any, is uploaded after. */
     fun create(
@@ -102,37 +85,23 @@ object VersionRepository {
         versionCode: Long,
         versionName: String?,
         mappingFile: File?
-    ): AppVersionResponse = transaction {
-        val now = OffsetDateTime.now()
-
-        val mappingPath = mappingFile?.let {
-            StorageService.uploadMapping(appId.toString(), versionCode, it)
+    ): AppVersionResponse {
+        val mappingPath = mappingFile?.let { StorageService.uploadMapping(appId.toString(), versionCode, it) }
+        return try {
+            transaction {
+                val id = AppVersions.insertAndGetId {
+                    it[AppVersions.appId] = appId
+                    it[AppVersions.versionCode] = versionCode
+                    it[AppVersions.versionName] = versionName
+                    it[AppVersions.mappingPath] = mappingPath
+                    it[AppVersions.createdAt] = OffsetDateTime.now()
+                }
+                AppVersions.selectAll().where { AppVersions.id eq id }.single().toVersionResponse()
+            }
+        } catch (e: Exception) {
+            mappingPath?.let { StorageService.deleteFiles(listOf(it)) }
+            throw e
         }
-
-        val id = AppVersions.insertAndGetId {
-            it[AppVersions.appId] = appId
-            it[AppVersions.versionCode] = versionCode
-            it[AppVersions.versionName] = versionName
-            it[AppVersions.mappingPath] = mappingPath
-            it[AppVersions.createdAt] = now
-        }
-
-        AppVersionResponse(
-            id = id.value.toString(),
-            appId = appId.toString(),
-            versionCode = versionCode,
-            versionName = versionName,
-            hasMapping = mappingPath != null,
-            hasApk = false,
-            apkSize = null,
-            apkFilename = null,
-            apkUploadedAt = null,
-            releaseNotes = null,
-            publishedForTesters = false,
-            muteCrashes = false,
-            muteEvents = false,
-            createdAt = now.toString()
-        )
     }
 
     /**
@@ -152,53 +121,58 @@ object VersionRepository {
         releaseNotes: String?,
         publishForTesters: Boolean
     ): AppVersionResponse {
-        // Storage first: both keys derive from the version code, and a slow
-        // bucket should not hold a database connection open while it uploads.
+        // Upload before opening the database transaction.
         val apkPath = StorageService.uploadApk(appId.toString(), versionCode, apkFile)
         val mappingPath = mappingFile?.let {
             StorageService.uploadMapping(appId.toString(), versionCode, it)
         }
 
-        return transaction {
-            val now = OffsetDateTime.now()
-            val existingId = AppVersions.select(AppVersions.id)
-                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
-                .singleOrNull()
-                ?.get(AppVersions.id)
-                ?.value
+        val (published, replacedMapping) = try {
+            transaction {
+                val now = OffsetDateTime.now()
+                val existing = AppVersions.selectAll()
+                    .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                    .forUpdate().singleOrNull()
+                val existingId = existing?.get(AppVersions.id)?.value
 
-            if (existingId == null) {
-                AppVersions.insert {
-                    it[AppVersions.appId] = appId
-                    it[AppVersions.versionCode] = versionCode
-                    it[AppVersions.versionName] = versionName
-                    it[AppVersions.mappingPath] = mappingPath
-                    it[AppVersions.apkPath] = apkPath
-                    it[AppVersions.apkSize] = apkFile.length()
-                    it[AppVersions.apkFilename] = apkFilename
-                    it[AppVersions.apkUploadedAt] = now
-                    it[AppVersions.releaseNotes] = releaseNotes
-                    it[AppVersions.publishedForTesters] = publishForTesters
-                    it[AppVersions.createdAt] = now
+                if (existingId == null) {
+                    AppVersions.insert {
+                        it[AppVersions.appId] = appId
+                        it[AppVersions.versionCode] = versionCode
+                        it[AppVersions.versionName] = versionName
+                        it[AppVersions.mappingPath] = mappingPath
+                        it[AppVersions.apkPath] = apkPath
+                        it[AppVersions.apkSize] = apkFile.length()
+                        it[AppVersions.apkFilename] = apkFilename
+                        it[AppVersions.apkUploadedAt] = now
+                        it[AppVersions.releaseNotes] = releaseNotes
+                        it[AppVersions.publishedForTesters] = publishForTesters
+                        it[AppVersions.createdAt] = now
+                    }
+                } else {
+                    AppVersions.update({ (AppVersions.id eq existingId) and (AppVersions.appId eq appId) }) {
+                        versionName?.let { value -> it[AppVersions.versionName] = value }
+                        mappingPath?.let { value -> it[AppVersions.mappingPath] = value }
+                        releaseNotes?.let { value -> it[AppVersions.releaseNotes] = value }
+                        it[AppVersions.apkPath] = apkPath
+                        it[AppVersions.apkSize] = apkFile.length()
+                        it[AppVersions.apkFilename] = apkFilename
+                        it[AppVersions.apkUploadedAt] = now
+                        it[AppVersions.publishedForTesters] = publishForTesters
+                    }
                 }
-            } else {
-                AppVersions.update({ (AppVersions.id eq existingId) and (AppVersions.appId eq appId) }) {
-                    versionName?.let { value -> it[AppVersions.versionName] = value }
-                    mappingPath?.let { value -> it[AppVersions.mappingPath] = value }
-                    releaseNotes?.let { value -> it[AppVersions.releaseNotes] = value }
-                    it[AppVersions.apkPath] = apkPath
-                    it[AppVersions.apkSize] = apkFile.length()
-                    it[AppVersions.apkFilename] = apkFilename
-                    it[AppVersions.apkUploadedAt] = now
-                    it[AppVersions.publishedForTesters] = publishForTesters
-                }
+
+                AppVersions.selectAll()
+                    .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
+                    .single()
+                    .toVersionResponse() to if (mappingPath != null) existing?.get(AppVersions.mappingPath) else null
             }
-
-            AppVersions.selectAll()
-                .where { (AppVersions.appId eq appId) and (AppVersions.versionCode eq versionCode) }
-                .single()
-                .toVersionResponse()
+        } catch (e: Exception) {
+            mappingPath?.let { StorageService.deleteFiles(listOf(it)) }
+            throw e
         }
+        replacedMapping?.let { StorageService.deleteFiles(listOf(it)) }
+        return published
     }
 
     fun updateMapping(appId: UUID, id: UUID, mappingFile: File): Boolean {
@@ -215,11 +189,22 @@ object VersionRepository {
         val mappingPath = StorageService.uploadMapping(appId.toString(), versionCode, mappingFile)
 
         // Update path in database
-        return transaction {
-            AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
-                it[AppVersions.mappingPath] = mappingPath
-            } > 0
+        val (updated, previousPath) = try {
+            transaction {
+                val previousPath = AppVersions.select(AppVersions.mappingPath)
+                    .where { (AppVersions.id eq id) and (AppVersions.appId eq appId) }
+                    .forUpdate().singleOrNull()?.get(AppVersions.mappingPath)
+                AppVersions.update({ (AppVersions.id eq id) and (AppVersions.appId eq appId) }) {
+                    it[AppVersions.mappingPath] = mappingPath
+                }.let { (it > 0) to previousPath }
+            }
+        } catch (e: Exception) {
+            StorageService.deleteFiles(listOf(mappingPath))
+            throw e
         }
+        if (updated) previousPath?.let { StorageService.deleteFiles(listOf(it)) }
+        else StorageService.deleteFiles(listOf(mappingPath))
+        return updated
     }
 
     fun delete(appId: UUID, id: UUID): Boolean {
@@ -261,6 +246,7 @@ object VersionRepository {
 
             // Delete app sessions for this app and version_code
             AppSessions.deleteWhere { (AppSessions.appId eq appId) and (AppSessions.versionCode eq versionCode) }
+            exec("DELETE FROM session_device_stats_daily WHERE app_id = '$appId'::uuid AND version_code = $versionCode")
 
             // Delete the version record
             AppVersions.deleteWhere { (AppVersions.id eq id) and (AppVersions.appId eq appId) } > 0

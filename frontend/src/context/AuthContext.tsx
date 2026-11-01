@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { AsyncCacheProvider } from '@/next/async'
 import type { User, ConfigResponse } from '@/types/auth'
 import {
   getCurrentUser,
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{ user, config, loading, login, register, logout, updateProfile, updateAvatar, removeAvatar }}
     >
-      {children}
+      <AsyncCacheProvider key={user?.id ?? 'anonymous'}>{children}</AsyncCacheProvider>
     </AuthContext.Provider>
   )
 }

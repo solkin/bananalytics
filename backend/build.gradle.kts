@@ -69,3 +69,9 @@ ktor {
 kotlin {
     jvmToolchain(21)
 }
+
+tasks.test {
+    environment("REGISTRATION_ENABLED", "false")
+    environment("MAX_APK_SIZE_MB", "52")
+    maxHeapSize = "1g"
+}

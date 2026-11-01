@@ -13,6 +13,7 @@ import java.io.File
 import java.io.InputStream
 import java.net.URI
 import java.time.Duration
+import java.util.UUID
 import java.util.zip.GZIPInputStream
 
 object StorageService {
@@ -73,7 +74,7 @@ object StorageService {
      * uploaded earlier stay readable without a backfill.
      */
     private fun mappingKey(appId: String, versionCode: Long) =
-        "mappings/$appId/$versionCode/mapping.txt$GZIP_SUFFIX"
+        "mappings/$appId/$versionCode/${UUID.randomUUID()}.txt$GZIP_SUFFIX"
 
     /** Streams an already-gzipped mapping off disk, so it never sits in heap. */
     fun uploadMapping(appId: String, versionCode: Long, file: File): String {
@@ -88,10 +89,6 @@ object StorageService {
                 .build(),
             RequestBody.fromFile(file)
         )
-
-        // Re-publishing a version that predates gzipped mappings writes to a new
-        // key, so the plain object it used to point at would sit there forever.
-        deleteFiles(listOf(key.removeSuffix(GZIP_SUFFIX)))
 
         return key
     }

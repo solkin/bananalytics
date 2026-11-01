@@ -57,7 +57,8 @@ data class CrashData(
     val stacktrace: String,
     @SerialName("is_fatal") val isFatal: Boolean = true,
     val context: Map<String, String> = emptyMap(),
-    val breadcrumbs: List<BreadcrumbData> = emptyList()
+    val breadcrumbs: List<BreadcrumbData> = emptyList(),
+    @SerialName("report_id") val reportId: String? = null
 )
 
 @Serializable
@@ -389,4 +390,11 @@ data class PublishReleaseResponse(
     @SerialName("expires_at") val expiresAt: String,
     /** How many testers and admins actually received the email. */
     val notified: Int
+)
+
+@Serializable
+data class CrashDistributionResponse(
+    val models: List<DeviceStatItem>,
+    @SerialName("os_versions") val osVersions: List<DeviceStatItem>,
+    val total: Long
 )

@@ -77,6 +77,20 @@ TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:55432/bananalytics_test \
 TEST_DATABASE_PASSWORD=perf-local gradle -p backend test
 ```
 
+Migration `017_telemetry_consistency` adds stable crash report IDs and session
+metadata with daily device counters. Stop the backend during the migration and
+backfill, then start the new image. Historic session dimensions are `Unknown`:
+raw events do not retain their session ID, so assigning them would be guesswork.
+The legacy event-based device counters are retained for compatibility; the web
+now uses session counts and exact inclusive timestamp filters.
+
+The updated Android SDK persists a `report_id` before delivery, including queued
+reports from earlier SDK versions. Retries are deduplicated per app. Older SDKs
+remain accepted, but reports without an ID cannot be deduplicated reliably.
+Deploy the backend before distributing the updated SDK for retry protection.
+
+Frontend regressions run with `npm test` in `frontend` (Node.js 22.13+).
+
 ## Configuration
 
 | Variable | Description | Default |

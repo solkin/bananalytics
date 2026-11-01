@@ -70,7 +70,7 @@ fun Route.releaseRoutes() {
         var linkHours = DEFAULT_LINK_HOURS
 
         try {
-            call.receiveMultipart().forEachPart { part ->
+            call.receiveMultipart(formFieldLimit = apkLimit * 2).forEachPart { part ->
                 try {
                     when (part) {
                         is PartData.FormItem -> when (part.name) {
@@ -124,7 +124,7 @@ fun Route.releaseRoutes() {
                 throw BadRequestException("link_expires_in_hours must be between 1 and $MAX_LINK_HOURS")
             }
 
-            val manifest = ApkManifestParser.read(apk)
+            val manifest = dbIO { ApkManifestParser.read(apk) }
                 ?: throw BadRequestException("Could not read AndroidManifest.xml — is this a valid APK?")
 
             if (manifest.packageName != app.packageName) {
@@ -236,10 +236,10 @@ private fun String.toFlag(field: String): Boolean = when (trim().lowercase()) {
     else -> throw BadRequestException("$field must be true or false")
 }
 
-private fun ApplicationCall.authenticateUploadKey(): AppResponse {
+private suspend fun ApplicationCall.authenticateUploadKey(): AppResponse {
     val apiKey = request.header("X-API-Key")
         ?: throw UnauthorizedException("Missing X-API-Key header")
 
-    return ApiKeyRepository.authenticate(apiKey, ApiKeyRepository.SCOPE_UPLOAD)
+    return dbIO { ApiKeyRepository.authenticate(apiKey, ApiKeyRepository.SCOPE_UPLOAD) }
         ?: throw UnauthorizedException("Invalid API key, or the key cannot publish releases")
 }

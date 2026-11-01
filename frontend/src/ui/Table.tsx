@@ -10,7 +10,7 @@ export interface Column<T> {
   width?: number | string
   align?: 'left' | 'right' | 'center'
   render?: (row: T, index: number) => ReactNode
-  sorter?: (a: T, b: T) => number
+  sorter?: ((a: T, b: T) => number) | true
 }
 
 export interface TablePagination {
@@ -30,6 +30,7 @@ export interface TableProps<T> {
   pageSize?: number
   /* Server-side mode: data is already one page; the pager reflects `total`. */
   pagination?: TablePagination
+  sort?: { key: string; direction: 'asc' | 'desc'; onChange: (key: string, direction: 'asc' | 'desc') => void }
   emptyText?: ReactNode
   className?: string
 }
@@ -43,20 +44,23 @@ export function Table<T>({
   size = 'md',
   pageSize,
   pagination,
+  sort,
   emptyText = 'No data',
   className,
 }: TableProps<T>) {
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [innerSortKey, setSortKey] = useState<string | null>(null)
+  const [innerSortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const sortKey = sort?.key ?? innerSortKey
+  const sortDir = sort?.direction ?? innerSortDir
   const [innerPage, setInnerPage] = useState(1)
 
   const sorted = useMemo(() => {
-    if (!sortKey) return data
+    if (sort || !sortKey) return data
     const col = columns.find((c) => c.key === sortKey)
-    if (!col?.sorter) return data
+    if (typeof col?.sorter !== 'function') return data
     const arr = [...data].sort(col.sorter)
     return sortDir === 'asc' ? arr : arr.reverse()
-  }, [data, sortKey, sortDir, columns])
+  }, [data, sortKey, sortDir, columns, sort])
 
   const page = pagination ? pagination.page : innerPage
   const setPage = pagination ? pagination.onChange : setInnerPage
@@ -72,6 +76,11 @@ export function Table<T>({
 
   const toggleSort = (col: Column<T>) => {
     if (!col.sorter) return
+    if (sort) {
+      sort.onChange(col.key, sortKey === col.key && sortDir === 'asc' ? 'desc' : 'asc')
+      return
+    }
+    setInnerPage(1)
     if (sortKey === col.key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     } else {

@@ -23,7 +23,7 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val (fromDate, toDate) = call.dateRange()
@@ -40,7 +40,7 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
@@ -70,7 +70,7 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
@@ -99,9 +99,9 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
-        val versions = CrashRepository.getVersionCodes(appId)
+        val versions = dbIO { CrashRepository.getVersionCodes(appId) }
         call.respond(versions)
     }
 
@@ -111,18 +111,18 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val status = call.request.queryParameters["status"]
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 28
         val sortBy = call.request.queryParameters["sortBy"]
         val sortOrder = call.request.queryParameters["sortOrder"]
-        val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-        val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
+        val page = (call.request.queryParameters["page"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
+        val pageSize = (call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20).coerceIn(1, 100)
 
         val fromDate = java.time.OffsetDateTime.now().minusDays(days.toLong())
-        val result = CrashRepository.findGroupsByAppId(appId, status, versionCode, fromDate, sortBy, sortOrder, page, pageSize)
+        val result = dbIO { CrashRepository.findGroupsByAppId(appId, status, versionCode, fromDate, sortBy, sortOrder, page, pageSize) }
         call.respond(result)
     }
 
@@ -132,10 +132,10 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAccess(UUID.fromString(group.appId), user)
+        call.requireAnalyticsAccess(appId, user)
 
         val fromParam = call.request.queryParameters["from"]
         val toParam = call.request.queryParameters["to"]
@@ -153,8 +153,19 @@ fun Route.crashRoutes() {
             now.minusDays(30)
         }
 
-        val stats = CrashRepository.getCrashStatsByGroupId(id, fromDate, toDate, versionCode)
+        val stats = dbIO { CrashRepository.getCrashStatsByGroupId(id, fromDate, toDate, versionCode) }
         call.respond(stats)
+    }
+
+    get("/crash-groups/{id}/distributions") {
+        val id = call.parameters["id"]?.toUUIDOrNull()
+            ?: throw BadRequestException("Invalid crash group ID")
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
+            ?: throw NotFoundException("Crash group not found")
+        call.requireAnalyticsAccess(appId)
+        val (from, to) = call.dateRange()
+        val version = call.request.queryParameters["version"]?.toLongOrNull()
+        call.respond(dbIO { CrashRepository.getDistributions(id, from, to, version) })
     }
 
     // Get crash group details
@@ -163,10 +174,10 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val group = dbIO { CrashRepository.findGroupById(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAccess(UUID.fromString(group.appId), user)
+        call.requireAnalyticsAccess(UUID.fromString(group.appId), user)
 
         call.respond(group)
     }
@@ -177,12 +188,12 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAccess(UUID.fromString(group.appId), user)
+        call.requireAnalyticsAccess(appId, user)
 
-        val versions = CrashRepository.getVersionCodesByGroup(UUID.fromString(group.appId), id)
+        val versions = dbIO { CrashRepository.getVersionCodesByGroup(appId, id) }
         call.respond(versions)
     }
 
@@ -192,10 +203,10 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAccess(UUID.fromString(group.appId), user)
+        call.requireAppAdmin(appId, user)
 
         val request = call.receive<UpdateCrashGroupRequest>()
 
@@ -204,10 +215,10 @@ fun Route.crashRoutes() {
         }
 
         request.status?.let {
-            CrashRepository.updateGroupStatus(id, it)
+            dbIO { CrashRepository.updateGroupStatus(id, it) }
         }
 
-        val updatedGroup = CrashRepository.findGroupById(id)
+        val updatedGroup = dbIO { CrashRepository.findGroupById(id) }
             ?: throw NotFoundException("Crash group not found")
 
         call.respond(updatedGroup)
@@ -219,12 +230,12 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAdmin(UUID.fromString(group.appId), user)
+        call.requireAppAdmin(appId, user)
 
-        val deleted = CrashRepository.deleteGroup(id)
+        val deleted = dbIO { CrashRepository.deleteGroup(id) }
         if (!deleted) {
             throw NotFoundException("Crash group not found")
         }
@@ -238,18 +249,18 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash group ID")
 
-        val group = CrashRepository.findGroupById(id)
+        val appId = dbIO { CrashRepository.findGroupAppId(id) }
             ?: throw NotFoundException("Crash group not found")
 
-        requireAppAccess(UUID.fromString(group.appId), user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val days = call.request.queryParameters["days"]?.toIntOrNull()
-        val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-        val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
+        val page = (call.request.queryParameters["page"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
+        val pageSize = (call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20).coerceIn(1, 100)
 
         val fromDate = if (days != null) java.time.OffsetDateTime.now().minusDays(days.toLong()) else null
-        val result = CrashRepository.findCrashesByGroupId(id, versionCode, fromDate, page, pageSize)
+        val result = dbIO { CrashRepository.findCrashesByGroupId(id, versionCode, fromDate, page, pageSize) }
         call.respond(result)
     }
 
@@ -259,10 +270,10 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash ID")
 
-        val crash = CrashRepository.findCrashById(id)
+        val crash = dbIO { CrashRepository.findCrashById(id) }
             ?: throw NotFoundException("Crash not found")
 
-        requireAppAccess(UUID.fromString(crash.appId), user)
+        call.requireAnalyticsAccess(UUID.fromString(crash.appId), user)
 
         call.respond(crash)
     }
@@ -273,12 +284,12 @@ fun Route.crashRoutes() {
         val id = call.parameters["id"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid crash ID")
 
-        val existingCrash = CrashRepository.findCrashById(id)
+        val existingCrash = dbIO { CrashRepository.findCrashById(id) }
             ?: throw NotFoundException("Crash not found")
 
-        requireAppAdmin(UUID.fromString(existingCrash.appId), user)
+        call.requireAppAdmin(UUID.fromString(existingCrash.appId), user)
 
-        val crash = CrashService.retraceCrash(id)
+        val crash = dbIO { CrashService.retraceCrash(id) }
         call.respond(crash)
     }
 
@@ -288,9 +299,9 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAdmin(appId, user)
+        call.requireAppAdmin(appId, user)
 
-        val result = CrashRepository.migrateToNormalizedFingerprints(appId)
+        val result = dbIO { CrashRepository.migrateToNormalizedFingerprints(appId) }
         call.respond(result)
     }
 
@@ -300,9 +311,9 @@ fun Route.crashRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAdmin(appId, user)
+        call.requireAppAdmin(appId, user)
 
-        val result = CrashRepository.deleteOrphanedCrashes(appId)
+        val result = dbIO { CrashRepository.deleteOrphanedCrashes(appId) }
         call.respond(result)
     }
 }
@@ -311,16 +322,4 @@ private fun String.toUUIDOrNull(): UUID? = try {
     UUID.fromString(this)
 } catch (e: IllegalArgumentException) {
     null
-}
-
-private suspend fun requireAppAccess(appId: UUID, user: UserResponse) {
-    if (!dbIO { AppAccessRepository.hasAccess(appId, UUID.fromString(user.id)) }) {
-        throw NotFoundException("App not found")
-    }
-}
-
-private fun requireAppAdmin(appId: UUID, user: UserResponse) {
-    if (!AppAccessRepository.isAdmin(appId, UUID.fromString(user.id))) {
-        throw ApiException(HttpStatusCode.Forbidden, "forbidden", "Admin access required")
-    }
 }

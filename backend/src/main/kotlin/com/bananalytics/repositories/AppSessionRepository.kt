@@ -1,5 +1,6 @@
 package com.bananalytics.repositories
 
+import com.bananalytics.models.DeviceInfo
 import com.bananalytics.models.AppSessions
 import com.bananalytics.models.Events
 import com.bananalytics.models.AppVersions
@@ -56,7 +57,7 @@ object AppSessionRepository {
             ORDER BY 1, version_code
             """.trimIndent(),
             listOf(
-                Events.appId.columnType to appId,
+                UUIDColumnType() to appId,
                 AppSessions.firstSeen.columnType to fromDate,
                 AppSessions.firstSeen.columnType to toDate
             )
@@ -81,45 +82,46 @@ object AppSessionRepository {
         } ?: SessionOverviewResponse(emptyList(), emptyList(), emptyList())
     }
 
-    /**
-     * Record or update a session. Returns true if new session was created.
-     */
     fun recordSession(
         appId: UUID,
         sessionId: UUID,
         versionCode: Long,
         deviceId: String?,
         hasCrash: Boolean = false,
-        hasEvent: Boolean = false
+        hasEvent: Boolean = false,
+        deviceInfo: DeviceInfo? = null
     ): Boolean = transaction {
         val now = OffsetDateTime.now()
-
-        val existing = AppSessions.selectAll()
+        val inserted = AppSessions.insertIgnore {
+            it[AppSessions.appId] = appId
+            it[AppSessions.sessionId] = sessionId
+            it[AppSessions.versionCode] = versionCode
+            it[AppSessions.deviceId] = deviceId
+            it[AppSessions.deviceInfo] = deviceInfo
+            it[firstSeen] = now
+            it[lastSeen] = now
+        }.insertedCount > 0
+        val session = AppSessions.selectAll()
             .where { (AppSessions.appId eq appId) and (AppSessions.sessionId eq sessionId) }
-            .singleOrNull()
-
-        if (existing != null) {
-            // Update existing session
-            AppSessions.update({ (AppSessions.appId eq appId) and (AppSessions.sessionId eq sessionId) }) {
-                it[lastSeen] = now
-                if (hasCrash) it[AppSessions.hasCrash] = true
-                if (hasEvent) it[AppSessions.hasEvent] = true
-            }
-            false
-        } else {
-            // Create new session
-            AppSessions.insert {
-                it[AppSessions.appId] = appId
-                it[AppSessions.sessionId] = sessionId
-                it[AppSessions.versionCode] = versionCode
-                it[AppSessions.deviceId] = deviceId
-                it[AppSessions.hasCrash] = hasCrash
-                it[AppSessions.hasEvent] = hasEvent
-                it[firstSeen] = now
-                it[lastSeen] = now
-            }
-            true
+            .forUpdate().single()
+        if (hasEvent && !session[AppSessions.hasEvent]) {
+            exec(
+                """
+                INSERT INTO session_device_stats_daily (app_id, day, version_code, dimension, name, count)
+                SELECT app_id, (first_seen AT TIME ZONE 'UTC')::date, version_code, dimension, name, 1
+                FROM app_sessions CROSS JOIN LATERAL $deviceDimensionsSql
+                WHERE id = ? ORDER BY dimension
+                ON CONFLICT (app_id, day, version_code, dimension, name)
+                DO UPDATE SET count = session_device_stats_daily.count + 1
+                """.trimIndent(), listOf(UUIDColumnType() to session[AppSessions.id].value)
+            )
         }
+        AppSessions.update({ AppSessions.id eq session[AppSessions.id] }) {
+            it[lastSeen] = now
+            if (hasCrash) it[AppSessions.hasCrash] = true
+            if (hasEvent) it[AppSessions.hasEvent] = true
+        }
+        inserted
     }
 
     /**
@@ -144,7 +146,7 @@ object AppSessionRepository {
     ): List<SessionStats> = transaction {
         val versionFilter = if (versionCode != null) "AND version_code = ?" else ""
         val args = buildList {
-            add(Events.appId.columnType to appId)
+            add(UUIDColumnType() to appId)
             add(AppSessions.firstSeen.columnType to fromDate)
             add(AppSessions.firstSeen.columnType to toDate)
             if (versionCode != null) add(Events.id.columnType to versionCode)
@@ -199,7 +201,7 @@ object AppSessionRepository {
             ORDER BY 1, 2
             """.trimIndent(),
             listOf(
-                Events.appId.columnType to appId,
+                UUIDColumnType() to appId,
                 AppSessions.firstSeen.columnType to fromDate,
                 AppSessions.firstSeen.columnType to toDate
             )
@@ -239,7 +241,7 @@ object AppSessionRepository {
             ORDER BY 1
             """.trimIndent(),
             listOf(
-                Events.appId.columnType to appId,
+                UUIDColumnType() to appId,
                 AppSessions.firstSeen.columnType to fromDate,
                 AppSessions.firstSeen.columnType to toDate
             )
@@ -269,7 +271,7 @@ object AppSessionRepository {
     ): List<UniqueSessionStats> = transaction {
         val versionFilter = if (versionCode != null) "AND s.version_code = ?" else ""
         val args = buildList {
-            add(Events.appId.columnType to appId)
+            add(UUIDColumnType() to appId)
             add(AppSessions.firstSeen.columnType to fromDate)
             add(AppSessions.firstSeen.columnType to toDate)
             if (versionCode != null) add(Events.id.columnType to versionCode)

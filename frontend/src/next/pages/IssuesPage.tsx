@@ -8,6 +8,8 @@ import { issueStatusTone } from '../tones'
 import { useStickyFilters } from '../filters'
 import './pages.css'
 
+const PAGE_SIZE = 15
+
 const DAY_OPTIONS = [
   { label: 'Last 24 hours', value: '1' },
   { label: 'Last 7 days', value: '7' },
@@ -23,10 +25,15 @@ export default function IssuesPage() {
   const status = get('status', 'open')
   const version = get('version') ? Number(get('version')) : undefined
 
+  const page = Math.max(1, Number(get('page', '1')) || 1)
+  const sortBy = get('sortBy', 'occurrences')
+  const sortOrder = get('sortOrder', 'desc') === 'asc' ? 'asc' : 'desc'
+  const setFilter = (values: Record<string, string | undefined>) => set({ ...values, page: undefined })
+
   const versions = useAsync(() => getCrashVersions(appId!), [appId])
   const groups = useAsync(
-    () => getCrashGroups(appId!, { days, version, status: status === 'all' ? undefined : status, page: 1, pageSize: 100 }),
-    [appId, days, status, version],
+    () => getCrashGroups(appId!, { days, version, status: status === 'all' ? undefined : status, page, pageSize: PAGE_SIZE, sortBy, sortOrder }),
+    [appId, days, status, version, page, sortBy, sortOrder],
   )
   const stats = useAsync(() => getAppCrashStats(appId!, { ...fromTo(days), version }), [appId, days, version])
   const crashFree = useAsync(() => getCrashFreeStats(appId!, { ...fromTo(days), version }), [appId, days, version])
@@ -48,15 +55,15 @@ export default function IssuesPage() {
         </div>
       ),
     },
-    { key: 'count', title: 'Count', align: 'right', sorter: (a, b) => a.occurrences - b.occurrences, render: (r) => <Text strong>{fmtK(r.occurrences)}</Text> },
-    { key: 'devices', title: 'Devices', align: 'right', sorter: (a, b) => a.affected_devices - b.affected_devices, render: (r) => fmtK(r.affected_devices) },
+    { key: 'occurrences', title: 'Count', align: 'right', sorter: true, render: (r) => <Text strong>{fmtK(r.occurrences)}</Text> },
+    { key: 'affected_devices', title: 'Devices', align: 'right', sorter: true, render: (r) => fmtK(r.affected_devices) },
     {
       key: 'status', title: 'Status', align: 'right',
       render: (r) => <Tag tone={issueStatusTone(r.status)}>{cap(r.status)}</Tag>,
     },
     {
-      key: 'lastReport', title: 'Last report', align: 'right',
-      sorter: (a, b) => a.last_seen.localeCompare(b.last_seen),
+      key: 'last_seen', title: 'Last report', align: 'right',
+      sorter: true,
       render: (r) => <Text type="tertiary">{relTime(r.last_seen)}</Text>,
     },
   ]
@@ -71,20 +78,20 @@ export default function IssuesPage() {
             placeholder="All versions"
             allowClear
             value={version ?? null}
-            onChange={(v) => set({ version: v === '' ? undefined : String(v) })}
+            onChange={(v) => setFilter({ version: v === '' ? undefined : String(v) })}
             options={(versions.data ?? []).map((v) => ({ label: versionLabel(v), value: v.version_code }))}
           />
         </div>
         <div className="pg-filter">
           <span className="pg-filter__label">Time</span>
-          <Select style={{ width: 150 }} value={String(days)} onChange={(v) => set({ days: String(v) })} options={DAY_OPTIONS} />
+          <Select style={{ width: 150 }} value={String(days)} onChange={(v) => setFilter({ days: String(v) })} options={DAY_OPTIONS} />
         </div>
         <div className="pg-filter">
           <span className="pg-filter__label">Status</span>
           <Select
             style={{ width: 130 }}
             value={status}
-            onChange={(v) => set({ status: String(v) })}
+            onChange={(v) => setFilter({ status: String(v) })}
             options={[
               { label: 'Open', value: 'open' },
               { label: 'Resolved', value: 'resolved' },
@@ -106,12 +113,13 @@ export default function IssuesPage() {
 
       <Card title="Issues" padded={false}>
         <Loaded state={groups}>
-          {(page) => (
+          {(result) => (
             <Table<CrashGroup>
               columns={columns}
-              data={page.items}
+              data={result.items}
               rowKey={(r) => r.id}
-              pageSize={15}
+              pagination={{ page, pageSize: PAGE_SIZE, total: result.total, onChange: (next) => set({ page: String(next) }) }}
+              sort={{ key: sortBy, direction: sortOrder, onChange: (key, direction) => setFilter({ sortBy: key, sortOrder: direction }) }}
               emptyText="No crashes reported in this period"
               onRowClick={(r) => navigate(`/apps/${appId}/diagnostics/issues/${r.id}`)}
             />

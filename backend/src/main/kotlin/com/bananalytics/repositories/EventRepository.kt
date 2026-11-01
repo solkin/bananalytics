@@ -242,48 +242,6 @@ object EventRepository {
         } ?: 0L
     }
 
-    fun getDeviceStats(
-        appId: UUID,
-        versionCode: Long? = null,
-        limit: Int = 10,
-        fromDate: OffsetDateTime? = null,
-        toDate: OffsetDateTime? = null
-    ): DeviceStatsResponse = transaction {
-        val args = mutableListOf<Pair<IColumnType<*>, Any?>>(Events.appId.columnType to appId)
-        val filters = buildString {
-            if (versionCode != null) {
-                append(" AND version_code = ?")
-                args.add(Events.versionCode.columnType to versionCode)
-            }
-            fromDate?.let {
-                append(" AND day >= ?::date")
-                args.add(Events.name.columnType to it.withOffsetSameInstant(ZoneOffset.UTC).toLocalDate().toString())
-            }
-            toDate?.let {
-                append(" AND day <= ?::date")
-                args.add(Events.name.columnType to it.withOffsetSameInstant(ZoneOffset.UTC).toLocalDate().toString())
-            }
-        }
-        val byDimension = exec(
-            """
-            SELECT dimension, name, SUM(count) AS count
-            FROM device_stats_daily WHERE app_id = ? AND count > 0 $filters
-            GROUP BY dimension, name ORDER BY count DESC, name
-            """.trimIndent(), args
-        ) { rs ->
-            val result = mutableMapOf<String, MutableList<DeviceStatItem>>()
-            while (rs.next()) result.getOrPut(rs.getString("dimension")) { mutableListOf() }
-                .add(DeviceStatItem(rs.getString("name"), rs.getLong("count")))
-            result
-        } ?: emptyMap()
-        DeviceStatsResponse(
-            models = byDimension["model"].orEmpty().take(limit),
-            osVersions = byDimension["os"].orEmpty().take(limit),
-            countries = byDimension["country"].orEmpty().take(maxOf(limit, 300)),
-            languages = byDimension["language"].orEmpty().take(limit)
-        )
-    }
-
     private fun ResultRow.toEventResponse() = EventResponse(
         id = this[Events.id],
         appId = this[Events.appId].toString(),

@@ -22,6 +22,7 @@ suspend fun <T> dbIO(block: () -> T): T = withContext(Dispatchers.IO) { block() 
  */
 fun ApplicationCall.cacheStatsFor(seconds: Int = 60) {
     response.header(HttpHeaders.CacheControl, "private, max-age=$seconds")
+    response.header(HttpHeaders.Vary, HttpHeaders.Cookie)
 }
 
 fun String.toOffsetDateTimeOrNull(): OffsetDateTime? = try {

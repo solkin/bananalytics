@@ -1,44 +1,37 @@
 package com.bananalytics.services
 
-import com.bananalytics.models.DeviceInfo
+import com.bananalytics.config.BadRequestException
 import com.bananalytics.models.EnvironmentData
 import com.bananalytics.models.EventData
+import com.bananalytics.repositories.AppSessionRepository
 import com.bananalytics.repositories.EventRepository
 import com.bananalytics.repositories.VersionRepository
-import java.util.*
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.UUID
 
 object EventService {
-
     fun processEvents(
         appId: UUID,
         environment: EnvironmentData,
-        events: List<EventData>
+        events: List<EventData>,
+        sessionId: String? = null
     ): Int {
-        val versionCode = environment.appVersion
-        val versionName = environment.appVersionName
-        
-        // Auto-create version if it doesn't exist
-        val version = VersionRepository.findOrCreate(appId, versionCode, versionName)
-        
-        // Check if events are muted for this version
-        if (version.muteEvents) {
-            return 0 // Silently ignore, return success
+        environment.validate()
+        if (events.any { it.name.isBlank() || it.name.length > MAX_EVENT_NAME_LENGTH }) {
+            throw BadRequestException("Event names must contain between 1 and $MAX_EVENT_NAME_LENGTH characters")
         }
-
-        val deviceInfo = DeviceInfo(
-            deviceId = environment.deviceId,
-            osVersion = environment.osVersion,
-            manufacturer = environment.manufacturer,
-            model = environment.model,
-            country = environment.country,
-            language = environment.language
-        )
-
-        return EventRepository.createEvents(
-            appId = appId,
-            versionCode = versionCode,
-            events = events,
-            deviceInfo = deviceInfo
-        )
+        val session = sessionId?.parseUuid("session_id")
+        if (events.isEmpty()) return 0
+        val deviceInfo = environment.deviceInfo()
+        return transaction {
+            val version = VersionRepository.findOrCreate(appId, environment.appVersion, environment.appVersionName)
+            if (version.muteEvents) return@transaction 0
+            val inserted = EventRepository.createEvents(appId, environment.appVersion, events, deviceInfo)
+            if (session != null) {
+                AppSessionRepository.recordSession(appId, session, environment.appVersion,
+                    environment.deviceId, hasEvent = true, deviceInfo = deviceInfo)
+            }
+            inserted
+        }
     }
 }

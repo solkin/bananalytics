@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   AreaChart,
@@ -26,6 +26,7 @@ import {
   deleteCrashGroup,
   getCrashGroup,
   getCrashGroupVersions,
+  getCrashDistributions,
   getCrashStats,
   getCrashesInGroup,
   retraceCrash,
@@ -33,6 +34,7 @@ import {
 } from '@/api/crashes'
 import { useAsync, Loaded, errorText } from '../async'
 import { androidVersion, cap, fillDaily, fmtDateTime, fmtK, fromTo, relTime, versionLabel } from '../format'
+import type { ShellContext } from '../layout/AppShell'
 import { useDetailCrumb } from '../layout/useDetailCrumb'
 import { issueStatusTone } from '../tones'
 import './pages.css'
@@ -44,20 +46,12 @@ const DAY_OPTIONS = [
   { label: 'Last 90 days', value: '90' },
 ]
 
-function rank(items: Crash[], keyFn: (c: Crash) => string | null, topN = 5): BarListItem[] {
-  const m = new Map<string, number>()
-  for (const c of items) {
-    const k = keyFn(c)
-    if (k) m.set(k, (m.get(k) || 0) + 1)
-  }
-  const total = items.length || 1
-  return [...m.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([label, count]) => ({ label, value: count, display: `${Math.round((count / total) * 100)}%` }))
+function rank(items: { name: string; count: number }[], total: number, format = (name: string) => name): BarListItem[] {
+  return items.map((item) => ({ label: format(item.name), value: item.count,
+    display: `${total ? Math.round(item.count / total * 100) : 0}%` }))
 }
 
-function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Crash) => void }) {
+function CrashDetail({ crash, onRetraced, canManage }: { crash: Crash; onRetraced: (c: Crash) => void; canManage: boolean }) {
   const [view, setView] = useState<'decoded' | 'raw'>('decoded')
   const [retracing, setRetracing] = useState(false)
   const stack = view === 'raw' || !crash.stacktrace_decoded ? crash.stacktrace_raw : crash.stacktrace_decoded
@@ -95,7 +89,7 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
             size="sm"
             icon={<Icons.IconReload size={14} />}
             loading={retracing}
-            disabled={crash.version_code == null}
+            disabled={!canManage || crash.version_code == null}
             onClick={retrace}
           >
             Retrace
@@ -169,12 +163,16 @@ function CrashDetail({ crash, onRetraced }: { crash: Crash; onRetraced: (c: Cras
 export default function IssueDetailPage() {
   const { appId, issueId = '' } = useParams()
   const navigate = useNavigate()
+  const { role } = useOutletContext<ShellContext>()
+  const canManage = role === 'admin'
   const [params, setParams] = useSearchParams()
   const days = Number(params.get('days') ?? '28') || 28
+  const report = Math.max(1, Number(params.get('report')) || 1)
   const version = params.get('version') ? Number(params.get('version')) : undefined
 
   const setFilter = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(params)
+    next.delete('report')
     for (const [k, v] of Object.entries(updates)) {
       if (v == null || v === '') next.delete(k)
       else next.set(k, v)
@@ -184,19 +182,24 @@ export default function IssueDetailPage() {
 
   const versions = useAsync(() => getCrashGroupVersions(issueId), [issueId])
   const state = useAsync(async () => {
-    const [group, stats, crashes] = await Promise.all([
+    const [group, stats, distributions] = await Promise.all([
       getCrashGroup(issueId),
       getCrashStats(issueId, { ...fromTo(days), version }),
-      getCrashesInGroup(issueId, { days, version, pageSize: 50 }),
+      getCrashDistributions(issueId, { ...fromTo(days), version }),
     ])
-    return { group, stats, crashes: crashes.items, total: crashes.total }
+    return { group, stats, distributions }
   }, [issueId, days, version])
 
-  const [selId, setSelId] = useState<string | null>(null)
+  const reports = useAsync(
+    () => getCrashesInGroup(issueId, { days, version, page: report, pageSize: 1 }),
+    [issueId, days, version, report],
+  )
   const [patch, setPatch] = useState<Record<string, Crash>>({})
-  useEffect(() => {
-    setSelId(state.data?.crashes[0]?.id ?? null)
-  }, [state.data])
+  const goToReport = (nextReport: number) => {
+    const next = new URLSearchParams(params)
+    next.set('report', String(nextReport))
+    setParams(next, { replace: true })
+  }
 
   const cls = state.data?.group.exception_class
   useDetailCrumb(state.data ? (cls ? cls.split('.').pop() || cls : 'Issue') : null)
@@ -242,12 +245,13 @@ export default function IssueDetailPage() {
       </div>
 
       <Loaded state={state}>
-        {({ group, stats, crashes, total }) => {
+        {({ group, stats, distributions }) => {
           const series: ChartPoint[] = fillDaily(stats, days)
-          const devices = rank(crashes, (c) => c.device_info?.model ?? null)
-          const oses = rank(crashes, (c) => (c.device_info ? androidVersion(c.device_info.os_version) : null))
-          const selIndex = Math.max(0, crashes.findIndex((c) => c.id === selId))
-          const selected = crashes[selIndex] ? patch[crashes[selIndex].id] ?? crashes[selIndex] : null
+          const devices = rank(distributions.models, distributions.total)
+          const oses = rank(distributions.os_versions, distributions.total, androidVersion)
+          const total = reports.data?.total ?? 0
+          const selected = reports.data?.items[0]
+          const crash = selected ? patch[selected.id] ?? selected : null
 
           return (
             <>
@@ -260,7 +264,7 @@ export default function IssueDetailPage() {
                     </div>
                     <div className="pg-detailhead__msg">{group.exception_message || '—'}</div>
                   </div>
-                  <div className="pg-detailhead__actions">
+                  {canManage && <div className="pg-detailhead__actions">
                     {group.status !== 'ignored' && <Button onClick={() => void setStatus('ignored')}>Ignore</Button>}
                     {group.status === 'open' ? (
                       <Button variant="primary" onClick={() => void setStatus('resolved')}>Close issue</Button>
@@ -276,7 +280,7 @@ export default function IssueDetailPage() {
                     >
                       <Button variant="danger" icon={<Icons.IconTrash size={14} />} />
                     </Popconfirm>
-                  </div>
+                  </div>}
                 </div>
                 <Divider />
                 <div className="pg-meta">
@@ -303,49 +307,41 @@ export default function IssueDetailPage() {
               <Card
                 title="Crash report"
                 extra={
-                  crashes.length > 0 && (
+                  total > 0 && (
                     <span className="iss-picker">
                       <span className="iss-picker__controls">
                         <Button
                           size="sm"
                           icon={<Icons.IconChevronLeft size={14} />}
-                          disabled={selIndex <= 0}
+                          disabled={report <= 1 || reports.loading}
                           aria-label="Previous crash report"
-                          onClick={() => setSelId(crashes[selIndex - 1].id)}
+                          onClick={() => goToReport(report - 1)}
                         />
-                        <Select
-                          size="sm"
-                          style={{ width: 250 }}
-                          value={selected?.id ?? null}
-                          onChange={(id) => setSelId(String(id))}
-                          options={crashes.map((c) => ({
-                            label: `${fmtDateTime(c.created_at)} — ${c.device_info?.model || 'Unknown'}`,
-                            value: c.id,
-                          }))}
-                        />
+                        <Text type="secondary">{crash ? fmtDateTime(crash.created_at) : '—'}</Text>
                         <Button
                           size="sm"
                           icon={<Icons.IconChevronRight size={14} />}
-                          disabled={selIndex >= crashes.length - 1}
+                          disabled={report >= total || reports.loading}
                           aria-label="Next crash report"
-                          onClick={() => setSelId(crashes[selIndex + 1].id)}
+                          onClick={() => goToReport(report + 1)}
                         />
                       </span>
                       <Text className="iss-picker__count" type="tertiary" size="sm">
-                        {selIndex + 1} of {fmtK(total)}
+                        {report} of {fmtK(total)}
                       </Text>
                     </span>
                   )
                 }
               >
-                {selected ? (
-                  <CrashDetail
-                    crash={selected}
-                    onRetraced={(c) => setPatch((p) => ({ ...p, [c.id]: c }))}
-                  />
-                ) : (
-                  <Empty description="No crash reports in the selected period" />
-                )}
+                <Loaded state={reports}>
+                  {() => crash ? (
+                    <CrashDetail
+                      crash={crash}
+                      canManage={canManage}
+                      onRetraced={(updated) => setPatch((current) => ({ ...current, [updated.id]: updated }))}
+                    />
+                  ) : <Empty description="No crash reports in the selected period" />}
+                </Loaded>
               </Card>
             </>
           )

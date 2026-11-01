@@ -19,67 +19,49 @@ object RetraceService {
     // Regex to match exception lines: "ClassName: message" or "prefix: ClassName: message"
     private val exceptionLineRegex = Regex("""^(.*?)([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*):\s*(.*)$""")
 
-    fun retrace(obfuscatedStacktrace: String, mappingContent: String): RetraceResult {
-        return try {
-            logger.info("Starting retrace, mapping size: ${mappingContent.length} bytes")
-            logger.debug("First 200 chars of mapping: ${mappingContent.take(200)}")
+    private const val MAX_CACHED_MAPPING_CHARS = 32L * 1024 * 1024
+    private const val MAX_CACHED_MAPPINGS = 8
+    private val cache = MappingCache<PreparedMapping>(MAX_CACHED_MAPPING_CHARS, MAX_CACHED_MAPPINGS) { it.sourceChars }
 
-            // Build class name mapping for manual deobfuscation of exception lines
-            val classMapping = buildClassMapping(mappingContent)
-            logger.info("Built class mapping with ${classMapping.size} entries")
+    private class PreparedMapping(
+        val retracer: StringRetrace,
+        val classes: Map<String, String>,
+        val sourceChars: Long
+    )
 
-            val diagnosticsHandler = object : DiagnosticsHandler {
-                override fun error(error: Diagnostic) {
-                    logger.error("Retrace error: ${error.diagnosticMessage}")
-                }
-                override fun warning(warning: Diagnostic) {
-                    logger.warn("Retrace warning: ${warning.diagnosticMessage}")
-                }
-                override fun info(info: Diagnostic) {
-                    logger.info("Retrace info: ${info.diagnosticMessage}")
-                }
-            }
-
-            val mappingSupplier = ProguardMappingSupplier.builder()
-                .setProguardMapProducer { mappingContent.byteInputStream() }
-                .setAllowExperimental(true)
-                .build()
-
-            val options = RetraceOptions.builder(diagnosticsHandler)
-                .setMappingSupplier(mappingSupplier)
-                .setVerbose(true)
-                .build()
-
-            val retracer = StringRetrace.create(options)
-
-            val lines = obfuscatedStacktrace.lines()
-            val retracedResult = retracer.retrace(lines, RetraceStackTraceContext.empty())
-            
-            // Convert the result to a list and apply manual class deobfuscation
-            val resultLines = mutableListOf<String>()
-            retracedResult.forEach { line: String -> 
-                resultLines.add(deobfuscateExceptionLine(line, classMapping))
-            }
-            
-            val result = resultLines.joinToString("\n")
-            logger.info("Retrace completed, result size: ${result.length} bytes")
-            
-            // Check if anything actually changed
-            if (result == obfuscatedStacktrace) {
-                logger.warn("Retrace produced identical output - mapping may not match")
-            }
-
-            RetraceResult(
-                decodedStacktrace = result,
-                error = null
-            )
-        } catch (e: Exception) {
-            logger.error("Failed to retrace stacktrace", e)
-            RetraceResult(
-                decodedStacktrace = null,
-                error = e.message ?: "Unknown retrace error"
-            )
+    fun retraceBatch(mappingPath: String, stacktraces: List<String>): List<RetraceResult> {
+        val prepared = cache.get(mappingPath) {
+            val content = StorageService.getMappingByKey(mappingPath)
+                ?: throw com.bananalytics.config.NotFoundException("Mapping not found")
+            prepare(content)
         }
+        // R8's supplier lazily fills internal maps; serialize access to a shared instance.
+        return synchronized(prepared) {
+            stacktraces.map { stacktrace ->
+                try {
+                    val lines = mutableListOf<String>()
+                    prepared.retracer.retrace(stacktrace.lines(), RetraceStackTraceContext.empty())
+                        .forEach { line: String -> lines.add(deobfuscateExceptionLine(line, prepared.classes)) }
+                    RetraceResult(lines.joinToString("\n"), null)
+                } catch (e: Exception) {
+                    logger.error("Failed to retrace stacktrace", e)
+                    RetraceResult(null, e.message ?: "Unknown retrace error")
+                }
+            }
+        }
+    }
+
+    private fun prepare(content: String): PreparedMapping {
+        val diagnostics = object : DiagnosticsHandler {
+            override fun error(error: Diagnostic) { logger.error("Retrace error: {}", error.diagnosticMessage) }
+            override fun warning(warning: Diagnostic) { logger.warn("Retrace warning: {}", warning.diagnosticMessage) }
+        }
+        val supplier = ProguardMappingSupplier.builder()
+            .setProguardMapProducer { content.byteInputStream() }
+            .setAllowExperimental(true).build()
+        val retracer = StringRetrace.create(RetraceOptions.builder(diagnostics)
+            .setMappingSupplier(supplier).setVerbose(true).build())
+        return PreparedMapping(retracer, buildClassMapping(content), content.length.toLong())
     }
 
     /**
@@ -90,7 +72,7 @@ object RetraceService {
         val mapping = mutableMapOf<String, String>()
         val classLineRegex = Regex("""^(\S+)\s*->\s*(\S+):$""")
         
-        for (line in mappingContent.lines()) {
+        for (line in mappingContent.lineSequence()) {
             val match = classLineRegex.find(line)
             if (match != null) {
                 val originalClass = match.groupValues[1]

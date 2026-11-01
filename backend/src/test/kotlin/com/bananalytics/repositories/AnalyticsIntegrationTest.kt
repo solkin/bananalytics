@@ -112,9 +112,12 @@ class AnalyticsIntegrationTest {
         assertEquals(6L, EventRepository.countByAppId(app))
         assertSummary("2026-09-01T00:00:00Z", "2026-11-01T00:00:00Z")
         assertEquals(1L, EventRepository.countByAppId(other))
-        val stats = EventRepository.getDeviceStats(app, fromDate = date("2026-09-24T00:00:00Z"), toDate = date("2026-09-24T23:59:59Z"))
-        assertEquals(listOf(DeviceStatItem("Test Phone", 1)), stats.models)
-        assertEquals(listOf(DeviceStatItem("RU", 1)), stats.countries)
+        val dimensions = transaction {
+            exec("SELECT dimension, SUM(count) AS count FROM device_stats_daily WHERE app_id = '$app' AND day = '2026-09-24' GROUP BY dimension") {
+                buildMap { while (it.next()) put(it.getString("dimension"), it.getLong("count")) }
+            }
+        }
+        assertEquals(mapOf("model" to 1L, "os" to 1L, "country" to 1L, "language" to 1L), dimensions)
     }
 
     @Test fun `deleting a version removes its rollups without changing another app`() {
@@ -160,7 +163,9 @@ class AnalyticsIntegrationTest {
             assertSummary("2026-09-01T00:00:00Z", "2026-11-01T00:00:00Z")
             val count = EventRepository.findByAppId(app).total
             assertEquals(count, EventRepository.countByAppId(app))
-            assertEquals(count, EventRepository.getDeviceStats(app).models.sumOf { it.count })
+            assertEquals(count, transaction {
+                exec("SELECT COALESCE(SUM(count),0) FROM device_stats_daily WHERE app_id='$app' AND dimension='model'") { it.next(); it.getLong(1) }
+            })
         } finally { pool.shutdownNow() }
     }
 
@@ -203,13 +208,19 @@ class AnalyticsIntegrationTest {
         assertEquals(SessionOverviewResponse(emptyList(), emptyList(), emptyList()), AppSessionRepository.getOverview(app, to, from))
     }
 
-    @Test fun `device aggregation preserves dimensions versions limits and UTC day filters`() {
-        seed()
-        val stats = EventRepository.getDeviceStats(app, 1, 1, date("2026-09-24T03:00:00+03:00"), date("2026-09-24T23:00:00Z"))
-        assertEquals(listOf(DeviceStatItem("Test Phone",2)),stats.models)
-        assertEquals(listOf(DeviceStatItem("34",2)),stats.osVersions)
-        assertEquals(listOf(DeviceStatItem("RU",2)),stats.countries)
-        assertEquals(listOf(DeviceStatItem("en",2)),stats.languages)
+    @Test fun `session device aggregation preserves dimensions versions limits and exact UTC filters`() {
+        val now = date("2026-09-24T12:00:00Z")
+        val sessionId = UUID.randomUUID()
+        AppSessionRepository.recordSession(app, sessionId, 1, device.deviceId, hasEvent = true, deviceInfo = device)
+        AppSessionRepository.recordSession(app, sessionId, 1, device.deviceId, hasEvent = true, deviceInfo = device)
+        sql("UPDATE app_sessions SET first_seen='$now', last_seen='$now'")
+        val stats = DeviceStatsRepository.getStats(app, 1, 1, now, now)
+        assertEquals(listOf(DeviceStatItem("Test Phone",1)),stats.models)
+        assertEquals(listOf(DeviceStatItem("34",1)),stats.osVersions)
+        assertEquals(listOf(DeviceStatItem("RU",1)),stats.countries)
+        assertEquals(listOf(DeviceStatItem("en",1)),stats.languages)
+        assertEquals(emptyList(), DeviceStatsRepository.getStats(app, 2, 1, now, now).models)
+        assertEquals(emptyList(), DeviceStatsRepository.getStats(app, 1, 1, now.plusSeconds(1), now.plusHours(1)).models)
     }
 
     @Test fun `distinct devices preserve case and Unicode byte identity`() {

@@ -1,7 +1,10 @@
 package com.bananalytics.services
 
+import com.bananalytics.config.BadRequestException
 import com.bananalytics.config.NotFoundException
 import com.bananalytics.models.*
+import com.bananalytics.repositories.AppSessionRepository
+import org.jetbrains.exposed.sql.transactions.transaction
 import com.bananalytics.repositories.CrashRepository
 import com.bananalytics.repositories.VersionRepository
 import java.util.*
@@ -11,51 +14,36 @@ object CrashService {
     fun processCrashes(
         appId: UUID,
         environment: EnvironmentData,
-        crashes: List<CrashData>
+        crashes: List<CrashData>,
+        sessionId: String? = null
     ): Int {
-        val versionCode = environment.appVersion
-        val versionName = environment.appVersionName
-        
-        // Auto-create version if it doesn't exist
-        val version = VersionRepository.findOrCreate(appId, versionCode, versionName)
-        
-        // Check if crashes are muted for this version
-        if (version.muteCrashes) {
-            return 0 // Silently ignore, return success
+        environment.validate()
+        val session = sessionId?.parseUuid("session_id")
+        crashes.forEach {
+            if (it.thread.length > MAX_CRASH_THREAD_LENGTH) throw BadRequestException("Crash thread must be at most $MAX_CRASH_THREAD_LENGTH characters")
+            if (it.stacktrace.isBlank()) throw BadRequestException("Crash stacktrace must not be empty")
+            it.reportId?.parseUuid("report_id")
         }
-        
-        val mappingContent = VersionRepository.getMappingContent(appId, versionCode)
-
-        val deviceInfo = DeviceInfo(
-            deviceId = environment.deviceId,
-            osVersion = environment.osVersion,
-            manufacturer = environment.manufacturer,
-            model = environment.model,
-            country = environment.country,
-            language = environment.language
-        )
-
-        var count = 0
-        for (crash in crashes) {
-            val (decoded, error) = if (mappingContent != null) {
-                RetraceService.retrace(crash.stacktrace, mappingContent)
-            } else {
-                RetraceService.RetraceResult(null, null)
+        if (crashes.isEmpty()) return 0
+        val version = VersionRepository.findByAppAndVersionCode(appId, environment.appVersion)
+        if (version?.muteCrashes == true) return 0
+        val mappingPath = VersionRepository.getMappingPath(appId, environment.appVersion)
+        val decoded = mappingPath?.let { RetraceService.retraceBatch(it, crashes.map { crash -> crash.stacktrace }) }
+        val deviceInfo = environment.deviceInfo()
+        return transaction {
+            val currentVersion = VersionRepository.findOrCreate(appId, environment.appVersion, environment.appVersionName)
+            if (currentVersion.muteCrashes) return@transaction 0
+            crashes.forEachIndexed { index, crash ->
+                val result = decoded?.get(index)
+                CrashRepository.createCrash(appId, UUID.fromString(currentVersion.id), environment.appVersion,
+                    crash, deviceInfo, result?.decodedStacktrace, result?.error)
             }
-
-            CrashRepository.createCrash(
-                appId = appId,
-                versionId = UUID.fromString(version.id),
-                versionCode = versionCode,
-                crash = crash,
-                deviceInfo = deviceInfo,
-                decodedStacktrace = decoded,
-                decodeError = error
-            )
-            count++
+            if (session != null) {
+                AppSessionRepository.recordSession(appId, session, environment.appVersion,
+                    environment.deviceId, hasCrash = true, deviceInfo = deviceInfo)
+            }
+            crashes.size
         }
-
-        return count
     }
 
     fun retraceCrash(crashId: UUID): CrashResponse {
@@ -66,10 +54,10 @@ object CrashService {
             ?: throw NotFoundException("Crash has no version code")
 
         val appId = UUID.fromString(crash.appId)
-        val mappingContent = VersionRepository.getMappingContent(appId, versionCode)
+        val mappingPath = VersionRepository.getMappingPath(appId, versionCode)
             ?: throw NotFoundException("No mapping found for version $versionCode")
 
-        val result = RetraceService.retrace(crash.stacktraceRaw, mappingContent)
+        val result = RetraceService.retraceBatch(mappingPath, listOf(crash.stacktraceRaw)).single()
         CrashRepository.updateDecodedStacktrace(crashId, result.decodedStacktrace, result.error)
 
         return CrashRepository.findCrashById(crashId)

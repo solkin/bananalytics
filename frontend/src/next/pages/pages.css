@@ -524,6 +524,13 @@
 }
 
 @media (max-width: 576px) {
+  .pg-detailhead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .pg-detailhead__actions {
+    flex-wrap: wrap;
+  }
   .people-detail__danger,
   .pg-danger__row,
   .set-maint__row {

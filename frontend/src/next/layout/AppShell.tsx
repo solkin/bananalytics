@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, Outlet, NavLink, Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { Breadcrumb, Drawer, IconButton, Icons, Spin, TopBarSeparator, cn } from '@/ui'
+import { Alert, Breadcrumb, Drawer, IconButton, Icons, Spin, TopBarSeparator, cn } from '@/ui'
 import type { BreadcrumbItem } from '@/ui'
 import type { App } from '@/types'
 import { useAuth } from '@/context/AuthContext'
@@ -103,7 +103,7 @@ export default function AppShell() {
   const [navOpen, setNavOpen] = useState(false)
 
   const appState = useAsync(
-    () => Promise.all([getApp(appId!), getMyRole(appId!).catch(() => 'viewer')]),
+    () => Promise.all([getApp(appId!), getMyRole(appId!)]),
     [appId],
   )
   const app = appState.data?.[0] ?? null
@@ -153,7 +153,11 @@ export default function AppShell() {
           <SidebarContent {...sidebar} />
         </aside>
         <main className="ac-main">
-          <Outlet context={{ setDetail, role, app, reloadApp: appState.reload } satisfies ShellContext} />
+          {appState.loading ? <Spin /> : appState.error ? <Alert type="error" message={appState.error} />
+            : role === 'tester' && rel !== 'distribution/releases' ? <Navigate to={`${base}/distribution/releases`} replace />
+            : role === 'viewer' && rel.startsWith('settings/') ? <Navigate to={`${base}/analytics/overview`} replace />
+            : <Outlet context={{ setDetail, role, app, reloadApp: appState.reload } satisfies ShellContext} />}
+
         </main>
       </div>
 

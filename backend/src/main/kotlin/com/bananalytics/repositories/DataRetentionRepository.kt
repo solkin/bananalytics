@@ -72,7 +72,8 @@ object DataRetentionRepository {
         deleteBatch(
             table = "app_sessions",
             where = "app_id = '$appId'::uuid AND first_seen < '$cutoff'::timestamptz",
-            limit = limit
+            limit = limit,
+            sessionCounters = true
         )
     }
 
@@ -100,8 +101,12 @@ object DataRetentionRepository {
      * a batch picks is left unordered on purpose: ordering them by age makes the
      * planner read *every* matching row and sort it before applying the limit.
      */
-    private fun Transaction.deleteBatch(table: String, where: String, limit: Int, eventCounters: Boolean = false): Long {
-        val returning = if (eventCounters) "app_id, version_code, name, created_at, device_info" else "1"
+    private fun Transaction.deleteBatch(table: String, where: String, limit: Int, eventCounters: Boolean = false, sessionCounters: Boolean = false): Long {
+        val returning = when {
+            eventCounters -> "app_id, version_code, name, created_at, device_info"
+            sessionCounters -> "app_id, version_code, first_seen, device_info, has_event"
+            else -> "1"
+        }
         // Match ingest's lock order: event counters, then device counters;
         // within each table visit keys in the same order as concurrent batches.
         val counters = if (eventCounters) """
@@ -126,6 +131,15 @@ object DataRetentionRepository {
                 GROUP BY 1, 2, 3, 4, 5 ORDER BY 2, 4, 3, 5
                 ON CONFLICT (app_id, dimension, version_code, day, name)
                 DO UPDATE SET count = device_stats_daily.count + EXCLUDED.count
+            )
+        """.trimIndent() else if (sessionCounters) """
+            , adjusted_sessions AS (
+                INSERT INTO session_device_stats_daily (app_id, day, version_code, dimension, name, count)
+                SELECT app_id, (first_seen AT TIME ZONE 'UTC')::date, version_code, dimension, name, -COUNT(*)
+                FROM deleted CROSS JOIN LATERAL $deviceDimensionsSql WHERE has_event
+                GROUP BY 1, 2, 3, 4, 5 ORDER BY 2, 3, 4, 5
+                ON CONFLICT (app_id, day, version_code, dimension, name)
+                DO UPDATE SET count = session_device_stats_daily.count + EXCLUDED.count
             )
         """.trimIndent() else ""
         return exec(

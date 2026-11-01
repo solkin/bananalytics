@@ -520,15 +520,13 @@ function InstallView({ appId }: { appId: string }) {
 }
 
 /* ------------------------------------------------------------- Page */
-export default function ReleasesPage() {
+function ReleasesList() {
   const { appId } = useParams()
   const { role } = useOutletContext<ShellContext>()
   const { config } = useAuth()
   const state = useAsync(() => getVersions(appId!), [appId])
   const [createOpen, setCreateOpen] = useState(false)
   const [sel, setSel] = useState<AppVersion | null>(null)
-
-  if (role === 'tester') return <InstallView appId={appId!} />
 
   const columns: Column<AppVersion>[] = [
     {
@@ -565,11 +563,11 @@ export default function ReleasesPage() {
 
   return (
     <div className="pg">
-      <div className="pg-toolbar">
+      {role === 'admin' && <div className="pg-toolbar">
         <Button variant="primary" icon={<Icons.IconUpload size={15} />} onClick={() => setCreateOpen(true)}>
           New release
         </Button>
-      </div>
+      </div>}
       <Card title="Releases" padded={false}>
         <Loaded state={state} emptyText="No releases yet">
           {(versions) => (
@@ -579,7 +577,7 @@ export default function ReleasesPage() {
               rowKey={(r) => r.id}
               pageSize={15}
               emptyText="No releases yet"
-              onRowClick={(r) => setSel(r)}
+              onRowClick={role === 'admin' ? setSel : undefined}
             />
           )}
         </Loaded>
@@ -599,4 +597,10 @@ export default function ReleasesPage() {
       )}
     </div>
   )
+}
+
+export default function ReleasesPage() {
+  const { appId } = useParams()
+  const { role } = useOutletContext<ShellContext>()
+  return role === 'tester' ? <InstallView appId={appId!} /> : <ReleasesList />
 }

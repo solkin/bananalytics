@@ -1,15 +1,17 @@
 import { useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useOutletContext, useParams } from 'react-router-dom'
 import { Button, Card, Icons, Table, Tag, Text, toast, type Column } from '@/ui'
 import type { AppVersion } from '@/types'
 import { getMappingDownloadUrl, getVersions, uploadMapping } from '@/api/apps'
 import { useAsync, Loaded, errorText } from '../async'
 import { shortDate } from '../format'
+import type { ShellContext } from '../layout/AppShell'
 import { mappingTone } from '../tones'
 import './pages.css'
 
 export default function MappingsPage() {
   const { appId } = useParams()
+  const { role } = useOutletContext<ShellContext>()
   const state = useAsync(() => getVersions(appId!), [appId])
   const fileRef = useRef<HTMLInputElement>(null)
   const targetRef = useRef<AppVersion | null>(null)
@@ -54,14 +56,14 @@ export default function MappingsPage() {
               Download
             </Button>
           )}
-          <Button
+          {role === 'admin' && <Button
             size="sm"
             icon={<Icons.IconUpload size={14} />}
             loading={uploadingId === r.id}
             onClick={() => pickFile(r)}
           >
             {r.has_mapping ? 'Replace' : 'Upload'}
-          </Button>
+          </Button>}
         </span>
       ),
     },

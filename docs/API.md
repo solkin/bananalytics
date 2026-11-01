@@ -229,6 +229,7 @@ Submit crash reports from mobile app.
   },
   "crashes": [
     {
+      "report_id": "9222f41d-4f8e-4d78-a866-bcdb06de45a7",
       "timestamp": 1704067199000,
       "thread": "main",
       "stacktrace": "java.lang.NullPointerException...",
@@ -247,6 +248,9 @@ Submit crash reports from mobile app.
 ```
 
 **Notes:**
+- `report_id` is an optional UUID assigned once per crash and retained on retries.
+  Reports with the same ID are stored once per app; omitted IDs retain legacy behavior.
+- A crash batch and its session update commit atomically. Invalid input returns `400`.
 - `session_id` (optional) - UUID for session tracking, used for crash-free session statistics
 - `app_version_name` is optional but recommended
 - If version doesn't exist, it will be auto-created
@@ -772,7 +776,9 @@ Get published versions for testers (versions with APK and `published_for_testers
 ### GET /apps/{id}/crashes
 Get crash groups for an app.
 
-**Query params:** `status` (open|resolved|ignored), `page`, `pageSize`
+**Query params:** `status` (open|resolved|ignored), `version`, `days`, `page`, `pageSize` (1–100),
+`sortBy` (occurrences|affected_devices|last_seen|status), `sortOrder` (asc|desc).
+Sorting and pagination apply to the complete filtered result.
 
 **Response:**
 ```json
@@ -830,8 +836,14 @@ Get individual crashes in a group.
 }
 ```
 
+### GET /crash-groups/{id}/distributions
+Get the top device models and OS versions across all reports in the group.
+Accepts `from`, `to` (inclusive ISO timestamps) and optional `version`.
+Returns `{ "models": [{ "name": "Pixel 8", "count": 60 }], "os_versions": [], "total": 60 }`.
+Requires `admin` or `viewer`, as do the other crash and analytics read endpoints.
+
 ### PUT /crash-groups/{id}
-Update crash group status.
+Update crash group status. Requires `admin`.
 
 **Request:**
 ```json
@@ -1182,3 +1194,14 @@ All errors follow this format:
 | `forbidden` | 403 | Insufficient permissions |
 | `not_found` | 404 | Resource not found |
 | `internal_error` | 500 | Server error |
+
+### GET /apps/{appId}/devices/stats
+
+Requires `admin` or `viewer`. Accepts `version`, `limit` (1–100), and inclusive
+`from`/`to` timestamps. Counts sessions with events, once per session, grouped by
+model, OS version, country and language. Dates refer to the session's first
+observation, matching the activity charts. Historic sessions with no recorded
+metadata appear as `Unknown`; event volume does not affect these counts.
+
+Testers can list Distribution and download published APKs only. Unpublished APKs
+return `404`, and mappings and analytics are not available to this role.

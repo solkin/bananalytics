@@ -99,7 +99,7 @@ fun Route.authenticated(build: Route.() -> Unit): Route {
             return@intercept
         }
 
-        val user = AuthService.getUserBySession(sessionId)
+        val user = dbIO { AuthService.getUserBySession(sessionId) }
         if (user == null) {
             call.clearSessionCookie()
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "unauthorized", "message" to "Session expired"))
@@ -109,7 +109,7 @@ fun Route.authenticated(build: Route.() -> Unit): Route {
 
         call.setUser(user)
         // Extend session on activity
-        AuthService.extendSession(sessionId)
+        dbIO { AuthService.extendSession(sessionId) }
     }
     
     authenticatedRoute.build()

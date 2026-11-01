@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { Alert, Empty, Spin } from '@/ui'
 
 /* Tiny data-fetching helper for the new pages — loading / error / empty
@@ -17,13 +17,25 @@ export interface AsyncOpts {
   ttlMs?: number
 }
 
-/* Module-level stale-while-revalidate cache: a keyed hook renders the cached
+/* Account-scoped stale-while-revalidate cache: a keyed hook renders the cached
    value instantly on mount/navigation and only hits the network when the
    entry is stale. In-flight promises are shared so parallel mounts dedupe. */
-const swrCache = new Map<string, { time: number; value: unknown }>()
-const swrInflight = new Map<string, Promise<unknown>>()
+interface AsyncCache {
+  values: Map<string, { time: number; value: unknown }>
+  inflight: Map<string, Promise<unknown>>
+}
+
+const AsyncCacheContext = createContext<AsyncCache | null>(null)
+
+export function AsyncCacheProvider({ children }: { children: ReactNode }) {
+  const [cache] = useState<AsyncCache>(() => ({ values: new Map(), inflight: new Map() }))
+  return <AsyncCacheContext.Provider value={cache}>{children}</AsyncCacheContext.Provider>
+}
 
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncOpts) {
+  const cache = useContext(AsyncCacheContext)
+  if (!cache) throw new Error('useAsync requires AsyncCacheProvider')
+  const { values: swrCache, inflight: swrInflight } = cache
   const key = opts?.key
   const ttlMs = opts?.ttlMs ?? 60_000
   const [state, setState] = useState<AsyncState<T>>(() => {
@@ -42,7 +54,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncO
       const fresh = Date.now() - entry.time < ttlMs
       if (fresh && nonce === 0) return // served from cache; reload() still forces a refetch
     } else {
-      setState((s) => ({ ...s, loading: true, error: null }))
+      setState({ data: null, loading: true, error: null })
     }
     const pending = key ? (swrInflight.get(key) as Promise<T> | undefined) : undefined
     const run = pending ?? fn()
@@ -66,7 +78,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncO
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, nonce])
+  }, [...deps, nonce, key, cache])
 
   return { ...state, reload: () => setNonce((n) => n + 1) }
 }

@@ -1,5 +1,6 @@
 package com.bananalytics.routes
 
+import com.bananalytics.config.dbIO
 import com.bananalytics.config.NotFoundException
 import com.bananalytics.repositories.DownloadTokenRepository
 import com.bananalytics.repositories.VersionRepository
@@ -19,7 +20,7 @@ fun Route.downloadRoutes() {
         val token = call.parameters["token"]
             ?: throw NotFoundException("Invalid token")
 
-        val tokenInfo = DownloadTokenRepository.findValidByToken(token)
+        val tokenInfo = dbIO { DownloadTokenRepository.findValidByToken(token) }
             ?: throw NotFoundException("Invalid or expired download link")
 
         call.respondApk(tokenInfo.appId, tokenInfo.versionId)
@@ -32,13 +33,13 @@ fun Route.downloadRoutes() {
  * concurrent tester download would cost another copy of it in heap.
  */
 internal suspend fun ApplicationCall.respondApk(appId: UUID, versionId: UUID) {
-    val apkInfo = VersionRepository.getApkInfo(appId, versionId)
+    val apkInfo = dbIO { VersionRepository.getApkInfo(appId, versionId) }
         ?: throw NotFoundException("Version not found")
     if (apkInfo.first == null) {
         throw NotFoundException("APK not found")
     }
 
-    val stream = VersionRepository.openApk(appId, versionId)
+    val stream = dbIO { VersionRepository.openApk(appId, versionId) }
         ?: throw NotFoundException("APK not found")
 
     response.header(

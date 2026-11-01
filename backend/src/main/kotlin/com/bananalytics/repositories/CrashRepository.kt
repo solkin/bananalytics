@@ -24,106 +24,64 @@ object CrashRepository {
         page: Int = 1,
         pageSize: Int = 20
     ): PaginatedResponse<CrashGroupResponse> = transaction {
-        // Always calculate stats from Crashes table to support date/version filtering
-        findGroupsByAppIdWithFilters(appId, status, versionCode, fromDate, sortBy, sortOrder, page, pageSize)
-    }
-
-    private fun findGroupsByAppIdWithFilters(
-        appId: UUID,
-        status: String?,
-        versionCode: Long?,
-        fromDate: OffsetDateTime?,
-        sortBy: String?,
-        sortOrder: String?,
-        page: Int,
-        pageSize: Int
-    ): PaginatedResponse<CrashGroupResponse> {
-        // Define aggregate expressions
-        val minCreatedAt = Crashes.createdAt.min()
-        val maxCreatedAt = Crashes.createdAt.max()
-        val countCrashes = Crashes.id.count()
-        val countDevices = Crashes.deviceId.countDistinct()
-        
-        // Build query with filters
-        var crashQuery = Crashes
-            .select(Crashes.groupId, minCreatedAt, maxCreatedAt, countCrashes, countDevices)
-            .where { (Crashes.appId eq appId) and Crashes.groupId.isNotNull() }
-        
-        if (versionCode != null) {
-            crashQuery = crashQuery.andWhere { Crashes.versionCode eq versionCode }
-        }
-        
-        if (fromDate != null) {
-            crashQuery = crashQuery.andWhere { Crashes.createdAt greaterEq fromDate }
-        }
-        
-        // Calculate stats per group
-        val crashStats = crashQuery
-            .groupBy(Crashes.groupId)
-            .associate { row ->
-                val groupId = row[Crashes.groupId]!!.value
-                groupId to FilteredCrashStats(
-                    count = row[countCrashes].toInt(),
-                    affectedDevices = row[countDevices].toInt(),
-                    firstSeen = row[minCreatedAt]!!,
-                    lastSeen = row[maxCreatedAt]!!
-                )
+        val args = mutableListOf<Pair<IColumnType<*>, Any?>>(UUIDColumnType() to appId)
+        val filters = buildString {
+            if (versionCode != null) {
+                append(" AND crash.version_code = ?")
+                args.add(Crashes.versionCode.columnType to versionCode)
             }
-
-        if (crashStats.isEmpty()) {
-            return PaginatedResponse(emptyList(), 0, page, pageSize)
+            if (fromDate != null) {
+                append(" AND crash.created_at >= ?")
+                args.add(Crashes.createdAt.columnType to fromDate)
+            }
+            if (status != null) {
+                append(" AND issue.status = ?")
+                args.add(CrashGroups.status.columnType to status)
+            }
         }
-
-        // Query crash groups that have crashes matching filters
-        var baseQuery = CrashGroups.selectAll()
-            .where { (CrashGroups.appId eq appId) and (CrashGroups.id inList crashStats.keys) }
-
-        if (status != null) {
-            baseQuery = baseQuery.andWhere { CrashGroups.status eq status }
+        val sortColumn = when (sortBy) {
+            "status" -> "status"
+            "affected_devices" -> "affected_devices"
+            "last_seen" -> "last_seen"
+            else -> "occurrences"
         }
-
-        val total = baseQuery.count()
-        
-        // We need to sort by filtered occurrences, so fetch all matching groups first
-        val allGroups = baseQuery.map { row ->
-            val groupId = row[CrashGroups.id].value
-            val stats = crashStats[groupId]!!
-            CrashGroupResponse(
-                id = groupId.toString(),
-                appId = row[CrashGroups.appId].value.toString(),
-                exceptionClass = row[CrashGroups.exceptionClass],
-                exceptionMessage = row[CrashGroups.exceptionMessage],
-                firstSeen = stats.firstSeen.toString(),
-                lastSeen = stats.lastSeen.toString(),
-                occurrences = stats.count,
-                affectedDevices = stats.affectedDevices,
-                status = row[CrashGroups.status]
+        val direction = if (sortOrder == "asc") "ASC" else "DESC"
+        args.add(IntegerColumnType() to pageSize)
+        args.add(LongColumnType() to ((page.toLong() - 1) * pageSize))
+        exec(
+            """
+            WITH matching AS (
+                SELECT issue.id, issue.app_id, issue.exception_class, issue.exception_message, issue.status,
+                       MIN(crash.created_at) AS first_seen, MAX(crash.created_at) AS last_seen,
+                       COUNT(*) AS occurrences, COUNT(DISTINCT crash.device_id COLLATE "C") AS affected_devices
+                FROM crashes crash JOIN crash_groups issue ON issue.id = crash.group_id
+                WHERE crash.app_id = ? $filters
+                GROUP BY issue.id
             )
-        }
-        
-        // Sort by requested field and paginate
-        val ascending = sortOrder == "asc"
-        val sortedGroups = when (sortBy) {
-            "status" -> if (ascending) allGroups.sortedBy { it.status } else allGroups.sortedByDescending { it.status }
-            "occurrences" -> if (ascending) allGroups.sortedBy { it.occurrences } else allGroups.sortedByDescending { it.occurrences }
-            "affected_devices" -> if (ascending) allGroups.sortedBy { it.affectedDevices } else allGroups.sortedByDescending { it.affectedDevices }
-            "last_seen" -> if (ascending) allGroups.sortedBy { it.lastSeen } else allGroups.sortedByDescending { it.lastSeen }
-            else -> allGroups.sortedByDescending { it.occurrences } // Default: sort by occurrences desc
-        }
-        
-        val items = sortedGroups
-            .drop((page - 1) * pageSize)
-            .take(pageSize)
-
-        return PaginatedResponse(items, total, page, pageSize)
+            SELECT selected.*, totals.total
+            FROM (SELECT COUNT(*) AS total FROM matching) totals
+            LEFT JOIN LATERAL (
+                SELECT * FROM matching ORDER BY $sortColumn $direction, id ASC LIMIT ? OFFSET ?
+            ) selected ON TRUE
+            ORDER BY selected.$sortColumn $direction, selected.id ASC
+            """.trimIndent(), args, StatementType.SELECT
+        ) { rs ->
+            val items = mutableListOf<CrashGroupResponse>()
+            var total = 0L
+            while (rs.next()) {
+                total = rs.getLong("total")
+                if (rs.getObject("id") != null) items.add(CrashGroupResponse(
+                    id = rs.getString("id"), appId = rs.getString("app_id"),
+                    exceptionClass = rs.getString("exception_class"), exceptionMessage = rs.getString("exception_message"),
+                    firstSeen = rs.getObject("first_seen", OffsetDateTime::class.java).toString(),
+                    lastSeen = rs.getObject("last_seen", OffsetDateTime::class.java).toString(),
+                    occurrences = rs.getInt("occurrences"), affectedDevices = rs.getInt("affected_devices"),
+                    status = rs.getString("status")
+                ))
+            }
+            PaginatedResponse(items, total, page, pageSize)
+        } ?: PaginatedResponse(emptyList(), 0, page, pageSize)
     }
-
-    private data class FilteredCrashStats(
-        val count: Int,
-        val affectedDevices: Int,
-        val firstSeen: OffsetDateTime,
-        val lastSeen: OffsetDateTime
-    )
 
     fun getVersionCodes(appId: UUID): List<VersionInfo> = transaction {
         val crashVersionCodes = Crashes
@@ -170,6 +128,11 @@ object CrashRepository {
         }.sortedByDescending { it.versionCode }
     }
 
+    fun findGroupAppId(id: UUID): UUID? = transaction {
+        CrashGroups.select(CrashGroups.appId).where { CrashGroups.id eq id }
+            .singleOrNull()?.get(CrashGroups.appId)?.value
+    }
+
     fun findGroupById(id: UUID): CrashGroupResponse? = transaction {
         val group = CrashGroups.selectAll()
             .where { CrashGroups.id eq id }
@@ -213,8 +176,8 @@ object CrashRepository {
         
         val total = baseQuery.count()
         val items = baseQuery
-            .orderBy(Crashes.createdAt, SortOrder.DESC)
-            .limit(pageSize).offset(((page - 1) * pageSize).toLong())
+            .orderBy(Crashes.createdAt to SortOrder.DESC, Crashes.id to SortOrder.DESC)
+            .limit(pageSize).offset((page.toLong() - 1) * pageSize)
             .map { it.toCrashResponse() }
 
         PaginatedResponse(items, total, page, pageSize)
@@ -242,27 +205,15 @@ object CrashRepository {
             ZoneOffset.UTC
         )
 
-        // Calculate fingerprint from first few frames (use raw for consistent grouping)
-        val fingerprint = calculateFingerprint(crash.stacktrace)
-        // Use decoded stacktrace for exception info if available
-        val stacktraceForParsing = decodedStacktrace ?: crash.stacktrace
-        val (exceptionClass, exceptionMessage) = parseException(stacktraceForParsing)
-
-        // Find or create crash group
-        val groupId = findOrCreateGroup(
-            appId = appId,
-            fingerprint = fingerprint,
-            exceptionClass = exceptionClass,
-            exceptionMessage = exceptionMessage,
-            crashTime = crashTime
-        )
-
-        Crashes.insertAndGetId {
+        val reportId = crash.reportId?.let(UUID::fromString)
+        val id = UUID.randomUUID()
+        val inserted = Crashes.insertIgnore {
+            it[Crashes.id] = id
+            it[Crashes.reportId] = reportId
             it[Crashes.appId] = appId
             it[Crashes.versionId] = versionId
-            it[Crashes.groupId] = groupId
             it[Crashes.versionCode] = versionCode
-            it[Crashes.deviceId] = deviceInfo?.deviceId
+            it[Crashes.deviceId] = deviceInfo.deviceId
             it[stacktraceRaw] = crash.stacktrace
             it[stacktraceDecoded] = decodedStacktrace
             it[decodedAt] = if (decodedStacktrace != null) now else null
@@ -273,7 +224,17 @@ object CrashRepository {
             it[breadcrumbs] = crash.breadcrumbs.ifEmpty { null }
             it[Crashes.deviceInfo] = deviceInfo
             it[createdAt] = crashTime
-        }.value
+        }.insertedCount > 0
+        if (!inserted) {
+            return@transaction Crashes.select(Crashes.id)
+                .where { (Crashes.appId eq appId) and (Crashes.reportId eq reportId) }
+                .single()[Crashes.id].value
+        }
+        val (exceptionClass, exceptionMessage) = parseException(decodedStacktrace ?: crash.stacktrace)
+        val groupId = findOrCreateGroup(appId, calculateFingerprint(crash.stacktrace),
+            exceptionClass, exceptionMessage, crashTime)
+        Crashes.update({ Crashes.id eq id }) { it[Crashes.groupId] = groupId }
+        id
     }
 
     fun updateGroupStatus(id: UUID, status: String): Boolean = transaction {
@@ -526,55 +487,52 @@ object CrashRepository {
     }
 
     fun getCrashStatsByGroupId(
-        groupId: UUID,
-        fromDate: OffsetDateTime,
-        toDate: OffsetDateTime,
-        versionCode: Long? = null
-    ): List<DailyStat> = transaction {
-        var query = Crashes
-            .select(Crashes.createdAt)
-            .where { 
-                (Crashes.groupId eq groupId) and 
-                (Crashes.createdAt greaterEq fromDate) and 
-                (Crashes.createdAt lessEq toDate) 
-            }
-        
-        if (versionCode != null) {
-            query = query.andWhere { Crashes.versionCode eq versionCode }
-        }
-        
-        query
-            .map { it[Crashes.createdAt].toLocalDate() }
-            .groupingBy { it }
-            .eachCount()
-            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
-            .sortedBy { it.date }
-    }
+        groupId: UUID, fromDate: OffsetDateTime, toDate: OffsetDateTime, versionCode: Long? = null
+    ): List<DailyStat> = crashStats("group_id", groupId, fromDate, toDate, versionCode)
 
     fun getCrashStatsByAppId(
-        appId: UUID,
-        fromDate: OffsetDateTime,
-        toDate: OffsetDateTime,
-        versionCode: Long? = null
+        appId: UUID, fromDate: OffsetDateTime, toDate: OffsetDateTime, versionCode: Long? = null
+    ): List<DailyStat> = crashStats("app_id", appId, fromDate, toDate, versionCode)
+
+    private fun crashStats(
+        scope: String, id: UUID, from: OffsetDateTime, to: OffsetDateTime, versionCode: Long?
     ): List<DailyStat> = transaction {
-        var query = Crashes
-            .select(Crashes.createdAt)
-            .where { 
-                (Crashes.appId eq appId) and 
-                (Crashes.createdAt greaterEq fromDate) and 
-                (Crashes.createdAt lessEq toDate) 
-            }
-        
-        if (versionCode != null) {
-            query = query.andWhere { Crashes.versionCode eq versionCode }
+        val args = mutableListOf<Pair<IColumnType<*>, Any?>>(
+            UUIDColumnType() to id, Crashes.createdAt.columnType to from, Crashes.createdAt.columnType to to)
+        val versionFilter = if (versionCode == null) "" else " AND version_code = ?".also {
+            args.add(Crashes.versionCode.columnType to versionCode)
         }
-        
-        query
-            .map { it[Crashes.createdAt].toLocalDate() }
-            .groupingBy { it }
-            .eachCount()
-            .map { (date, count) -> DailyStat(date.toString(), count.toLong()) }
-            .sortedBy { it.date }
+        exec(
+            """
+            SELECT (created_at AT TIME ZONE 'UTC')::date AS day, COUNT(*) AS count
+            FROM crashes WHERE $scope = ? AND created_at >= ? AND created_at <= ? $versionFilter
+            GROUP BY 1 ORDER BY 1
+            """.trimIndent(), args
+        ) { rs -> buildList { while (rs.next()) add(DailyStat(rs.getString("day"), rs.getLong("count"))) } }.orEmpty()
+    }
+
+    fun getDistributions(groupId: UUID, from: OffsetDateTime, to: OffsetDateTime, versionCode: Long?): CrashDistributionResponse = transaction {
+        val args = mutableListOf<Pair<IColumnType<*>, Any?>>(
+            UUIDColumnType() to groupId, Crashes.createdAt.columnType to from, Crashes.createdAt.columnType to to)
+        val versionFilter = if (versionCode == null) "" else " AND version_code = ?".also {
+            args.add(Crashes.versionCode.columnType to versionCode)
+        }
+        val dimensions = exec(
+            """
+            SELECT dimension, name, COUNT(*) AS count
+            FROM crashes CROSS JOIN LATERAL (VALUES
+                ('model', COALESCE(NULLIF(device_info->>'model', ''), 'Unknown')),
+                ('os', COALESCE(NULLIF(device_info->>'os_version', ''), 'Unknown'))
+            ) dimensions(dimension, name)
+            WHERE group_id = ? AND created_at >= ? AND created_at <= ? $versionFilter
+            GROUP BY dimension, name ORDER BY count DESC, name
+            """.trimIndent(), args
+        ) { rs -> buildMap<String, MutableList<DeviceStatItem>> {
+            while (rs.next()) getOrPut(rs.getString("dimension")) { mutableListOf() }
+                .add(DeviceStatItem(rs.getString("name"), rs.getLong("count")))
+        } }.orEmpty()
+        val models = dimensions["model"].orEmpty()
+        CrashDistributionResponse(models.take(5), dimensions["os"].orEmpty().take(5), models.sumOf { it.count })
     }
 
     /**
@@ -715,28 +673,27 @@ object CrashRepository {
         exceptionMessage: String?,
         crashTime: OffsetDateTime
     ): UUID {
-        val existing = CrashGroups.selectAll()
-            .where { (CrashGroups.appId eq appId) and (CrashGroups.fingerprint eq fingerprint) }
-            .singleOrNull()
-
-        return if (existing != null) {
-            val groupId = existing[CrashGroups.id].value
-            CrashGroups.update({ CrashGroups.id eq groupId }) {
-                it[lastSeen] = crashTime
-                it[occurrences] = CrashGroups.occurrences + 1
-            }
-            groupId
-        } else {
-            CrashGroups.insertAndGetId {
-                it[CrashGroups.appId] = appId
-                it[CrashGroups.fingerprint] = fingerprint
-                it[CrashGroups.exceptionClass] = exceptionClass
-                it[CrashGroups.exceptionMessage] = exceptionMessage?.take(1000)
-                it[firstSeen] = crashTime
-                it[lastSeen] = crashTime
-                it[occurrences] = 1
-                it[status] = "open"
-            }.value
+        return transaction {
+            exec(
+                """
+                INSERT INTO crash_groups
+                    (app_id, fingerprint, exception_class, exception_message, first_seen, last_seen, occurrences, status)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 'open')
+                ON CONFLICT (app_id, fingerprint) DO UPDATE SET
+                    first_seen = LEAST(crash_groups.first_seen, EXCLUDED.first_seen),
+                    last_seen = GREATEST(crash_groups.last_seen, EXCLUDED.last_seen),
+                    occurrences = crash_groups.occurrences + 1
+                RETURNING id
+                """.trimIndent(),
+                listOf(
+                    UUIDColumnType() to appId,
+                    CrashGroups.fingerprint.columnType to fingerprint,
+                    CrashGroups.exceptionClass.columnType to exceptionClass,
+                    CrashGroups.exceptionMessage.columnType to exceptionMessage?.take(1000),
+                    CrashGroups.firstSeen.columnType to crashTime,
+                    CrashGroups.lastSeen.columnType to crashTime
+                ), StatementType.SELECT
+            ) { it.next(); it.getObject("id", UUID::class.java) }!!
         }
     }
 

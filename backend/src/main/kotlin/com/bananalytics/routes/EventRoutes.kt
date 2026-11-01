@@ -6,6 +6,7 @@ import com.bananalytics.models.SessionVersionStats
 import com.bananalytics.models.UserResponse
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppSessionRepository
+import com.bananalytics.repositories.DeviceStatsRepository
 import com.bananalytics.repositories.EventRepository
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -16,7 +17,7 @@ fun Route.eventRoutes() {
         val user = call.getUser()
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
         val (fromDate, toDate) = call.dateRange()
         val stats = dbIO { AppSessionRepository.getOverview(appId, fromDate, toDate) }
         call.cacheStatsFor()
@@ -29,7 +30,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val (fromDate, toDate) = call.dateRange()
 
@@ -45,7 +46,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val (fromDate, toDate) = call.dateRange()
 
@@ -61,7 +62,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val (fromDate, toDate) = call.dateRange()
@@ -76,7 +77,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versions = dbIO { EventRepository.getVersionCodes(appId) }
         call.cacheStatsFor()
@@ -91,7 +92,7 @@ fun Route.eventRoutes() {
         val eventName = call.parameters["eventName"]
             ?: throw BadRequestException("Event name is required")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
@@ -122,7 +123,7 @@ fun Route.eventRoutes() {
         val eventName = call.parameters["eventName"]
             ?: throw BadRequestException("Event name is required")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
         val (fromDate, toDate) = call.dateRange()
@@ -140,7 +141,7 @@ fun Route.eventRoutes() {
         val eventName = call.parameters["eventName"]
             ?: throw BadRequestException("Event name is required")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
         val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
@@ -156,7 +157,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val eventName = call.request.queryParameters["name"]
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
@@ -186,7 +187,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val names = dbIO { EventRepository.getEventNames(appId) }
         call.respond(names)
@@ -198,7 +199,7 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val count = dbIO { EventRepository.countByAppId(appId) }
         call.respond(mapOf("count" to count))
@@ -210,14 +211,14 @@ fun Route.eventRoutes() {
         val appId = call.parameters["appId"]?.toUUIDOrNull()
             ?: throw BadRequestException("Invalid app ID")
 
-        requireAppAccess(appId, user)
+        call.requireAnalyticsAccess(appId, user)
 
         val versionCode = call.request.queryParameters["version"]?.toLongOrNull()
-        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
+        val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 10).coerceIn(1, 100)
         val fromTime = call.request.queryParameters["from"]?.toOffsetDateTimeOrNull()
         val toTime = call.request.queryParameters["to"]?.toOffsetDateTimeOrNull()
 
-        val stats = dbIO { EventRepository.getDeviceStats(appId, versionCode, limit, fromTime, toTime) }
+        val stats = dbIO { DeviceStatsRepository.getStats(appId, versionCode, limit, fromTime, toTime) }
         call.cacheStatsFor()
         call.respond(stats)
     }
@@ -227,10 +228,4 @@ private fun String.toUUIDOrNull(): UUID? = try {
     UUID.fromString(this)
 } catch (e: IllegalArgumentException) {
     null
-}
-
-private suspend fun requireAppAccess(appId: UUID, user: UserResponse) {
-    if (!dbIO { AppAccessRepository.hasAccess(appId, UUID.fromString(user.id)) }) {
-        throw NotFoundException("App not found")
-    }
 }

@@ -5,98 +5,31 @@ import com.bananalytics.config.configureSerialization
 import com.bananalytics.config.configureStatusPages
 import com.bananalytics.models.AppVersionResponse
 import com.bananalytics.repositories.*
+import com.bananalytics.support.TestDatabase
+import com.bananalytics.support.TestStorage
 import com.bananalytics.services.EmailService
-import com.bananalytics.services.StorageService
-import com.sun.net.httpserver.HttpServer
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.*
-import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.AfterClass
-import org.junit.Assume.assumeNotNull
 import org.junit.BeforeClass
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.net.InetSocketAddress
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.test.*
 
 class VersionAccessIntegrationTest {
     companion object {
         private val app = UUID.fromString("00000000-0000-0000-0000-000000000001")
         private val other = UUID.fromString("00000000-0000-0000-0000-000000000002")
-        private val objects = ConcurrentHashMap<String, ByteArray>()
-        private val storageRequests = ConcurrentLinkedQueue<String>()
-        private var storage: HttpServer? = null
-        private fun sql(value: String) = transaction { exec(value); Unit }
+        private val objects get() = TestStorage.objects
+        private val storageRequests get() = TestStorage.requests
+        private fun sql(value: String) = TestDatabase.sql(value)
 
-        private fun decodeChunks(body: ByteArray): ByteArray {
-            val input = body.inputStream()
-            val output = ByteArrayOutputStream()
-            while (true) {
-                val header = buildString {
-                    while (true) {
-                        val byte = input.read()
-                        check(byte >= 0) { "Incomplete S3 chunk header" }
-                        if (byte == '\n'.code) break
-                        if (byte != '\r'.code) append(byte.toChar())
-                    }
-                }
-                val size = header.substringBefore(';').toInt(16)
-                if (size == 0) return output.toByteArray()
-                output.write(input.readNBytes(size))
-                check(input.read() == '\r'.code && input.read() == '\n'.code)
-            }
-        }
-
-        @BeforeClass @JvmStatic fun connect() {
-            val url = System.getenv("TEST_DATABASE_URL")
-            assumeNotNull(url)
-            require(url!!.endsWith("/bananalytics_test")) { "Use a disposable bananalytics_test database" }
-            Database.connect(url, "org.postgresql.Driver", "bananalytics", System.getenv("TEST_DATABASE_PASSWORD") ?: "perf-local")
-            sql("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
-            sql(File("src/main/resources/db/init.sql").readText())
-            File("src/main/resources/db/migrations").listFiles()!!.filter { it.extension == "sql" }
-                .sortedBy { it.name }.forEach { sql(it.readText()) }
-
-            // Exercise real storage calls against a local S3 stub, including streaming downloads.
-            val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-            server.createContext("/") { exchange ->
-                val key = exchange.requestURI.path.removePrefix("/version-tests/")
-                val received = exchange.requestBody.use { it.readBytes() }
-                val body = if (exchange.requestHeaders.getFirst("Content-Encoding")?.contains("aws-chunked") == true)
-                    decodeChunks(received) else received
-                storageRequests.add("${exchange.requestMethod} $key")
-                val response = when (exchange.requestMethod) {
-                    "PUT" -> { objects[key] = body; ByteArray(0) }
-                    "GET" -> objects[key]
-                    "POST" -> {
-                        Regex("<Key>(.*?)</Key>").findAll(body.toString(Charsets.UTF_8))
-                            .forEach { objects.remove(it.groupValues[1]) }
-                        "<DeleteResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"/>".toByteArray()
-                    }
-                    else -> ByteArray(0)
-                }
-                if (exchange.requestMethod == "HEAD") {
-                    exchange.sendResponseHeaders(200, -1)
-                } else {
-                    exchange.sendResponseHeaders(if (response == null) 404 else 200, response?.size?.toLong() ?: -1)
-                    response?.let { exchange.responseBody.write(it) }
-                }
-                exchange.close()
-            }
-            server.start()
-            storage = server
-            StorageService.init("http://127.0.0.1:${server.address.port}", "test", "test", "version-tests")
-        }
-
-        @AfterClass @JvmStatic fun stopStorage() { storage?.stop(0) }
+        @BeforeClass @JvmStatic fun connect() { TestDatabase.connect(); TestStorage.start() }
+        @AfterClass @JvmStatic fun stopStorage() = TestStorage.stop()
     }
 
     private lateinit var ownVersion: AppVersionResponse
@@ -180,14 +113,17 @@ class VersionAccessIntegrationTest {
         assertEquals(0L, transaction { exec("SELECT COUNT(*) FROM download_tokens") { it.next(); it.getLong(1) } })
     }
 
-    @Test fun `viewers and testers cannot read another app version through their own app`() = testApplication {
+    @Test fun `viewers cannot read another app version and testers only download published APKs`() = testApplication {
         api()
-        for (session in listOf(viewerSession, testerSession)) {
-            for (suffix in listOf("/apk", "/mapping")) {
-                assertEquals(HttpStatusCode.NotFound, versionRequest(HttpMethod.Get, app, otherVersion.id, suffix, session).status)
-                assertEquals(HttpStatusCode.OK, versionRequest(HttpMethod.Get, app, ownVersion.id, suffix, session).status)
-            }
+        for (suffix in listOf("/apk", "/mapping")) {
+            assertEquals(HttpStatusCode.NotFound, versionRequest(HttpMethod.Get, app, otherVersion.id, suffix, viewerSession).status)
+            assertEquals(HttpStatusCode.OK, versionRequest(HttpMethod.Get, app, ownVersion.id, suffix, viewerSession).status)
         }
+        assertEquals(HttpStatusCode.Forbidden, versionRequest(HttpMethod.Get, app, ownVersion.id, "/mapping", testerSession).status)
+        assertEquals(HttpStatusCode.NotFound, versionRequest(HttpMethod.Get, app, ownVersion.id, "/apk", testerSession).status)
+        VersionRepository.update(app, UUID.fromString(ownVersion.id), publishedForTesters = true)
+        assertEquals(HttpStatusCode.OK, versionRequest(HttpMethod.Get, app, ownVersion.id, "/apk", testerSession).status)
+        assertEquals(HttpStatusCode.NotFound, versionRequest(HttpMethod.Get, app, otherVersion.id, "/apk", testerSession).status)
     }
 
     @Test fun `authentication and app roles still protect owned versions`() = testApplication {

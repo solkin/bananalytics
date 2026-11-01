@@ -44,11 +44,12 @@ object InvitationRepository {
         )
     }
 
-    fun findByToken(token: String): InvitationInfo? = transaction {
-        Invitations.selectAll()
-            .where { Invitations.token eq token }
-            .singleOrNull()
-            ?.toInvitationInfo()
+    fun findValidByToken(token: String, lock: Boolean = false): InvitationInfo? = transaction {
+        val query = Invitations.selectAll().where {
+            (Invitations.token eq token) and (Invitations.expiresAt greater OffsetDateTime.now())
+        }
+        if (lock) query.forUpdate()
+        query.singleOrNull()?.toInvitationInfo()
     }
 
     fun findByEmail(email: String): List<InvitationInfo> = transaction {
@@ -126,16 +127,6 @@ object InvitationRepository {
     fun deleteExpired(): Int = transaction {
         val now = OffsetDateTime.now()
         Invitations.deleteWhere { Invitations.expiresAt lessEq now }
-    }
-
-    fun isValidToken(token: String): Boolean = transaction {
-        val now = OffsetDateTime.now()
-        Invitations.selectAll()
-            .where { 
-                (Invitations.token eq token) and 
-                (Invitations.expiresAt greaterEq now) 
-            }
-            .count() > 0
     }
 
     private fun generateToken(): String {
