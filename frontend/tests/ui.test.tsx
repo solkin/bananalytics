@@ -101,6 +101,26 @@ test('Escape closes only the open select before dismissing its parent modal', as
   assert.equal(closed, 1)
 })
 
+test('a select popup matches the width of its trigger outside the form container', async () => {
+  const original = HTMLElement.prototype.getBoundingClientRect
+  HTMLElement.prototype.getBoundingClientRect = function () {
+    return this.classList.contains('bnn-select')
+      ? new window.DOMRect(40, 80, 240, 34)
+      : original.call(this)
+  }
+  try {
+    const view = mount(<Select options={[{ label: 'A release with a long version name', value: 1 }]} />)
+    await view.render()
+    const trigger = view.container.querySelector<HTMLButtonElement>('[role="combobox"]')!
+    await act(async () => trigger.click())
+    const menu = document.querySelector<HTMLElement>('[role="listbox"]')!
+    assert.equal(view.container.contains(menu), false)
+    assert.equal(window.getComputedStyle(menu).width, '240px')
+  } finally {
+    HTMLElement.prototype.getBoundingClientRect = original
+  }
+})
+
 test('tabs expose the selected panel and move focus with arrow keys', async () => {
   const view = mount(
     <Tabs

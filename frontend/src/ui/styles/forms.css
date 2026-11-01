@@ -190,10 +190,6 @@
   color: var(--bnn-text-secondary);
 }
 .bnn-select__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
   z-index: var(--bnn-z-overlay);
   max-width: calc(100vw - 16px);
   max-height: min(260px, calc(100dvh - 16px));

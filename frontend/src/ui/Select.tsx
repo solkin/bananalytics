@@ -180,7 +180,7 @@ export function Select({
             aria-labelledby={field['aria-labelledby']}
             aria-label={field['aria-labelledby'] ? undefined : (aria['aria-label'] ?? placeholder)}
             className="bnn-select__menu"
-            style={{ ...position, minWidth: rect.width }}
+            style={{ ...position, width: rect.width }}
             onMouseDown={(e) => e.preventDefault()}
           >
             {options.length === 0 && <div className="bnn-select__empty">{uiStrings.noOptions}</div>}
