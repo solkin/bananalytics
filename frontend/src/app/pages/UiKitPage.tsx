@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import {
   Avatar,
+  Breakdown,
   Button,
   Checkbox,
   ConfirmDialog,
   DataList,
+  DayBars,
   Dialog,
   Dropzone,
   EmptyState,
@@ -15,10 +17,11 @@ import {
   Input,
   IssueStatusIcon,
   Kbd,
+  LineChart,
   Loading,
-  Menu,
   Notice,
   Password,
+  Properties,
   RadioCards,
   Segmented,
   Select,
@@ -62,6 +65,7 @@ const TYPE = [
   ['com.appteka.store', 'Mono 11.5 / 400', 'bnn-mono'],
 ]
 
+const CHART_DAYS = ['Oct 6', 'Oct 7', 'Oct 8', 'Oct 9', 'Oct 10', 'Oct 11', 'Oct 12', 'Oct 13']
 const SPACES = [2, 4, 6, 8, 12, 16, 20, 24, 32]
 const RADII = [4, 5, 6, 8, 10]
 
@@ -175,16 +179,6 @@ export default function UiKitPage() {
           <Tooltip title="Delete issue">
             <IconButton aria-label="Delete issue"><Icons.IconTrash size={15} /></IconButton>
           </Tooltip>
-          <Menu
-            triggerClassName="bnn-btn bnn-btn--secondary"
-            items={[
-              { key: 'copy', label: 'Copy link', icon: <Icons.IconCopy size={14} /> },
-              { key: 'disabled', label: 'Unavailable', disabled: true },
-              { key: 'delete', label: 'Delete', icon: <Icons.IconTrash size={14} />, danger: true },
-            ]}
-          >
-            Menu
-          </Menu>
         </div>
       </Section>
 
@@ -346,6 +340,25 @@ export default function UiKitPage() {
           </div>
         </Section>
       </div>
+
+      <Section title="Charts">
+        <div className="kit-stack">
+          <LineChart
+            label="Example chart"
+            height={160}
+            series={[
+              { label: '8.4.1', data: CHART_DAYS.map((d, i) => ({ label: d, value: 400 + i * 90 })) },
+              { label: '8.4.0', data: CHART_DAYS.map((d, i) => ({ label: d, value: 800 - i * 40 })) },
+              { label: 'Other', dashed: true, data: CHART_DAYS.map((d, i) => ({ label: d, value: 200 + i * 10 })) },
+            ]}
+          />
+          <div className="kit-grid">
+            <DayBars label="Example daily bars" data={CHART_DAYS.map((d, i) => ({ label: d, value: 20 + ((i * 37) % 50) }))} />
+            <Breakdown title="Android version" items={[{ label: 'Android 15', value: 46, display: '46%' }, { label: 'Android 14', value: 31, display: '31%' }]} />
+          </div>
+          <Properties layout="columns" items={[{ label: 'Reports', value: '1,284' }, { label: 'Devices', value: '612' }, { label: 'First seen', value: '20 days ago' }]} />
+        </div>
+      </Section>
 
       <Section title="States">
         <div className="kit-grid">

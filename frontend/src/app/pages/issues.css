@@ -58,6 +58,11 @@
   color: var(--bnn-text-faint);
   text-overflow: ellipsis;
 }
+@media (max-width: 620px) {
+  .iss-row__message {
+    display: none;
+  }
+}
 .iss-row__count {
   font-weight: var(--bnn-weight-medium);
 }

@@ -194,7 +194,7 @@ link for testers. Re-running the same build overwrites it instead of failing.
 ## Tech Stack
 
 - **Backend**: Kotlin, Ktor, Exposed, PostgreSQL, R8 Retrace
-- **Frontend**: React, TypeScript, Ant Design, Vite
+- **Frontend**: React, TypeScript, Vite
 - **Infrastructure**: Docker, Docker Compose, Nginx, MinIO
 
 ## License

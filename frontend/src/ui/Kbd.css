@@ -6,7 +6,7 @@
   border-radius: var(--bnn-radius-xs);
   color: var(--bnn-text-muted);
   font-family: var(--bnn-font);
-  font-size: 11px;
+  font-size: var(--bnn-fs-kbd);
   line-height: 18px;
   text-align: center;
 }

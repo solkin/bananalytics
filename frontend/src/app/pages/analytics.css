@@ -50,9 +50,6 @@
 .an-count {
   font-weight: var(--bnn-weight-medium);
 }
-.an-faint {
-  color: var(--bnn-text-faint);
-}
 .an-muted {
   color: var(--bnn-text-muted);
 }

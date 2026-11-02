@@ -35,7 +35,7 @@
 }
 .bnn-linechart__axis {
   fill: var(--bnn-text-faint);
-  font-size: 11.5px;
+  font-size: var(--bnn-fs-mono);
   font-variant-numeric: tabular-nums;
 }
 .bnn-linechart__tip {

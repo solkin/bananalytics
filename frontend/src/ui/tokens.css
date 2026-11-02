@@ -54,6 +54,7 @@
   /* Type */
   --bnn-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --bnn-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --bnn-fs-kbd: 11px;
   --bnn-fs-mono: 11.5px;
   --bnn-fs-caption: 12px;
   --bnn-fs-body: 13px;

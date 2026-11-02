@@ -12,7 +12,6 @@ import { DataList } from '../src/ui/DataList'
 import { Loaded } from '../src/app/async'
 import { ConfirmDialog } from '../src/ui/ConfirmDialog'
 import { Dialog } from '../src/ui/Dialog'
-import { Menu } from '../src/ui/Menu'
 import { Tabs } from '../src/ui/Tabs'
 import UiKitPage from '../src/app/pages/UiKitPage'
 import { toast, ToastViewport } from '../src/ui/Toast'
@@ -220,24 +219,6 @@ test('a confirmation starts on the safe action and cannot be dismissed while wor
     document.querySelector('.bnn-overlay')!.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }))
   })
   assert.equal(closed, 0)
-})
-
-test('menu moves focus into its list in StrictMode and Escape closes it', async () => {
-  const view = mount(
-    <StrictMode>
-      <Menu label="Account" items={[{ key: 'profile', label: 'Profile' }]}>
-        <span>Account</span>
-      </Menu>
-    </StrictMode>,
-  )
-  await view.render()
-  const trigger = view.container.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!
-  await act(async () => trigger.click())
-  const item = document.querySelector('[role="menuitem"]')!
-  assert.equal(document.activeElement, item)
-  await act(async () => key(item, 'Escape'))
-  assert.equal(document.querySelector('[role="menu"]'), null)
-  assert.equal(document.activeElement, trigger)
 })
 
 test('loading buttons retain their label and do not submit by default', async () => {
