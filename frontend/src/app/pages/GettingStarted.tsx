@@ -49,7 +49,7 @@ class App : Application() {
         bananalytics = BananalyticsImpl(
             filesDir = filesDir,
             config = BananalyticsConfig(
-                baseUrl = "https://banana.appteka.store",
+                baseUrl = "https://bnn.appteka.store",
                 apiKey = "${key}",
             ),
             environmentProvider = object : EnvironmentProvider {
@@ -87,7 +87,7 @@ const CRASH = `try {
 const PUBLISH = `# one step after the build, with an upload-scoped key in CI secrets
 gzip -9 -c app/build/outputs/mapping/release/mapping.txt > mapping.txt.gz
 
-curl --fail-with-body -X POST https://banana.appteka.store/api/v1/releases \\
+curl --fail-with-body -X POST https://bnn.appteka.store/api/v1/releases \\
   -H "X-API-Key: $BANANALYTICS_KEY" \\
   -F apk=@app/build/outputs/apk/release/app-release.apk \\
   -F mapping=@mapping.txt.gz \\
