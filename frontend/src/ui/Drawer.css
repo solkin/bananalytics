@@ -1,0 +1,23 @@
+.bnn-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bnn-z-overlay);
+  background: var(--bnn-scrim);
+}
+.bnn-drawer {
+  width: min(280px, 85vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bnn-canvas);
+  box-shadow: var(--bnn-shadow-dialog);
+  animation: bnn-drawer-in 0.15s ease;
+}
+.bnn-drawer:focus {
+  outline: 0;
+}
+@keyframes bnn-drawer-in {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+}

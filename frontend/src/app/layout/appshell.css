@@ -1,0 +1,64 @@
+/* Sidebar on the canvas, one bordered work surface beside it. Screens scroll
+   inside the surface, so the sidebar never moves. */
+.shell {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bnn-canvas);
+}
+.shell__side {
+  flex-shrink: 0;
+  width: 232px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.shell__bar {
+  display: none;
+}
+.shell__main {
+  flex: 1;
+  min-width: 0;
+  margin: var(--bnn-sp-4) var(--bnn-sp-4) var(--bnn-sp-4) 0;
+  overflow-y: auto;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius-lg);
+  background: var(--bnn-surface);
+}
+
+@media (max-width: 760px) {
+  .shell {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bnn-surface);
+  }
+  .shell__side {
+    display: none;
+  }
+  .shell__bar {
+    position: sticky;
+    top: 0;
+    z-index: var(--bnn-z-sticky);
+    display: flex;
+    align-items: center;
+    gap: var(--bnn-sp-2);
+    min-height: var(--bnn-h-header);
+    padding: 0 var(--bnn-sp-3);
+    border-bottom: 1px solid var(--bnn-divider);
+    background: var(--bnn-surface);
+  }
+  .shell__bar-title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--bnn-weight-medium);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .shell__main {
+    margin: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+}

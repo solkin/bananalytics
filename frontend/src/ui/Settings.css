@@ -1,0 +1,52 @@
+.bnn-settings-group__title {
+  margin-bottom: var(--bnn-sp-4);
+  font-size: var(--bnn-fs-body);
+  font-weight: var(--bnn-weight-strong);
+}
+.bnn-settings-group__rows {
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius-lg);
+  background: var(--bnn-surface);
+}
+.bnn-settings-group__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--bnn-sp-5);
+}
+
+.bnn-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bnn-sp-4) var(--bnn-sp-6);
+  min-height: 52px;
+  padding: var(--bnn-sp-4) var(--bnn-sp-5) var(--bnn-sp-4) var(--bnn-sp-6);
+}
+.bnn-settings-row + .bnn-settings-row {
+  border-top: 1px solid var(--bnn-divider);
+}
+.bnn-settings-row__text {
+  display: block;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.bnn-settings-row__label {
+  display: block;
+  font-weight: var(--bnn-weight-medium);
+}
+.bnn-settings-row__hint {
+  display: block;
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+}
+.bnn-settings-row__control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  max-width: 100%;
+}
+.bnn-settings-row--stretch .bnn-settings-row__control {
+  flex: 1 1 240px;
+  min-width: 0;
+}

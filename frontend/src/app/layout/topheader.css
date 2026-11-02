@@ -1,0 +1,40 @@
+.top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bnn-sp-5);
+  min-height: 48px;
+  padding: 0 var(--bnn-sp-6);
+  border-bottom: 1px solid var(--bnn-divider);
+  background: var(--bnn-surface);
+}
+.top-header__brand {
+  flex-shrink: 0;
+  border-radius: var(--bnn-radius);
+}
+.top-header__links {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-2);
+  min-width: 0;
+}
+.top-header__link {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  min-width: 0;
+  min-height: var(--bnn-h-button);
+  padding: 0 var(--bnn-sp-4);
+  border-radius: var(--bnn-radius);
+  color: var(--bnn-text-strong);
+  transition: background-color var(--bnn-transition);
+}
+.top-header__link:hover {
+  background: var(--bnn-hover);
+}
+.top-header__account {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

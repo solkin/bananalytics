@@ -1,0 +1,96 @@
+.bnn-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bnn-z-overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(16px, 12vh, 112px) var(--bnn-sp-6) var(--bnn-sp-6);
+  background: var(--bnn-scrim);
+}
+.bnn-palette {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 600px;
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius-xl);
+  background: var(--bnn-surface);
+  box-shadow: var(--bnn-shadow-dialog);
+}
+.bnn-palette:focus {
+  outline: 0;
+}
+.bnn-palette__context {
+  align-self: flex-start;
+  max-width: calc(100% - 32px);
+  margin: var(--bnn-sp-5) var(--bnn-sp-6) 0;
+  padding: var(--bnn-sp-1) var(--bnn-sp-3);
+  overflow: hidden;
+  border-radius: var(--bnn-radius-xs);
+  background: var(--bnn-hover);
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bnn-palette__input {
+  flex-shrink: 0;
+  width: 100%;
+  padding: var(--bnn-sp-5) var(--bnn-sp-6);
+  border: 0;
+  border-bottom: 1px solid var(--bnn-divider);
+  outline: 0;
+  background: transparent;
+  font-size: var(--bnn-fs-large);
+}
+.bnn-palette__input::placeholder {
+  color: var(--bnn-text-faint);
+}
+.bnn-palette__list {
+  min-height: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: var(--bnn-sp-3);
+}
+.bnn-palette__group {
+  padding: var(--bnn-sp-4) var(--bnn-sp-4) var(--bnn-sp-2);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+  font-weight: var(--bnn-weight-medium);
+}
+.bnn-palette__option {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  min-height: 36px;
+  padding: var(--bnn-sp-2) var(--bnn-sp-4);
+  border-radius: var(--bnn-radius);
+  cursor: pointer;
+}
+.bnn-palette__option > svg {
+  flex-shrink: 0;
+  color: var(--bnn-text-muted);
+}
+.bnn-palette__option.is-active {
+  background: var(--bnn-hover);
+}
+.bnn-palette__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bnn-palette__keys {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--bnn-sp-1);
+}
+.bnn-palette__empty {
+  padding: var(--bnn-sp-8) var(--bnn-sp-4);
+  color: var(--bnn-text-muted);
+  text-align: center;
+}

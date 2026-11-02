@@ -1,0 +1,6 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  font-weight: var(--bnn-weight-strong);
+}

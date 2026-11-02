@@ -1,0 +1,16 @@
+.bnn-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bnn-sp-3) var(--bnn-sp-5);
+  min-height: var(--bnn-h-header);
+  padding: var(--bnn-sp-3) var(--bnn-sp-6);
+  border-bottom: 1px solid var(--bnn-divider);
+  background: var(--bnn-surface);
+}
+.bnn-page-header__title {
+  min-width: 0;
+  font-size: var(--bnn-fs-body);
+  font-weight: var(--bnn-weight-strong);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,37 @@
+.bnn-split {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+.bnn-split__list {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.bnn-split__detail {
+  flex-grow: 0;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--bnn-divider);
+  scrollbar-width: thin;
+}
+
+/* Two columns stop being useful before the phone breakpoint does. */
+@media (max-width: 1120px) {
+  .bnn-split {
+    height: auto;
+  }
+  .bnn-split.has-detail .bnn-split__list {
+    display: none;
+  }
+  .bnn-split__list,
+  .bnn-split__detail {
+    overflow-y: visible;
+  }
+  .bnn-split__detail {
+    flex: 1 !important;
+    border-left: 0;
+  }
+}

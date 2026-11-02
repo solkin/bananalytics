@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React, { act } from 'react'
 import { mount } from './dom'
-import { AsyncCacheProvider, useAsync } from '../src/next/async'
+import { AsyncCacheProvider, useAsync } from '../src/app/async'
 import { DataList } from '../src/ui/DataList'
 
 function Data({ load, cacheKey = 'private' }: { load: () => Promise<string>; cacheKey?: string }) {

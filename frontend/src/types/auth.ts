@@ -2,7 +2,7 @@ export interface User {
   id: string
   email: string
   name: string | null
-  /** `null` until an avatar is uploaded — see `@/next/UserAvatar`. */
+  /** `null` until an avatar is uploaded — see `Avatar` in the kit. */
   avatar_url: string | null
   created_at: string
 }

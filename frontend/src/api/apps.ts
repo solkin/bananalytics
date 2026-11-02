@@ -28,7 +28,7 @@ export async function deleteApp(id: string): Promise<void> {
   await api.delete(`/apps/${id}`)
 }
 
-/** Icons are normalized to a square PNG before upload — see `@/next/image`. */
+/** Icons are normalized to a square PNG before upload — see `@/app/image`. */
 export async function uploadAppIcon(id: string, icon: Blob): Promise<App> {
   const formData = new FormData()
   formData.append('icon', icon, 'icon.png')

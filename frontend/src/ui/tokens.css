@@ -103,8 +103,15 @@
   --bnn-status-resolved: #177345;
   --bnn-status-neutral: #65676f;
 
-  /* Brand appears only in the logo and the app tile */
+  /* Brand appears only in the logo and app tiles. A tile without an uploaded
+     icon picks one of these by name; the letter on it is always --bnn-text. */
   --bnn-brand: #f2c230;
+  --bnn-tile-1: #f2c230;
+  --bnn-tile-2: #dce7df;
+  --bnn-tile-3: #dde3ee;
+  --bnn-tile-4: #e8dfee;
+  --bnn-tile-5: #f0e0d6;
+  --bnn-tile-6: #e4e4e9;
 
   /* Charts */
   --bnn-chart-1: #1c1d22;

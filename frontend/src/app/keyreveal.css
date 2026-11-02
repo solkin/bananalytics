@@ -1,0 +1,17 @@
+.key-reveal {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+}
+.key-reveal__value {
+  flex: 1;
+  min-width: 0;
+  padding: var(--bnn-sp-3) var(--bnn-sp-4);
+  overflow: hidden;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+  background: var(--bnn-canvas);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: all;
+}

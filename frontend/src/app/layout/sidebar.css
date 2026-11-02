@@ -1,0 +1,126 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-5);
+  min-height: 100%;
+  padding: var(--bnn-sp-4);
+}
+.sidebar__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar__app,
+.sidebar__account,
+.sidebar__link,
+.sidebar__docs {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  border-radius: var(--bnn-radius);
+  transition: background-color var(--bnn-transition);
+}
+.sidebar__app:hover,
+.sidebar__account:hover,
+.sidebar__link:hover,
+.sidebar__docs:hover {
+  background: var(--bnn-hover);
+}
+
+.sidebar__app {
+  min-height: var(--bnn-h-field);
+  padding: 0 var(--bnn-sp-4);
+  font-weight: var(--bnn-weight-medium);
+}
+.sidebar__chevron {
+  flex-shrink: 0;
+  color: var(--bnn-text-faint);
+}
+
+.sidebar__search {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  width: 100%;
+  min-height: var(--bnn-h-button);
+  padding: 0 var(--bnn-sp-4);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+  background: var(--bnn-surface);
+  color: var(--bnn-text-faint);
+  text-align: left;
+  transition: background-color var(--bnn-transition);
+}
+.sidebar__search:hover {
+  background: var(--bnn-hover);
+}
+.sidebar__search > svg {
+  flex-shrink: 0;
+}
+.sidebar__search .bnn-kbd {
+  flex-shrink: 0;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.sidebar__nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--bnn-sp-5);
+}
+.sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-1);
+}
+.sidebar__group-label {
+  padding: var(--bnn-sp-2) var(--bnn-sp-4);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+  font-weight: var(--bnn-weight-medium);
+}
+.sidebar__link {
+  min-height: var(--bnn-h-button);
+  padding: 0 var(--bnn-sp-4);
+  color: var(--bnn-text-strong);
+}
+.sidebar__link > svg {
+  flex-shrink: 0;
+}
+.sidebar__link.is-active,
+.sidebar__link.is-active:hover {
+  background: var(--bnn-selected-strong);
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.sidebar__count {
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-2);
+}
+.sidebar__account {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--bnn-h-field);
+  padding: 0 var(--bnn-sp-4);
+}
+.sidebar__docs {
+  flex-shrink: 0;
+  justify-content: center;
+  width: var(--bnn-h-field);
+  height: var(--bnn-h-field);
+  color: var(--bnn-text-muted);
+}

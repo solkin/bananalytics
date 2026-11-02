@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { EmptyState, Loading, Notice } from '@/ui'
+import { Button, EmptyState, Loading } from '@/ui'
 
 /* Tiny data-fetching helper for the new pages — loading / error / empty
    states around the existing @/api clients. */
@@ -91,11 +91,15 @@ export function errorText(e: unknown, fallback: string): string {
 export function Loaded<T>({
   state,
   emptyText = 'No data',
+  empty,
   preserveHeight = false,
   children,
 }: {
-  state: AsyncState<T>
+  /** Pass the whole `useAsync` result so the error state can offer a retry. */
+  state: AsyncState<T> & { reload?: () => void }
   emptyText?: string
+  /** Replaces the plain empty state, usually to offer the next step. */
+  empty?: ReactNode
   preserveHeight?: boolean
   children: (data: T) => ReactNode
 }) {
@@ -113,9 +117,14 @@ export function Loaded<T>({
 
   let content: ReactNode
   if (state.loading) content = <Loading />
-  else if (state.error) content = <Notice tone="error" title="Failed to load.">{state.error}</Notice>
-  else if (state.data == null || (Array.isArray(state.data) && state.data.length === 0)) {
-    content = <EmptyState title={emptyText} />
+  else if (state.error) {
+    content = (
+      <EmptyState title="Couldn't load this" description={state.error}>
+        {state.reload && <Button onClick={state.reload}>Retry</Button>}
+      </EmptyState>
+    )
+  } else if (state.data == null || (Array.isArray(state.data) && state.data.length === 0)) {
+    content = empty ?? <EmptyState title={emptyText} />
   } else content = children(state.data)
 
   return preserveHeight

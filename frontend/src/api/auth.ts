@@ -50,7 +50,7 @@ export async function updateProfile(name: string): Promise<User> {
   return response.data.user
 }
 
-/** Avatars are normalized to a square PNG before upload — see `@/next/image`. */
+/** Avatars are normalized to a square PNG before upload — see `@/app/image`. */
 export async function uploadAvatar(avatar: Blob): Promise<User> {
   const formData = new FormData()
   formData.append('avatar', avatar, 'avatar.png')

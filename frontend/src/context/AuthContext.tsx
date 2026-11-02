@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { AsyncCacheProvider } from '@/next/async'
+import { AsyncCacheProvider } from '@/app/async'
 import type { User, ConfigResponse } from '@/types/auth'
 import {
   getCurrentUser,
@@ -41,7 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const [userData, configData] = await Promise.all([
         getCurrentUser().catch(() => null),
-        getConfig(),
+        /* Without the config, sign-in still works; only sign-up stays hidden. */
+        getConfig().catch(() => null),
       ])
       setUser(userData)
       setConfig(configData)
