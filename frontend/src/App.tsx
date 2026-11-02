@@ -5,12 +5,16 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { CommandsProvider } from './app/commands'
 import AppShell, { IndexRedirect, useShell } from './app/layout/AppShell'
 import AppsHome from './app/pages/AppsHome'
+import DevicesPage from './app/pages/DevicesPage'
+import EventDetailPage from './app/pages/EventDetailPage'
+import EventsPage from './app/pages/EventsPage'
 import InstallPage from './app/pages/InstallPage'
 import IssueDetailPage from './app/pages/IssueDetailPage'
 import IssuesPage from './app/pages/IssuesPage'
 import LoginPage from './app/pages/LoginPage'
 import MappingsPage from './app/pages/MappingsPage'
 import NotFoundPage from './app/pages/NotFoundPage'
+import OverviewPage from './app/pages/OverviewPage'
 import RegisterPage from './app/pages/RegisterPage'
 import ReleaseDetailPage from './app/pages/ReleaseDetailPage'
 import ReleasesPage from './app/pages/ReleasesPage'
@@ -61,6 +65,10 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
       <Route path="/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<IndexRedirect />} />
+        <Route path="analytics/overview" element={<OverviewPage />} />
+        <Route path="analytics/events" element={<EventsPage />} />
+        <Route path="analytics/events/:name" element={<EventDetailPage />} />
+        <Route path="analytics/devices" element={<DevicesPage />} />
         <Route path="diagnostics/issues" element={<IssuesPage />}>
           <Route path=":issueId" element={<IssueDetailPage />} />
         </Route>

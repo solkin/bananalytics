@@ -1,9 +1,5 @@
+import type { ChartSeries } from '@/ui'
 import { dayAxis, shortDate } from './format'
-
-export interface VersionSeries {
-  label: string
-  data: { label: string; value: number }[]
-}
 
 interface VersionRow {
   date: string
@@ -12,29 +8,42 @@ interface VersionRow {
   count: number
 }
 
-/* Group per-version daily rows into aligned chart series: every series
-   shares the same zero-filled day axis, so MultiAreaChart can index by
-   position. Versions are ordered newest-first; capped to keep the chart
-   readable. */
-export function versionSeries(rows: VersionRow[], days: number, maxSeries = 6): VersionSeries[] {
+/** Newest versions a chart names; the rest add up to one dashed "Other" line. */
+const NAMED_VERSIONS = 3
+const OTHER_LABEL = 'Other'
+
+/* Groups per-version daily rows into aligned series: every series shares the
+   same zero-filled day axis, newest version first. */
+export function versionSeries(rows: VersionRow[], days: number): ChartSeries[] {
   const axis = dayAxis(days)
   const byVersion = new Map<number, { name: string | null; counts: Map<string, number> }>()
-  for (const r of rows) {
-    let v = byVersion.get(r.version_code)
-    if (!v) {
-      v = { name: r.version_name, counts: new Map() }
-      byVersion.set(r.version_code, v)
+  for (const row of rows) {
+    let version = byVersion.get(row.version_code)
+    if (!version) {
+      version = { name: row.version_name, counts: new Map() }
+      byVersion.set(row.version_code, version)
     }
-    const d = r.date.slice(0, 10)
-    v.counts.set(d, (v.counts.get(d) ?? 0) + r.count)
+    const day = row.date.slice(0, 10)
+    version.counts.set(day, (version.counts.get(day) ?? 0) + row.count)
   }
-  return [...byVersion.entries()]
-    .sort((a, b) => b[0] - a[0])
-    .slice(0, maxSeries)
-    .map(([code, v]) => ({
-      label: v.name ? `${v.name} (${code})` : `v${code}`,
-      data: axis.map((d) => ({ label: shortDate(d), value: v.counts.get(d) ?? 0 })),
-    }))
+  const versions = [...byVersion.entries()].sort((a, b) => b[0] - a[0])
+  const line = (counts: (day: string) => number) =>
+    axis.map((day) => ({ label: shortDate(day), value: counts(day) }))
+
+  const named = versions.slice(0, NAMED_VERSIONS).map(([code, version]) => ({
+    label: version.name ? `${version.name} (${code})` : `v${code}`,
+    data: line((day) => version.counts.get(day) ?? 0),
+  }))
+  const rest = versions.slice(NAMED_VERSIONS)
+  if (!rest.length) return named
+  return [
+    ...named,
+    {
+      label: OTHER_LABEL,
+      dashed: true,
+      data: line((day) => rest.reduce((sum, [, version]) => sum + (version.counts.get(day) ?? 0), 0)),
+    },
+  ]
 }
 
 /** Keeps only the rows of the selected version; no selection keeps them all.

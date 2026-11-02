@@ -120,6 +120,14 @@
   --bnn-chart-track: #ededf0;
   --bnn-chart-bar: #3f414a;
 
+  /* Choropleth: one hue, so darker always means more. Step 0 is "no data". */
+  --bnn-geo-0: #ededf0;
+  --bnn-geo-1: #d5d5db;
+  --bnn-geo-2: #b0b1ba;
+  --bnn-geo-3: #84868f;
+  --bnn-geo-4: #55575f;
+  --bnn-geo-5: #2a2b31;
+
   /* Space: elements in a group sit closer than groups do */
   --bnn-sp-1: 2px;
   --bnn-sp-2: 4px;

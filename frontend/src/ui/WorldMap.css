@@ -1,0 +1,32 @@
+.bnn-worldmap {
+  position: relative;
+  min-width: 0;
+}
+.bnn-worldmap__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.bnn-worldmap__shape {
+  stroke: var(--bnn-surface);
+  stroke-width: 0.5;
+}
+.bnn-worldmap__shape:hover {
+  stroke: var(--bnn-text);
+}
+.bnn-worldmap__tip {
+  position: absolute;
+  z-index: var(--bnn-z-sticky);
+  padding: var(--bnn-sp-2) var(--bnn-sp-4);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+  background: var(--bnn-surface);
+  box-shadow: var(--bnn-shadow-float);
+  font-size: var(--bnn-fs-caption);
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 8px));
+  pointer-events: none;
+}
+.bnn-worldmap__tip-name {
+  font-weight: var(--bnn-weight-medium);
+}
