@@ -1,598 +1,395 @@
 import { useState, type ReactNode } from 'react'
-import './UiKitPage.css'
-import { UiKitStates } from './UiKitStates'
-import { kitStrings } from './uiKit.strings'
 import {
-  AreaChart,
-  Alert,
   Avatar,
-  BarChart,
-  Badge,
-  Breadcrumb,
   Button,
-  Card,
   Checkbox,
-  DatePicker,
-  Descriptions,
-  Divider,
-  Drawer,
-  Dropdown,
-  Empty,
+  ConfirmDialog,
+  DataList,
+  Dialog,
+  Dropzone,
+  EmptyState,
+  Field,
   Form,
-  FormItem,
   IconButton,
   Icons,
   Input,
-  LineChart,
-  Modal,
-  NavMenu,
+  IssueStatusIcon,
+  Kbd,
+  Loading,
+  Menu,
+  Notice,
   Password,
-  Popconfirm,
-  RadioGroup,
+  RadioCards,
   Segmented,
   Select,
   Skeleton,
-  Spinner,
-  Statistic,
+  Status,
   Switch,
-  Table,
   Tabs,
-  Tag,
-  Text,
   Textarea,
-  Title,
   Tooltip,
-  TopBar,
-  UploadDragger,
   toast,
-  WorldMap,
-  type ChartPoint,
-  type Column,
+  type DataListColumn,
 } from '@/ui'
+import './UiKitPage.css'
 
-/* ------------------------------------------------------------- helpers */
-function Section({
-  id,
-  title,
-  description,
-  children,
-}: {
-  id: string
-  title: string
-  description?: string
-  children: ReactNode
-}) {
+const COLORS = [
+  ['Canvas', 'canvas'],
+  ['Surface', 'surface'],
+  ['Hover', 'hover'],
+  ['Selected', 'selected'],
+  ['Border', 'border'],
+  ['Divider', 'divider'],
+  ['Control', 'border-control'],
+  ['Text', 'text'],
+  ['Text strong', 'text-strong'],
+  ['Text muted', 'text-muted'],
+  ['Text faint', 'text-faint'],
+  ['Primary', 'primary'],
+  ['Danger', 'danger'],
+  ['Open', 'status-open'],
+  ['Resolved', 'status-resolved'],
+  ['Brand', 'brand'],
+]
+
+const TYPE = [
+  ['Title', '18 / 600', 'kit-type--title'],
+  ['Dialog title', '15 / 600', 'kit-type--large'],
+  ['Section heading', '13 / 600', 'kit-type--strong'],
+  ['Label and action', '13 / 500', 'kit-type--medium'],
+  ['Body', '13 / 400', ''],
+  ['Caption', '12 / 400', 'kit-type--caption'],
+  ['com.appteka.store', 'Mono 11.5 / 400', 'bnn-mono'],
+]
+
+const SPACES = [2, 4, 6, 8, 12, 16, 20, 24, 32]
+const RADII = [4, 5, 6, 8, 10]
+
+interface Issue {
+  id: number
+  status: 'open' | 'resolved' | 'ignored'
+  name: string
+  reports: number
+  devices: number
+  last: string
+}
+
+const ISSUES: Issue[] = [
+  { id: 1, status: 'open', name: 'TransactionTooLargeException', reports: 1284, devices: 612, last: '12m ago' },
+  { id: 2, status: 'open', name: 'NullPointerException', reports: 836, devices: 402, last: '1h ago' },
+  { id: 3, status: 'resolved', name: 'ClassCastException', reports: 64, devices: 41, last: '6d ago' },
+  { id: 4, status: 'ignored', name: 'DeadObjectException', reports: 130, devices: 88, last: '2h ago' },
+  { id: 5, status: 'open', name: 'SQLiteDatabaseLockedException', reports: 27, devices: 19, last: '3d ago' },
+]
+
+const ISSUE_COLUMNS: DataListColumn<Issue>[] = [
+  { key: 'status', title: '', width: 44, render: (r) => <IssueStatusIcon status={r.status} label={r.status} /> },
+  { key: 'name', title: 'Issue', render: (r) => <strong className="kit-type--medium">{r.name}</strong> },
+  { key: 'reports', title: 'Reports', width: 88, align: 'right', sorter: (a, b) => a.reports - b.reports, render: (r) => r.reports.toLocaleString('en-US') },
+  { key: 'devices', title: 'Devices', width: 88, align: 'right', optional: true, sorter: (a, b) => a.devices - b.devices, render: (r) => r.devices.toLocaleString('en-US') },
+  { key: 'last', title: 'Last report', width: 104, align: 'right', optional: true, render: (r) => r.last },
+]
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section id={id} className="kit-section">
-      <div className="kit-section__head">
-        <Title level={3}>{title}</Title>
-        {description && <Text type="secondary">{description}</Text>}
-      </div>
+    <section className="kit-section">
+      <h2 className="kit-section__title">{title}</h2>
       {children}
     </section>
   )
 }
 
-function Row({ children }: { children: ReactNode }) {
-  return <div className="kit-row">{children}</div>
-}
-
-/* ------------------------------------------------------------ demo data */
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct']
-const areaData: ChartPoint[] = months.map((m, i) => ({
-  label: m,
-  value: Math.round(1200 + Math.sin(i / 1.5) * 600 + i * 180),
-}))
-const barData: ChartPoint[] = months.slice(0, 8).map((m, i) => ({
-  label: m,
-  value: Math.round(40 + Math.abs(Math.sin(i)) * 80),
-}))
-const deviceData: ChartPoint[] = [
-  { label: 'Xiaomi 14 Pro', value: 3500 },
-  { label: 'Redmi Note 13', value: 2600 },
-  { label: 'POCO X6', value: 1700 },
-  { label: 'Galaxy S24', value: 1400 },
-  { label: 'OnePlus 12', value: 900 },
-]
-
-interface EventRow {
-  name: string
-  count: number
-  trend: number
-  users: number
-  perUser: number
-}
-const eventRows: EventRow[] = [
-  { name: 'click-tab-store', count: 128160, trend: 126200, users: 5710, perUser: 22.44 },
-  { name: 'open-details-screen', count: 104400, trend: 104400, users: 6700, perUser: 15.64 },
-  { name: 'details-download-app', count: 40100, trend: 40100, users: 5900, perUser: 6.79 },
-  { name: 'open-search-screen', count: 34000, trend: 34000, users: 10800, perUser: 3.15 },
-  { name: 'open-store-fragment', count: 30500, trend: 30500, users: 8200, perUser: 3.74 },
-  { name: 'open-home-screen', count: 23200, trend: 22200, users: 8100, perUser: 2.86 },
-  { name: 'open-chat-screen', count: 21000, trend: 2100, users: 2660, perUser: 7.88 },
-  { name: 'details-install-app', count: 15400, trend: 15400, users: 3900, perUser: 4 },
-]
-
-const fmtK = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')}k` : String(n))
-
-const NAV = [
-  ['foundation', 'Foundation'],
-  ['buttons', 'Buttons'],
-  ['data', 'Data display'],
-  ['tables', 'Tables'],
-  ['forms', 'Forms'],
-  ['feedback', 'Feedback'],
-  ['overlays', 'Overlays'],
-  ['charts', 'Charts'],
-  ['map', 'Map'],
-]
-
-const countryValues: Record<string, number> = {
-  US: 4820, IN: 3140, BR: 1980, DE: 1420, GB: 1180, RU: 960, FR: 720, JP: 610,
-  ID: 540, NG: 430, MX: 380, TR: 310, ES: 260, PL: 210, CA: 190, AU: 160,
-  IT: 150, KR: 120, VN: 110, EG: 90, ZA: 70, AR: 60, SG: 55, HK: 40, SE: 30,
-}
-const COUNTRY_NAMES: Record<string, string> = {
-  US: 'United States', IN: 'India', BR: 'Brazil', DE: 'Germany',
-  GB: 'United Kingdom', RU: 'Russia', SG: 'Singapore', HK: 'Hong Kong',
-}
-
-/* ============================================================== page */
 export default function UiKitPage() {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [select, setSelect] = useState<string | number>('crashes')
+  const [selectValue, setSelectValue] = useState<string | number>(2)
+  const [filter, setFilter] = useState<string | number>('8.4.1')
+  const [period, setPeriod] = useState('28')
+  const [on, setOn] = useState(true)
   const [checked, setChecked] = useState(true)
-  const [sw, setSw] = useState(true)
-  const [radio, setRadio] = useState<string | number>('all')
-  const [seg, setSeg] = useState<string>('28d')
-  const [date, setDate] = useState('')
-  const [tab, setTab] = useState('overview')
-  const [topNav, setTopNav] = useState('analytics')
-  const [loading, setLoading] = useState(true)
-  const [appName, setAppName] = useState('Appteka')
-
-  const columns: Column<EventRow>[] = [
-    { key: 'name', title: 'Name', dataIndex: 'name', render: (r) => <Text mono>{r.name}</Text> },
-    {
-      key: 'count',
-      title: 'Count',
-      align: 'right',
-      sorter: (a, b) => a.count - b.count,
-      render: (r) => <Text strong>{fmtK(r.count)}</Text>,
-    },
-    {
-      key: 'trend',
-      title: 'Trend',
-      align: 'right',
-      render: (r) => <Text type="success">+{fmtK(r.trend)}</Text>,
-    },
-    { key: 'users', title: 'Users', align: 'right', sorter: (a, b) => a.users - b.users, render: (r) => fmtK(r.users) },
-    { key: 'perUser', title: 'Per user', align: 'right', render: (r) => r.perUser },
-  ]
+  const [scope, setScope] = useState<string | number>('sdk')
+  const [issue, setIssue] = useState<number | null>(2)
+  const [dialog, setDialog] = useState(false)
+  const [confirm, setConfirm] = useState(false)
+  const [name, setName] = useState('Appteka')
 
   return (
-    <div className="kit">
-      {/* Top bar — the kit's own TopBar, same one every page mounts */}
-      <TopBar
-        left={
-          <>
-            <div className="kit-topbar__brand">
-              <span className="kit-logo">🍌</span>
-              <span className="kit-topbar__name">Bananalytics</span>
-            </div>
-            <span className="kit-topbar__nav">
-              <NavMenu
-                activeKey={topNav}
-                onChange={setTopNav}
-                items={[
-                  { key: 'overview', label: 'Overview', icon: <Icons.IconApps size={15} /> },
-                  { key: 'diagnostics', label: 'Diagnostics', icon: <Icons.IconBug size={15} /> },
-                  { key: 'analytics', label: 'Analytics', icon: <Icons.IconChart size={15} /> },
-                  { key: 'settings', label: 'Settings', icon: <Icons.IconSettings size={15} /> },
-                ]}
-              />
-            </span>
-          </>
-        }
-        right={
-          <>
-            <Tag tone="warning">Preview</Tag>
-            <Dropdown
-              items={[
-                { key: 'profile', label: 'Profile', icon: <Icons.IconUser size={15} /> },
-                { key: 'logout', label: 'Sign out', icon: <Icons.IconLogout size={15} />, danger: true },
-              ]}
-            >
-              <span className="bnn-topbar__user">
-                <Avatar size={26}><Icons.IconUser size={14} /></Avatar>
-                <Text size="sm" className="kit-username">Igor Sulkin</Text>
-                <Icons.IconChevronDown size={14} />
+    <main className="kit">
+      <h1 className="kit-type--title">UI kit</h1>
+
+      <Section title="Color">
+        <div className="kit-colors">
+          {COLORS.map(([label, token]) => (
+            <div className="kit-color" key={token}>
+              <span className="kit-color__swatch" style={{ background: `var(--bnn-${token})` }} />
+              <span className="kit-color__meta">
+                <span className="kit-type--medium">{label}</span>
+                <span className="bnn-mono kit-faint">--bnn-{token}</span>
               </span>
-            </Dropdown>
-          </>
-        }
-      />
-
-      <div className="kit-body">
-        {/* Sidebar nav */}
-        <aside className="kit-nav">
-          {NAV.map(([id, label]) => (
-            <a key={id} href={`#${id}`} className="kit-nav__link">
-              {label}
-            </a>
+            </div>
           ))}
-        </aside>
+        </div>
+      </Section>
 
-        <main className="kit-main">
-          <div className="kit-intro">
-            <Breadcrumb
-              items={[{ label: 'Appteka' }, { label: 'Analytics' }, { label: 'UI Kit' }]}
-            />
-            <Title level={1}>Bananalytics UI Kit</Title>
-            <Text type="secondary">
-              Lightweight, dependency-free components styled after App Center. Zero AntD.
-            </Text>
-          </div>
-
-          {/* Foundation */}
-          <Section id="foundation" title="Foundation" description="Colors, typography & tags.">
-            <Row>
-              <Card title="Palette" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <div className="kit-swatches">
-                  {[
-                    ['Primary', 'var(--bnn-primary)'],
-                    ['Success', 'var(--bnn-success)'],
-                    ['Warning', 'var(--bnn-warning)'],
-                    ['Danger', 'var(--bnn-danger)'],
-                    ['Chart 2', 'var(--bnn-chart-2)'],
-                    ['Chart 4', 'var(--bnn-chart-4)'],
-                  ].map(([name, c]) => (
-                    <div key={name} className="kit-swatch">
-                      <span className="kit-swatch__box" style={{ background: c }} />
-                      <Text size="sm">{name}</Text>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-              <Card title="Typography" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <Title level={1}>Heading 1</Title>
-                <Title level={3}>Heading 3</Title>
-                <Title level={5}>Heading 5</Title>
-                <div style={{ marginTop: 10 }}>
-                  <Text>Body text</Text> · <Text type="secondary">secondary</Text> ·{' '}
-                  <Text type="tertiary">tertiary</Text> · <Text mono>mono_value</Text>
-                </div>
-              </Card>
-            </Row>
-            <Card title="Tags & badges">
-              <Row>
-                <Tag tone="neutral">neutral</Tag>
-                <Tag tone="primary">primary</Tag>
-                <Tag tone="success">success</Tag>
-                <Tag tone="warning">warning</Tag>
-                <Tag tone="danger">danger</Tag>
-                <Tag tone="purple">purple</Tag>
-                <Divider vertical />
-                <Badge count={12} />
-                <Badge count={3} tone="primary" />
-                <Badge count={99} tone="success" />
-              </Row>
-            </Card>
-          </Section>
-
-          {/* Buttons */}
-          <Section id="buttons" title="Buttons" description="Variants, sizes, states & icons.">
-            <Card>
-              <Row>
-                <Button variant="primary">Primary</Button>
-                <Button>Default</Button>
-                <Button variant="ghost">Ghost</Button>
-                <Button variant="text">Text</Button>
-                <Button variant="danger">Danger</Button>
-                <Button variant="primary" disabled>Disabled</Button>
-                <Button variant="primary" loading>Loading</Button>
-              </Row>
-              <Divider />
-              <Row>
-                <Button size="sm" variant="primary" icon={<Icons.IconPlus size={14} />}>Small</Button>
-                <Button size="md" icon={<Icons.IconReload size={15} />}>Medium</Button>
-                <Button size="lg" variant="primary">Large</Button>
-                <Button variant="default" icon={<Icons.IconDownload size={16} />} aria-label={kitStrings.download} />
-                <Divider vertical />
-                <Tooltip title="Icon button">
-                  <IconButton aria-label="Refresh"><Icons.IconReload size={17} /></IconButton>
-                </Tooltip>
-                <IconButton size="sm" aria-label="Close"><Icons.IconClose size={15} /></IconButton>
-              </Row>
-            </Card>
-          </Section>
-
-          {/* Data display */}
-          <Section id="data" title="Data display" description="Stats, descriptions, avatars, skeletons.">
-            <Row>
-              {[
-                { title: 'Active users', value: '25k', trend: '+5.7k', tone: 'up' as const },
-                { title: 'Sessions', value: '106.9k', trend: '2.65 / user', tone: undefined },
-                { title: 'Crashes', value: '1.2k', trend: '-3.1%', tone: 'down' as const },
-                { title: 'Crash-free', value: '99.4%', trend: '+0.2%', tone: 'up' as const },
-              ].map((s) => (
-                <Card key={s.title} style={{ flex: 1, minWidth: 'min(100%, 200px)' }}>
-                  <Statistic title={s.title} value={s.value} trend={s.trend} trendTone={s.tone} />
-                </Card>
-              ))}
-            </Row>
-            <Card title="KPI rail" subtitle="Statistic variant='kpi' — the headline readout beside a chart.">
-              <Row>
-                <Statistic variant="kpi" title="Last 28 days" value="106.9k" />
-                <Divider vertical />
-                <Statistic variant="kpi" title="Total sessions" value="1.4m" />
-                <Divider vertical />
-                <Statistic variant="kpi" title="Crash-free" value="99.4%" />
-              </Row>
-            </Card>
-            <Row>
-              <Card title="Crash details" style={{ flex: 2, minWidth: 'min(100%, 360px)' }}>
-                <Descriptions
-                  column={2}
-                  items={[
-                    { label: 'Version', value: '16.0 (820)' },
-                    { label: 'Device', value: 'Xiaomi 14 Pro' },
-                    { label: 'OS', value: 'Android 15' },
-                    { label: 'Country', value: 'China' },
-                    { label: 'Exception', value: <Text mono>IllegalStateException</Text>, span: 2 },
-                  ]}
-                />
-              </Card>
-              <Card title="Loading state" style={{ flex: 1, minWidth: 'min(100%, 260px)' }}>
-                <Skeleton rows={4} />
-              </Card>
-            </Row>
-            <Card title="Empty state">
-              <Empty description="No crashes reported in this period">
-                <Button variant="primary" size="sm" icon={<Icons.IconReload size={14} />}>Refresh</Button>
-              </Empty>
-            </Card>
-          </Section>
-
-          {/* Tables */}
-          <Section id="tables" title="Tables" description="Dense, sortable, paginated — App Center events.">
-            <Card title="Events" extra={<Segmented size="sm" value={seg} onChange={setSeg} options={[{ label: '7d', value: '7d' }, { label: '28d', value: '28d' }, { label: 'All', value: 'all' }]} />} padded={false}>
-              <Table<EventRow>
-                columns={columns}
-                data={eventRows}
-                rowKey={(r) => r.name}
-                pageSize={5}
-                size="md"
-                onRowClick={(r) => toast.info(`Open ${r.name}`)}
-              />
-            </Card>
-          </Section>
-
-          {/* Forms */}
-          <Section id="forms" title="Forms" description="Inputs, selects, toggles, upload.">
-            <UiKitStates />
-            <Row>
-              <Card title="Fields" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <Form>
-                  <FormItem label="App name" required>
-                    <Input placeholder="My Android app" prefix={<Icons.IconApps size={15} />} allowClear value={appName} onChange={(e) => setAppName(e.target.value)} onClear={() => setAppName('')} />
-                  </FormItem>
-                  <FormItem label="API base URL" help="Used by the SDK to submit events.">
-                    <Input placeholder="https://your-server.com" />
-                  </FormItem>
-                  <FormItem label="Password">
-                    <Password placeholder="••••••••" prefix={<Icons.IconLock size={15} />} />
-                  </FormItem>
-                  <FormItem label="Email" error="Please enter a valid email">
-                    <Input status="error" placeholder="name@company.com" prefix={<Icons.IconMail size={15} />} />
-                  </FormItem>
-                  <FormItem label="Release notes">
-                    <Textarea placeholder="What's new…" rows={3} />
-                  </FormItem>
-                </Form>
-              </Card>
-              <Card title="Controls" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <Form>
-                  <FormItem label="Default tab">
-                    <Select
-                      value={select}
-                      onChange={setSelect}
-                      options={[
-                        { label: 'Crashes', value: 'crashes' },
-                        { label: 'Events', value: 'events' },
-                        { label: 'Versions', value: 'versions' },
-                        { label: 'Devices (disabled)', value: 'devices', disabled: true },
-                      ]}
-                    />
-                  </FormItem>
-                  <FormItem label="Date">
-                    <DatePicker value={date} onChange={setDate} />
-                  </FormItem>
-                  <FormItem label="Visibility">
-                    <RadioGroup
-                      value={radio}
-                      onChange={setRadio}
-                      options={[
-                        { label: 'All versions', value: 'all' },
-                        { label: 'Latest only', value: 'latest' },
-                        { label: 'Muted', value: 'muted', disabled: true },
-                      ]}
-                    />
-                  </FormItem>
-                  <FormItem label="Options">
-                    <Checkbox checked={checked} onChange={setChecked}>Enable crash collection</Checkbox>
-                  </FormItem>
-                  <FormItem label={kitStrings.notification}>
-                    <Switch checked={sw} onChange={setSw} />
-                  </FormItem>
-                </Form>
-              </Card>
-            </Row>
-            <Card title="Upload">
-              <UploadDragger
-                hint="APK or mapping.txt up to 500MB"
-                onFiles={(f) => toast.success(`Selected ${f.length} file(s)`)}
-              />
-            </Card>
-          </Section>
-
-          {/* Feedback */}
-          <Section id="feedback" title="Feedback" description="Alerts, toasts, spinners.">
-            <Card title="Alerts">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Alert type="info" message={kitStrings.analyticsInfo} />
-                <Alert type="success" message="Mapping file uploaded" description="Stacktraces will be deobfuscated automatically." />
-                <Alert type="warning" message="Collection muted for version 16.0 (820)" />
-                <Alert type="error" message="Failed to load crashes" description="Network error — please retry." action={<Button size="sm" onClick={() => toast.info(kitStrings.retried)}>Retry</Button>} />
+      <div className="kit-grid">
+        <Section title="Type">
+          <div className="kit-stack">
+            {TYPE.map(([sample, spec, cls]) => (
+              <div className="kit-row kit-row--between" key={sample}>
+                <span className={cls}>{sample}</span>
+                <span className="kit-type--caption kit-faint">{spec}</span>
               </div>
-            </Card>
-            <Row>
-              <Card title="Toasts" style={{ flex: 1, minWidth: 'min(100%, 280px)' }}>
-                <Row>
-                  <Button onClick={() => toast.success('Saved successfully')}>Success</Button>
-                  <Button onClick={() => toast.error('Something went wrong')}>Error</Button>
-                  <Button onClick={() => toast.info('Heads up')}>Info</Button>
-                  <Button onClick={() => toast.warning('Be careful')}>Warning</Button>
-                </Row>
-              </Card>
-              <Card title="Spinners" style={{ flex: 1, minWidth: 'min(100%, 280px)' }}>
-                <Row>
-                  <Spinner size="sm" />
-                  <Spinner size="md" />
-                  <Spinner size="lg" />
-                </Row>
-              </Card>
-            </Row>
-          </Section>
-
-          {/* Overlays */}
-          <Section id="overlays" title="Overlays" description="Modal, drawer, tooltip, popconfirm, tabs.">
-            <Card>
-              <Row>
-                <Button variant="primary" onClick={() => setModalOpen(true)}>Open modal</Button>
-                <Button onClick={() => setDrawerOpen(true)}>Open drawer</Button>
-                <Tooltip title="Deobfuscate stacktrace">
-                  <Button icon={<Icons.IconInfo size={15} />}>Hover me</Button>
-                </Tooltip>
-                <Popconfirm
-                  title="Delete this app?"
-                  description="This action cannot be undone."
-                  okDanger
-                  okText="Delete"
-                  onConfirm={() => toast.success('Deleted')}
-                >
-                  <Button variant="danger" icon={<Icons.IconTrash size={15} />}>Delete</Button>
-                </Popconfirm>
-              </Row>
-              <Divider />
-              <Tabs
-                activeKey={tab}
-                onChange={setTab}
-                items={[
-                  { key: 'overview', label: 'Overview', children: <Text type="secondary">Overview panel content.</Text> },
-                  { key: 'threads', label: 'Threads', children: <Text type="secondary">Thread stacktraces here.</Text> },
-                  { key: 'events', label: 'Events', children: <Text type="secondary">Breadcrumb events here.</Text> },
-                ]}
-              />
-            </Card>
-          </Section>
-
-          {/* Charts */}
-          <Section id="charts" title="Charts" description="Lightweight SVG — no chart library.">
-            <Card
-              title="Active users"
-              extra={<Tag tone="primary">Last 28 days</Tag>}
-            >
-              <AreaChart data={areaData} height={240} />
-            </Card>
-            <Row>
-              <Card title="Crashes per day" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <BarChart data={barData} color="var(--bnn-chart-3)" height={220} />
-              </Card>
-              <Card title="Sessions" style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
-                <LineChart data={areaData} color="var(--bnn-chart-2)" height={220} />
-              </Card>
-            </Row>
-            <Card title="Top devices">
-              <BarChart data={deviceData} horizontal height={200} />
-            </Card>
-          </Section>
-
-          {/* Map */}
-          <Section id="map" title="Map" description="Country choropleth — outlines projected at build time.">
-            <Card title="Country / Region">
-              <WorldMap
-                values={countryValues}
-                nameOf={(c) => COUNTRY_NAMES[c] ?? c}
-                format={(v) => `${v} sessions`}
-                height={280}
-              />
-            </Card>
-          </Section>
-
-          <div className="kit-footer">
-            <Button size="sm" onClick={() => setLoading((l) => !l)}>
-              Toggle table loading demo: {String(loading)}
-            </Button>
-            <Card title="Loading table" padded={false} style={{ marginTop: 12 }}>
-              <Table<EventRow>
-                columns={columns}
-                data={eventRows}
-                rowKey={(r) => r.name}
-                loading={loading}
-              />
-            </Card>
+            ))}
           </div>
-        </main>
+        </Section>
+
+        <Section title="Space and radius">
+          <div className="kit-row kit-row--bottom">
+            {SPACES.map((s) => (
+              <div className="kit-measure" key={s}>
+                <span className="kit-measure__space" style={{ width: s, height: s }} />
+                {s}
+              </div>
+            ))}
+          </div>
+          <div className="kit-row kit-spaced">
+            {RADII.map((r) => (
+              <div className="kit-measure" key={r}>
+                <span className="kit-measure__radius" style={{ borderRadius: r }} />
+                {r}
+              </div>
+            ))}
+          </div>
+        </Section>
       </div>
 
-      {/* Modal */}
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Create application"
-        okText="Create"
-        onOk={() => {
-          setModalOpen(false)
-          toast.success('Application created')
-        }}
-      >
-        <Form>
-          <FormItem label="Name" required>
-            <Input placeholder="My app" />
-          </FormItem>
-          <FormItem label="Platform">
-            <Select
-              value="android"
-              onChange={() => {}}
-              options={[{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }]}
-            />
-          </FormItem>
-        </Form>
-      </Modal>
+      <Section title="Buttons">
+        <div className="kit-row">
+          <Button variant="primary" onClick={() => toast.success('Saved')}>Primary</Button>
+          <Button>Secondary</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="danger">Delete</Button>
+          <Button variant="danger-solid">Delete forever</Button>
+          <Button variant="primary" disabled>Disabled</Button>
+          <Button variant="primary" loading>Saving</Button>
+          <Button icon={<Icons.IconDownload size={14} />}>With icon</Button>
+          <Button variant="primary" size="lg">Large</Button>
+          <Tooltip title="Delete issue">
+            <IconButton aria-label="Delete issue"><Icons.IconTrash size={15} /></IconButton>
+          </Tooltip>
+          <Menu
+            triggerClassName="bnn-btn bnn-btn--secondary"
+            items={[
+              { key: 'copy', label: 'Copy link', icon: <Icons.IconCopy size={14} /> },
+              { key: 'disabled', label: 'Unavailable', disabled: true },
+              { key: 'delete', label: 'Delete', icon: <Icons.IconTrash size={14} />, danger: true },
+            ]}
+          >
+            Menu
+          </Menu>
+        </div>
+      </Section>
 
-      {/* Drawer */}
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="Filters"
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setDrawerOpen(false)}>Reset</Button>
-            <Button variant="primary" onClick={() => setDrawerOpen(false)}>Apply</Button>
+      <div className="kit-grid">
+        <Section title="Fields">
+          <Form>
+            <Field label="Default" help="Used for the app list and the sidebar.">
+              <Input value={name} onChange={(e) => setName(e.target.value)} allowClear onClear={() => setName('')} />
+            </Field>
+            <Field label="With an affix">
+              <Input prefix={<Icons.IconSearch size={14} />} placeholder="Search apps" />
+            </Field>
+            <Field label="Password">
+              <Password defaultValue="example" />
+            </Field>
+            <Field label="Error" required error="Use a full package name.">
+              <Input defaultValue="com.example" />
+            </Field>
+            <Field label="Disabled">
+              <Input value="Android" disabled readOnly />
+            </Field>
+            <Field label="Long text" aside="Optional">
+              <Textarea placeholder="What's new in this version" />
+            </Field>
+          </Form>
+        </Section>
+
+        <Section title="Choices">
+          <Form>
+            <Field label="Select">
+              <Select
+                value={selectValue}
+                onChange={setSelectValue}
+                options={[
+                  { label: 'Admin, full access including settings', value: 1 },
+                  { label: 'Viewer, can view analytics and crashes', value: 2 },
+                  { label: 'Tester, can download builds', value: 3 },
+                  { label: 'Unavailable', value: 4, disabled: true },
+                ]}
+              />
+            </Field>
+            <Field label="Filter chips">
+              <div className="kit-row">
+                <Select
+                  variant="chip"
+                  name="Version"
+                  aria-label="Version"
+                  allowClear
+                  placeholder="All"
+                  value={filter}
+                  onChange={setFilter}
+                  options={['8.4.1', '8.4.0', '8.3.2'].map((v) => ({ label: v, value: v }))}
+                />
+                <Select
+                  variant="chip"
+                  aria-label="Period"
+                  value="28"
+                  options={[{ label: 'Last 28 days', value: '28' }, { label: 'Last 90 days', value: '90' }]}
+                />
+              </div>
+            </Field>
+            <Field label="Segmented">
+              <Segmented
+                label="Period"
+                value={period}
+                onChange={setPeriod}
+                options={[
+                  { label: '7d', value: '7' },
+                  { label: '28d', value: '28' },
+                  { label: '90d', value: '90' },
+                  { label: '1y', value: '365' },
+                ]}
+              />
+            </Field>
+            <Field label="Radio cards">
+              <RadioCards
+                value={scope}
+                onChange={setScope}
+                options={[
+                  { label: 'SDK', hint: 'Submits crashes and events.', value: 'sdk' },
+                  { label: 'CI upload', hint: 'Publishes releases.', value: 'upload' },
+                ]}
+              />
+            </Field>
+            <div className="kit-row">
+              <Switch aria-label="Example switch" checked={on} onChange={setOn} />
+              <Switch aria-label="Disabled switch" disabled />
+              <Checkbox checked={checked} onChange={setChecked}>Checkbox</Checkbox>
+              <Checkbox disabled>Disabled</Checkbox>
+            </div>
+            <Dropzone title="APK file" hint="Optional, up to 200 MB" />
+          </Form>
+        </Section>
+      </div>
+
+      <Section title="Tabs">
+        <Tabs
+          label="Crash report"
+          items={[
+            { key: 'stack', label: 'Stack trace', count: 12, children: 'Stack trace panel' },
+            { key: 'device', label: 'Device', children: 'Device panel' },
+            { key: 'crumbs', label: 'Breadcrumbs', children: 'Breadcrumbs panel' },
+          ]}
+        />
+      </Section>
+
+      <Section title="List">
+        <div className="kit-panel">
+          <DataList
+            label="Issues"
+            columns={ISSUE_COLUMNS}
+            data={ISSUES}
+            rowKey={(r) => r.id}
+            pageSize={4}
+            selectedKey={issue}
+            onRowClick={(r) => setIssue(r.id)}
+          />
+        </div>
+      </Section>
+
+      <div className="kit-grid">
+        <Section title="Status">
+          <div className="kit-stack">
+            <div className="kit-row">
+              <span className="kit-row"><IssueStatusIcon status="open" /> Open</span>
+              <span className="kit-row"><IssueStatusIcon status="resolved" /> Resolved</span>
+              <span className="kit-row"><IssueStatusIcon status="ignored" /> Ignored</span>
+            </div>
+            <div className="kit-row">
+              <Status tone="positive">Published</Status>
+              <Status>Draft</Status>
+              <Status tone="warning">Mapping missing</Status>
+              <Status tone="danger">Revoked</Status>
+            </div>
+            <div className="kit-row">
+              <Avatar name="Igor Solkin" />
+              <Avatar name="Igor Solkin" size={28} />
+              <Avatar name="Appteka" shape="square" background="var(--bnn-brand)" />
+              <Avatar name="Appteka" shape="square" size={32} background="var(--bnn-brand)" />
+              <Kbd>⌘K</Kbd>
+              <Kbd>R</Kbd>
+            </div>
           </div>
+        </Section>
+
+        <Section title="Feedback">
+          <div className="kit-stack">
+            <Notice tone="warning" title="This app has no active SDK API keys.">
+              Crashes and events are rejected until you create one.
+            </Notice>
+            <Notice tone="error" title="Failed to load.">Check the connection and try again.</Notice>
+            <Notice>Stack traces of this version stay obfuscated.</Notice>
+            <div className="kit-row">
+              <Button onClick={() => toast.success('Resolved NullPointerException', { action: { label: 'Undo', onClick: () => {} } })}>Toast</Button>
+              <Button onClick={() => toast.error('Failed to delete issue')}>Error toast</Button>
+              <Button onClick={() => setDialog(true)}>Dialog</Button>
+              <Button variant="danger" onClick={() => setConfirm(true)}>Confirm</Button>
+            </div>
+          </div>
+        </Section>
+      </div>
+
+      <Section title="States">
+        <div className="kit-grid">
+          <div className="kit-panel">
+            <EmptyState title="No releases yet" description="Create one here or publish it from CI.">
+              <Button variant="primary">New release</Button>
+            </EmptyState>
+          </div>
+          <div className="kit-panel">
+            <Loading />
+            <div className="kit-stack kit-skeletons">
+              <Skeleton width="70%" />
+              <Skeleton width="45%" />
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Dialog
+        open={dialog}
+        onClose={() => setDialog(false)}
+        title="Add new app"
+        footer={
+          <>
+            <Button onClick={() => setDialog(false)}>Cancel</Button>
+            <Button variant="primary" onClick={() => setDialog(false)}>Add new app</Button>
+          </>
         }
       >
         <Form>
-          <FormItem label="Version">
-            <Select value="all" onChange={() => {}} options={[{ label: 'All', value: 'all' }, { label: '16.0 (820)', value: '820' }]} />
-          </FormItem>
-          <FormItem label="Status">
-            <RadioGroup value="open" onChange={() => {}} options={[{ label: 'Open', value: 'open' }, { label: 'Closed', value: 'closed' }]} />
-          </FormItem>
+          <Field label="App name"><Input placeholder="My Android App" /></Field>
+          <Field label="Package name" help="Immutable after creation.">
+            <Input placeholder="com.example.app" />
+          </Field>
         </Form>
-      </Drawer>
-    </div>
+      </Dialog>
+      <ConfirmDialog
+        open={confirm}
+        title="Delete this release?"
+        description="Crashes, events, sessions, APK and mapping for this version will be removed."
+        confirmLabel="Delete"
+        onConfirm={() => setConfirm(false)}
+        onClose={() => setConfirm(false)}
+      />
+    </main>
   )
 }

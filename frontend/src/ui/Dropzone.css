@@ -1,0 +1,29 @@
+.bnn-dropzone {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 64px;
+  padding: var(--bnn-sp-4) var(--bnn-sp-5);
+  border: 1px dashed var(--bnn-border-control);
+  border-radius: var(--bnn-radius);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--bnn-transition);
+}
+.bnn-dropzone:hover:not(.is-disabled),
+.bnn-dropzone.is-dragging {
+  background: var(--bnn-hover);
+}
+.bnn-dropzone.is-disabled {
+  border-color: var(--bnn-border);
+  color: var(--bnn-text-faint);
+  cursor: default;
+}
+.bnn-dropzone__title {
+  font-weight: var(--bnn-weight-medium);
+  overflow-wrap: anywhere;
+}
+.bnn-dropzone__hint {
+  font-size: var(--bnn-fs-caption);
+  color: var(--bnn-text-muted);
+}

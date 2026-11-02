@@ -1,0 +1,24 @@
+.bnn-textarea {
+  display: block;
+  width: 100%;
+  padding: var(--bnn-sp-3) var(--bnn-sp-4);
+  border: 1px solid var(--bnn-border-control);
+  border-radius: var(--bnn-radius);
+  outline: 0;
+  background: var(--bnn-surface);
+  line-height: var(--bnn-leading);
+  resize: vertical;
+}
+.bnn-textarea::placeholder {
+  color: var(--bnn-text-faint);
+}
+.bnn-textarea:focus {
+  border-color: var(--bnn-text);
+  box-shadow: 0 0 0 1px var(--bnn-text);
+}
+.bnn-textarea.is-error {
+  border-color: var(--bnn-danger);
+}
+.bnn-textarea.is-error:focus {
+  box-shadow: 0 0 0 1px var(--bnn-danger);
+}

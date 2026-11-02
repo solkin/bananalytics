@@ -1,0 +1,23 @@
+.bnn-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bnn-border);
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-strong);
+  line-height: 1;
+}
+.bnn-avatar--circle {
+  border-radius: 50%;
+}
+.bnn-avatar--square {
+  border-radius: 22%;
+}
+.bnn-avatar__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

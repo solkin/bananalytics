@@ -1,0 +1,8 @@
+.bnn-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  border: 1.5px solid var(--bnn-border-control);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: bnn-spin 0.7s linear infinite;
+}

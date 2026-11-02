@@ -1,0 +1,38 @@
+.bnn-radiocards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: var(--bnn-sp-4);
+}
+.bnn-radiocard {
+  position: relative;
+  display: block;
+  padding: var(--bnn-sp-4);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+  cursor: pointer;
+  transition: background-color var(--bnn-transition);
+}
+.bnn-radiocard:hover:not(.is-disabled) {
+  background: var(--bnn-hover);
+}
+.bnn-radiocard.is-checked {
+  border-color: var(--bnn-text);
+  box-shadow: inset 0 0 0 1px var(--bnn-text);
+}
+.bnn-radiocard.is-disabled {
+  color: var(--bnn-text-faint);
+  cursor: default;
+}
+.bnn-radiocard:has(input:focus-visible) {
+  outline: var(--bnn-focus);
+  outline-offset: 2px;
+}
+.bnn-radiocard__label {
+  display: block;
+  font-weight: var(--bnn-weight-medium);
+}
+.bnn-radiocard__hint {
+  display: block;
+  font-size: var(--bnn-fs-caption);
+  color: var(--bnn-text-muted);
+}

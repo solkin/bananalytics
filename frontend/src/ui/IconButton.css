@@ -1,0 +1,23 @@
+.bnn-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--bnn-h-button);
+  height: var(--bnn-h-button);
+  border: 0;
+  border-radius: var(--bnn-radius);
+  background: transparent;
+  color: var(--bnn-text-muted);
+  transition: background-color var(--bnn-transition);
+}
+.bnn-iconbtn:hover:not(:disabled) {
+  background: var(--bnn-hover);
+  color: var(--bnn-text);
+}
+.bnn-iconbtn:active:not(:disabled) {
+  background: var(--bnn-selected);
+}
+.bnn-iconbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

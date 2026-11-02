@@ -1,0 +1,42 @@
+.bnn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bnn-z-overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: clamp(16px, 12vh, 112px) var(--bnn-sp-6) var(--bnn-sp-6);
+  background: var(--bnn-scrim);
+}
+.bnn-dialog {
+  width: 100%;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius-xl);
+  background: var(--bnn-surface);
+  box-shadow: var(--bnn-shadow-dialog);
+}
+.bnn-dialog:focus {
+  outline: 0;
+}
+.bnn-dialog__title {
+  padding: var(--bnn-sp-6) var(--bnn-sp-7) 0;
+  font-size: var(--bnn-fs-large);
+  font-weight: var(--bnn-weight-strong);
+  overflow-wrap: anywhere;
+}
+.bnn-dialog__body {
+  padding: var(--bnn-sp-5) var(--bnn-sp-7) var(--bnn-sp-6);
+}
+.bnn-dialog__text {
+  color: var(--bnn-text-muted);
+  overflow-wrap: anywhere;
+}
+.bnn-dialog__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--bnn-sp-4);
+  padding: var(--bnn-sp-5) var(--bnn-sp-7);
+  border-top: 1px solid var(--bnn-divider);
+}

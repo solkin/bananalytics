@@ -1,0 +1,14 @@
+.bnn-empty {
+  padding: var(--bnn-sp-9) var(--bnn-sp-8);
+  text-align: center;
+}
+.bnn-empty__title {
+  font-weight: var(--bnn-weight-medium);
+}
+.bnn-empty__text {
+  margin-top: var(--bnn-sp-2);
+  color: var(--bnn-text-muted);
+}
+.bnn-empty__action {
+  margin-top: var(--bnn-sp-5);
+}

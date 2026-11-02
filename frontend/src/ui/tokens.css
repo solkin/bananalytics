@@ -1,0 +1,169 @@
+/* Bananalytics design tokens. Components read only these; the names say what a
+   value is for, so a later theme can redefine them without touching components. */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./fonts/inter-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./fonts/inter-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* Type */
+  --bnn-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bnn-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --bnn-fs-mono: 11.5px;
+  --bnn-fs-caption: 12px;
+  --bnn-fs-body: 13px;
+  --bnn-fs-large: 15px;
+  --bnn-fs-title: 18px;
+  --bnn-weight-medium: 500;
+  --bnn-weight-strong: 600;
+  --bnn-leading: 1.45;
+  --bnn-leading-title: 1.3;
+  --bnn-leading-code: 1.65;
+  --bnn-tracking-title: -0.012em;
+
+  /* Surfaces */
+  --bnn-canvas: #f5f5f6;
+  --bnn-surface: #ffffff;
+  --bnn-surface-subtle: #fafafb;
+  --bnn-hover: #f0f0f3;
+  --bnn-selected: #ededf0;
+  --bnn-selected-strong: #e8e8ec;
+  --bnn-scrim: rgba(28, 29, 34, 0.18);
+
+  /* Lines. `control` is the boundary of something you type into, so unlike the
+     others it has to stay visible on its own (WCAG 1.4.11). */
+  --bnn-border: #e4e4e9;
+  --bnn-divider: #ededf0;
+  --bnn-divider-subtle: #f3f3f5;
+  --bnn-border-control: #8b8d97;
+
+  /* Text */
+  --bnn-text: #1c1d22;
+  --bnn-text-strong: #3f414a;
+  --bnn-text-muted: #5c5e68;
+  --bnn-text-faint: #65676f;
+  --bnn-text-inverse: #ffffff;
+
+  /* Actions */
+  --bnn-primary: #1c1d22;
+  --bnn-primary-hover: #33353d;
+  --bnn-primary-active: #000000;
+  --bnn-danger: #b42318;
+  --bnn-danger-hover: #9a1e14;
+  --bnn-danger-soft: #fbecea;
+  --bnn-toast-action: #33353d;
+
+  /* Status */
+  --bnn-status-open: #b83c0b;
+  --bnn-status-resolved: #177345;
+  --bnn-status-neutral: #65676f;
+
+  /* Brand appears only in the logo and the app tile */
+  --bnn-brand: #f2c230;
+
+  /* Charts */
+  --bnn-chart-1: #1c1d22;
+  --bnn-chart-2: #5c5e68;
+  --bnn-chart-3: #8b8d97;
+  --bnn-chart-track: #ededf0;
+
+  /* Space: elements in a group sit closer than groups do */
+  --bnn-sp-1: 2px;
+  --bnn-sp-2: 4px;
+  --bnn-sp-3: 6px;
+  --bnn-sp-4: 8px;
+  --bnn-sp-5: 12px;
+  --bnn-sp-6: 16px;
+  --bnn-sp-7: 20px;
+  --bnn-sp-8: 24px;
+  --bnn-sp-9: 32px;
+
+  /* Radius */
+  --bnn-radius-xs: 4px;
+  --bnn-radius-sm: 5px;
+  --bnn-radius: 6px;
+  --bnn-radius-lg: 8px;
+  --bnn-radius-xl: 10px;
+  --bnn-radius-full: 999px;
+
+  /* Heights */
+  --bnn-h-chip: 24px;
+  --bnn-h-tab: 26px;
+  --bnn-h-button: 28px;
+  --bnn-h-field: 32px;
+  --bnn-h-field-lg: 36px;
+  --bnn-h-row: 40px;
+  --bnn-h-header: 44px;
+
+  /* Elevation exists only for what floats above the page */
+  --bnn-shadow-float: 0 4px 16px rgba(28, 29, 34, 0.12);
+  --bnn-shadow-dialog: 0 16px 48px rgba(28, 29, 34, 0.18);
+
+  /* Motion */
+  --bnn-transition: 0.1s ease;
+
+  /* Focus */
+  --bnn-focus: 2px solid #65676f;
+
+  /* Layers */
+  --bnn-z-sticky: 2;
+  --bnn-z-overlay: 1000;
+  --bnn-z-toast: 1100;
+}
+
+/* Dense pointer targets do not work under a finger. */
+@media (pointer: coarse) {
+  :root {
+    --bnn-h-chip: 36px;
+    --bnn-h-tab: 40px;
+    --bnn-h-button: 44px;
+    --bnn-h-field: 44px;
+    --bnn-h-field-lg: 44px;
+    --bnn-h-row: 48px;
+  }
+}

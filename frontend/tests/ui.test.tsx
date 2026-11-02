@@ -3,15 +3,19 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import React, { act, StrictMode } from 'react'
 import { mount } from './dom'
-import { FormItem, Input, Password } from '../src/ui/forms'
+import { Field } from '../src/ui/Field'
+import { Input } from '../src/ui/Input'
+import { Password } from '../src/ui/Password'
 import { Select } from '../src/ui/Select'
-import { Button } from '../src/ui/primitives'
-import { AreaChart } from '../src/ui/charts'
-import { Table } from '../src/ui/Table'
+import { Button } from '../src/ui/Button'
+import { DataList } from '../src/ui/DataList'
 import { Loaded } from '../src/next/async'
-import { Dropdown, Modal, Tabs } from '../src/ui/overlays'
+import { ConfirmDialog } from '../src/ui/ConfirmDialog'
+import { Dialog } from '../src/ui/Dialog'
+import { Menu } from '../src/ui/Menu'
+import { Tabs } from '../src/ui/Tabs'
 import UiKitPage from '../src/pages/UiKitPage'
-import { toast, ToastViewport } from '../src/ui/toast'
+import { toast, ToastViewport } from '../src/ui/Toast'
 
 function key(el: Element, value: string) {
   el.dispatchEvent(
@@ -21,9 +25,9 @@ function key(el: Element, value: string) {
 
 test('field labels and validation are associated with the actual input', async () => {
   const view = mount(
-    <FormItem label="Workspace" required error="Choose a workspace">
+    <Field label="Workspace" required error="Choose a workspace">
       <Input />
-    </FormItem>,
+    </Field>,
   )
   await view.render()
   const input = view.container.querySelector('input')!
@@ -78,10 +82,10 @@ test('select skips disabled options, commits from the keyboard and clears', asyn
   assert.deepEqual(changes, [3, ''])
 })
 
-test('Escape closes only the open select before dismissing its parent modal', async () => {
+test('Escape closes only the open select before dismissing its parent dialog', async () => {
   let closed = 0
   const view = mount(
-    <Modal
+    <Dialog
       open
       title="Edit"
       onClose={() => {
@@ -89,7 +93,7 @@ test('Escape closes only the open select before dismissing its parent modal', as
       }}
     >
       <Select options={[{ label: 'First', value: 1 }]} />
-    </Modal>,
+    </Dialog>,
   )
   await view.render()
   const trigger = document.querySelector('[role="combobox"]')!
@@ -121,6 +125,27 @@ test('a select popup matches the width of its trigger outside the form container
   }
 })
 
+test('a filter chip names what it filters and may grow past its trigger', async () => {
+  const original = HTMLElement.prototype.getBoundingClientRect
+  HTMLElement.prototype.getBoundingClientRect = function () {
+    return this.classList.contains('bnn-select')
+      ? new window.DOMRect(40, 80, 90, 24)
+      : original.call(this)
+  }
+  try {
+    const view = mount(<Select variant="chip" name="Version" value={1} options={[{ label: '8.4.1', value: 1 }]} />)
+    await view.render()
+    const trigger = view.container.querySelector<HTMLButtonElement>('[role="combobox"]')!
+    assert.equal(trigger.textContent, 'Version8.4.1')
+    await act(async () => trigger.click())
+    const menu = document.querySelector<HTMLElement>('[role="listbox"]')!
+    assert.equal(menu.style.width, '')
+    assert.equal(menu.style.minWidth, '90px')
+  } finally {
+    HTMLElement.prototype.getBoundingClientRect = original
+  }
+})
+
 test('tabs expose the selected panel and move focus with arrow keys', async () => {
   const view = mount(
     <Tabs
@@ -140,18 +165,18 @@ test('tabs expose the selected panel and move focus with arrow keys', async () =
   assert.equal(panel.getAttribute('aria-labelledby'), tabs[1].id)
 })
 
-test('modal focuses its input, locks scrolling and restores the trigger', async () => {
+test('dialog focuses its input, locks scrolling and restores the trigger', async () => {
   const trigger = document.createElement('button')
   document.body.append(trigger)
   trigger.focus()
   const view = mount(
-    <Modal open title="Edit workspace" onClose={() => {}}>
+    <Dialog open title="Edit workspace" onClose={() => {}}>
       <Input />
-    </Modal>,
+    </Dialog>,
   )
   try {
     await view.render()
-    assert.equal(document.activeElement, document.querySelector('.bnn-modal input'))
+    assert.equal(document.activeElement, document.querySelector('.bnn-dialog input'))
     assert.equal(document.body.style.overflow, 'hidden')
     assert.equal(document.querySelector('[role="dialog"]')?.getAttribute('aria-modal'), 'true')
     await view.render(<></>)
@@ -162,42 +187,57 @@ test('modal focuses its input, locks scrolling and restores the trigger', async 
   }
 })
 
-test('opening a previously closed modal in StrictMode focuses a visible control', async () => {
+test('opening a previously closed dialog in StrictMode focuses a visible control', async () => {
   const view = mount(
     <StrictMode>
-      <Modal open={false} title="Edit" onClose={() => {}}>
+      <Dialog open={false} title="Edit" onClose={() => {}}>
         <input type="file" hidden />
         <Input />
-      </Modal>
+      </Dialog>
     </StrictMode>,
   )
   await view.render()
   await view.render(
     <StrictMode>
-      <Modal open title="Edit" onClose={() => {}}>
+      <Dialog open title="Edit" onClose={() => {}}>
         <input type="file" hidden />
         <Input />
-      </Modal>
+      </Dialog>
     </StrictMode>,
   )
-  assert.equal(document.activeElement, document.querySelector('.bnn-modal input:not([hidden])'))
+  assert.equal(document.activeElement, document.querySelector('.bnn-dialog input:not([hidden])'))
 })
 
-test('dropdown moves focus into its menu in StrictMode and Escape closes it', async () => {
+test('a confirmation starts on the safe action and cannot be dismissed while working', async () => {
+  let closed = 0
+  const props = { open: true, title: 'Delete?', onConfirm: () => {}, onClose: () => { closed++ } }
+  const view = mount(<ConfirmDialog {...props} confirmLabel="Delete" />)
+  await view.render()
+  assert.equal((document.activeElement as HTMLElement).textContent, 'Cancel')
+  await view.render(<ConfirmDialog {...props} confirmLabel="Delete" loading />)
+  await act(async () => key(document.activeElement ?? document.body, 'Escape'))
+  await act(async () => {
+    document.querySelector('.bnn-overlay')!.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }))
+  })
+  assert.equal(closed, 0)
+})
+
+test('menu moves focus into its list in StrictMode and Escape closes it', async () => {
   const view = mount(
     <StrictMode>
-      <Dropdown label="Account" items={[{ key: 'profile', label: 'Profile' }]}>
+      <Menu label="Account" items={[{ key: 'profile', label: 'Profile' }]}>
         <span>Account</span>
-      </Dropdown>
+      </Menu>
     </StrictMode>,
   )
   await view.render()
-  const trigger = view.container.querySelector<HTMLElement>('[role="button"]')!
+  const trigger = view.container.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!
   await act(async () => trigger.click())
   const item = document.querySelector('[role="menuitem"]')!
   assert.equal(document.activeElement, item)
   await act(async () => key(item, 'Escape'))
   assert.equal(document.querySelector('[role="menu"]'), null)
+  assert.equal(document.activeElement, trigger)
 })
 
 test('loading buttons retain their label and do not submit by default', async () => {
@@ -210,9 +250,15 @@ test('loading buttons retain their label and do not submit by default', async ()
   assert.equal(button.disabled, true)
 })
 
-test('a nested table action keeps its keyboard activation without opening the row', async () => {
+test('a loading button keeps its label in the accessibility tree', () => {
+  const css = readFileSync('src/ui/Button.css', 'utf8')
+  const rule = css.match(/\.is-loading \.bnn-btn__content \{([^}]*)\}/)![1]
+  assert.doesNotMatch(rule, /visibility|display/)
+})
+
+test('a nested list action keeps its keyboard activation without opening the row', async () => {
   let opened = 0
-  const view = mount(<Table data={[1]} rowKey={(row) => row} onRowClick={() => { opened++ }}
+  const view = mount(<DataList data={[1]} rowKey={(row) => row} onRowClick={() => { opened++ }}
     columns={[{ key: 'download', title: 'Action', render: () => <button type="button">Download</button> }]} />)
   await view.render()
   const button = view.container.querySelector('button')!
@@ -220,8 +266,33 @@ test('a nested table action keeps its keyboard activation without opening the ro
   await act(async () => { button.dispatchEvent(event) })
   assert.equal(event.defaultPrevented, false)
   assert.equal(opened, 0)
+  await act(async () => button.click())
+  assert.equal(opened, 0)
   await act(async () => key(view.container.querySelector('tbody tr')!, 'Enter'))
   assert.equal(opened, 1)
+  await act(async () => view.container.querySelector<HTMLElement>('tbody td')!.click())
+  assert.equal(opened, 2)
+})
+
+test('a client-paged list stays in range when its data shrinks', async () => {
+  const columns = [{ key: 'id', title: 'Id', render: (row: number) => row }]
+  const list = (data: number[]) => <DataList data={data} rowKey={(row) => row} pageSize={2} columns={columns} />
+  const view = mount(list([1, 2, 3, 4, 5]))
+  await view.render()
+  await act(async () => view.container.querySelectorAll<HTMLButtonElement>('.bnn-pagination__btn')[1].click())
+  await act(async () => view.container.querySelectorAll<HTMLButtonElement>('.bnn-pagination__btn')[1].click())
+  assert.equal(view.container.querySelector('tbody td')?.textContent, '5')
+  await view.render(list([1, 2]))
+  assert.deepEqual([...view.container.querySelectorAll('tbody td')].map((td) => td.textContent), ['1', '2'])
+})
+
+test('the selected list row is exposed as current', async () => {
+  const view = mount(<DataList data={[1, 2]} rowKey={(row) => row} selectedKey={2} onRowClick={() => {}}
+    columns={[{ key: 'id', title: 'Id', render: (row: number) => row }]} />)
+  await view.render()
+  const rows = view.container.querySelectorAll('tbody tr')
+  assert.equal(rows[0].getAttribute('aria-current'), null)
+  assert.equal(rows[1].getAttribute('aria-current'), 'true')
 })
 
 test('one toast viewport displays exactly one notification', async () => {
@@ -234,10 +305,23 @@ test('one toast viewport displays exactly one notification', async () => {
   await view.render()
   let remove: (() => void) | undefined
   await act(async () => {
-    remove = toast.success('Saved', 0)
+    remove = toast.success('Saved', { duration: 0 })
   })
-  assert.equal(document.querySelectorAll('[role="status"]').length, 1)
+  assert.equal(document.querySelectorAll('.bnn-toasts').length, 1)
+  assert.equal(document.querySelectorAll('.bnn-toasts [role="status"]').length, 1)
   await act(async () => remove?.())
+})
+
+test('a toast action runs once and dismisses the toast', async () => {
+  const view = mount(<ToastViewport />)
+  await view.render()
+  let undone = 0
+  await act(async () => {
+    toast.success('Resolved', { duration: 0, action: { label: 'Undo', onClick: () => { undone++ } } })
+  })
+  await act(async () => document.querySelector<HTMLButtonElement>('.bnn-toast__action')!.click())
+  assert.equal(undone, 1)
+  assert.equal(document.querySelector('.bnn-toast'), null)
 })
 
 test('a loading boundary retains the measured height of its previous content', async () => {
@@ -255,31 +339,9 @@ test('a loading boundary retains the measured height of its previous content', a
   }
 })
 
-test('a chart measures its container after transitioning from empty to populated', async () => {
-  const original = globalThis.ResizeObserver
-  class MeasuredObserver implements ResizeObserver {
-    constructor(private callback: ResizeObserverCallback) {}
-    observe() {
-      this.callback([{ contentRect: { width: 320 } } as ResizeObserverEntry], this)
-    }
-    unobserve() {}
-    disconnect() {}
-  }
-  globalThis.ResizeObserver = MeasuredObserver
-  try {
-    const view = mount(<AreaChart data={[]} />)
-    await view.render()
-    assert.equal(view.container.querySelector('.bnn-chart'), null)
-    await view.render(<AreaChart data={[{ label: 'Today', value: 12 }]} />)
-    assert.equal(view.container.querySelector('.bnn-chart')?.getAttribute('width'), '320')
-  } finally {
-    globalThis.ResizeObserver = original
-  }
-})
-
-const theme = readFileSync('src/ui/theme.css', 'utf8')
+const tokens = readFileSync('src/ui/tokens.css', 'utf8')
 const colors = Object.fromEntries(
-  [...theme.matchAll(/--bnn-([\w-]+):\s*(#[0-9a-f]{6})/g)].map((match) => [match[1], match[2]]),
+  [...tokens.matchAll(/--bnn-([\w-]+):\s*(#[0-9a-f]{6})/g)].map((match) => [match[1], match[2]]),
 )
 function luminance(hex: string) {
   return [1, 3, 5]
@@ -291,22 +353,16 @@ function contrast(a: string, b: string) {
   const [dark, light] = [luminance(colors[a]), luminance(colors[b])].sort((x, y) => x - y)
   return (light + 0.05) / (dark + 0.05)
 }
-test('text, semantic tags and filled button states meet minimum contrast', () => {
+test('text and filled button states meet minimum contrast on every surface they appear on', () => {
+  const texts = ['text', 'text-strong', 'text-muted', 'text-faint', 'status-open', 'status-resolved', 'danger']
+  const surfaces = ['surface', 'surface-subtle', 'canvas', 'hover', 'selected', 'selected-strong']
   const pairs = [
-    ['text-tertiary', 'surface'],
-    ['text-tertiary', 'bg'],
-    ...['primary', 'success', 'warning', 'danger', 'purple'].map((tone) => [
-      `${tone}-strong`,
-      `${tone}-soft`,
+    ...texts.flatMap((text) => surfaces.map((surface) => [text, surface])),
+    ['danger', 'danger-soft'],
+    ...['primary', 'primary-hover', 'primary-active', 'danger', 'danger-hover', 'toast-action'].map((tone) => [
+      'text-inverse',
+      tone,
     ]),
-    ...[
-      'primary',
-      'primary-hover',
-      'primary-active',
-      'danger',
-      'danger-hover',
-      'danger-active',
-    ].map((tone) => ['text-inverse', tone]),
   ]
   for (const [text, background] of pairs)
     assert.ok(
@@ -316,9 +372,9 @@ test('text, semantic tags and filled button states meet minimum contrast', () =>
 })
 test('control boundaries and chart series remain distinguishable on white', () => {
   for (const token of [
-    'control-border',
-    'icon-muted',
-    ...Array.from({ length: 8 }, (_, i) => `chart-${i + 1}`),
+    'border-control',
+    'status-neutral',
+    ...Array.from({ length: 3 }, (_, i) => `chart-${i + 1}`),
   ]) {
     assert.ok(contrast(token, 'surface') >= 3, `${token}: ${contrast(token, 'surface')}`)
   }

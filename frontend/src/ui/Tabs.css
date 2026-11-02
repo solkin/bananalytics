@@ -1,0 +1,37 @@
+.bnn-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bnn-sp-1);
+}
+.bnn-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  height: var(--bnn-h-tab);
+  padding: 0 var(--bnn-sp-4);
+  border: 0;
+  border-radius: var(--bnn-radius-sm);
+  background: transparent;
+  color: var(--bnn-text-muted);
+  font-weight: var(--bnn-weight-medium);
+  font-variant-numeric: tabular-nums;
+  transition: background-color var(--bnn-transition);
+}
+.bnn-tab:hover:not(.is-active) {
+  background: var(--bnn-hover);
+}
+.bnn-tab.is-active {
+  background: var(--bnn-selected);
+  color: var(--bnn-text);
+}
+.bnn-tab__count {
+  font-size: var(--bnn-fs-caption);
+  font-weight: 400;
+  color: var(--bnn-text-faint);
+}
+.bnn-tabs__panel {
+  margin-top: var(--bnn-sp-5);
+}
+.bnn-tabs__panel:focus-visible {
+  outline-offset: 2px;
+}

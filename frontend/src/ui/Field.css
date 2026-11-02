@@ -1,0 +1,22 @@
+.bnn-field__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bnn-sp-4);
+  margin-bottom: var(--bnn-sp-2);
+}
+.bnn-field__label {
+  font-weight: var(--bnn-weight-medium);
+}
+.bnn-field__aside,
+.bnn-field__help {
+  font-size: var(--bnn-fs-caption);
+  color: var(--bnn-text-muted);
+}
+.bnn-field__help,
+.bnn-field__error {
+  margin-top: var(--bnn-sp-2);
+}
+.bnn-field__error {
+  font-size: var(--bnn-fs-caption);
+  color: var(--bnn-danger);
+}

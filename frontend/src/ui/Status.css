@@ -1,0 +1,28 @@
+.bnn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  min-width: 0;
+  white-space: nowrap;
+}
+.bnn-status > svg {
+  flex-shrink: 0;
+}
+.bnn-status__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.bnn-status--positive .bnn-status__dot {
+  background: var(--bnn-status-resolved);
+}
+.bnn-status--neutral .bnn-status__dot {
+  border: 1.5px solid var(--bnn-status-neutral);
+}
+.bnn-status--warning {
+  color: var(--bnn-status-open);
+}
+.bnn-status--danger {
+  color: var(--bnn-danger);
+}

@@ -1,0 +1,116 @@
+.bnn-datalist {
+  min-width: 0;
+}
+.bnn-datalist__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+.bnn-datalist__table th {
+  height: 28px;
+  padding: 0 var(--bnn-sp-4);
+  border-bottom: 1px solid var(--bnn-divider);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+  font-weight: 400;
+  text-align: left;
+}
+.bnn-datalist__table td {
+  height: var(--bnn-h-row);
+  padding: 0 var(--bnn-sp-4);
+  border-bottom: 1px solid var(--bnn-divider-subtle);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bnn-datalist__table th:first-child,
+.bnn-datalist__table td:first-child {
+  padding-left: var(--bnn-sp-6);
+}
+.bnn-datalist__table th:last-child,
+.bnn-datalist__table td:last-child {
+  padding-right: var(--bnn-sp-6);
+}
+.bnn-datalist__table .is-right {
+  text-align: right;
+}
+.bnn-datalist__table tr.is-clickable {
+  cursor: pointer;
+}
+.bnn-datalist__table tbody tr {
+  transition: background-color var(--bnn-transition);
+}
+.bnn-datalist__table tr.is-clickable:hover {
+  background: var(--bnn-hover);
+}
+.bnn-datalist__table tr.is-selected,
+.bnn-datalist__table tr.is-selected:hover {
+  background: var(--bnn-selected);
+}
+.bnn-datalist__table tr:focus-visible {
+  outline: var(--bnn-focus);
+  outline-offset: -2px;
+}
+
+.bnn-datalist__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-2);
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+.bnn-datalist__sort:hover {
+  color: var(--bnn-text);
+}
+.bnn-datalist__arrow {
+  opacity: 0;
+}
+.bnn-datalist__arrow.is-sorted {
+  opacity: 1;
+}
+.bnn-datalist__arrow.is-asc {
+  transform: rotate(180deg);
+}
+
+.bnn-datalist__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--bnn-sp-2);
+  min-height: var(--bnn-h-row);
+  padding: 0 var(--bnn-sp-5);
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+.bnn-datalist__pager > span {
+  margin-right: var(--bnn-sp-2);
+}
+.bnn-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--bnn-h-chip);
+  height: var(--bnn-h-chip);
+  border: 0;
+  border-radius: var(--bnn-radius-sm);
+  background: transparent;
+  transition: background-color var(--bnn-transition);
+}
+.bnn-pagination__btn:hover:not(:disabled) {
+  background: var(--bnn-hover);
+}
+.bnn-pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 620px) {
+  .bnn-datalist__table .is-optional {
+    display: none;
+  }
+}

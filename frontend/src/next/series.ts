@@ -1,6 +1,9 @@
-import type { ChartSeries } from '@/ui'
-import { seriesColor } from './colors'
 import { dayAxis, shortDate } from './format'
+
+export interface VersionSeries {
+  label: string
+  data: { label: string; value: number }[]
+}
 
 interface VersionRow {
   date: string
@@ -13,7 +16,7 @@ interface VersionRow {
    shares the same zero-filled day axis, so MultiAreaChart can index by
    position. Versions are ordered newest-first; capped to keep the chart
    readable. */
-export function versionSeries(rows: VersionRow[], days: number, maxSeries = 6): ChartSeries[] {
+export function versionSeries(rows: VersionRow[], days: number, maxSeries = 6): VersionSeries[] {
   const axis = dayAxis(days)
   const byVersion = new Map<number, { name: string | null; counts: Map<string, number> }>()
   for (const r of rows) {
@@ -28,9 +31,8 @@ export function versionSeries(rows: VersionRow[], days: number, maxSeries = 6): 
   return [...byVersion.entries()]
     .sort((a, b) => b[0] - a[0])
     .slice(0, maxSeries)
-    .map(([code, v], i) => ({
+    .map(([code, v]) => ({
       label: v.name ? `${v.name} (${code})` : `v${code}`,
-      color: seriesColor(i),
       data: axis.map((d) => ({ label: shortDate(d), value: v.counts.get(d) ?? 0 })),
     }))
 }

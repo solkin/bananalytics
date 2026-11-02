@@ -1,0 +1,103 @@
+.bnn-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--bnn-h-button);
+  padding: 0 var(--bnn-sp-4);
+  border: 1px solid transparent;
+  border-radius: var(--bnn-radius);
+  background: transparent;
+  font-weight: var(--bnn-weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--bnn-transition), border-color var(--bnn-transition);
+}
+.bnn-btn:focus-visible {
+  outline-offset: 2px;
+}
+.bnn-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.bnn-btn.is-loading {
+  opacity: 1;
+  cursor: progress;
+}
+/* Transparent rather than hidden: the label is still the button's accessible name. */
+.bnn-btn.is-loading .bnn-btn__content {
+  opacity: 0;
+}
+.bnn-btn__content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+}
+.bnn-btn__spinner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: bnn-spin 0.7s linear infinite;
+}
+.bnn-btn--block {
+  display: flex;
+  width: 100%;
+}
+.bnn-btn--lg {
+  height: var(--bnn-h-field-lg);
+  padding: 0 var(--bnn-sp-5);
+}
+
+.bnn-btn--primary {
+  background: var(--bnn-primary);
+  color: var(--bnn-text-inverse);
+}
+.bnn-btn--primary:hover:not(:disabled) {
+  background: var(--bnn-primary-hover);
+}
+.bnn-btn--primary:active:not(:disabled) {
+  background: var(--bnn-primary-active);
+}
+
+.bnn-btn--secondary {
+  border-color: var(--bnn-border);
+  background: var(--bnn-surface);
+}
+.bnn-btn--secondary:hover:not(:disabled) {
+  background: var(--bnn-hover);
+}
+.bnn-btn--secondary:active:not(:disabled) {
+  background: var(--bnn-selected);
+}
+
+.bnn-btn--ghost {
+  color: var(--bnn-text-strong);
+  font-weight: 400;
+}
+.bnn-btn--ghost:hover:not(:disabled) {
+  background: var(--bnn-hover);
+}
+.bnn-btn--ghost:active:not(:disabled) {
+  background: var(--bnn-selected);
+}
+
+.bnn-btn--danger {
+  border-color: var(--bnn-border);
+  background: var(--bnn-surface);
+  color: var(--bnn-danger);
+}
+.bnn-btn--danger:hover:not(:disabled),
+.bnn-btn--danger:active:not(:disabled) {
+  background: var(--bnn-danger-soft);
+}
+
+.bnn-btn--danger-solid {
+  background: var(--bnn-danger);
+  color: var(--bnn-text-inverse);
+}
+.bnn-btn--danger-solid:hover:not(:disabled),
+.bnn-btn--danger-solid:active:not(:disabled) {
+  background: var(--bnn-danger-hover);
+}

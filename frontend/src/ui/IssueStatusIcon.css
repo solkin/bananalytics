@@ -1,0 +1,13 @@
+.bnn-issue-status {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.bnn-issue-status.is-open {
+  color: var(--bnn-status-open);
+}
+.bnn-issue-status.is-resolved {
+  color: var(--bnn-status-resolved);
+}
+.bnn-issue-status.is-ignored {
+  color: var(--bnn-status-neutral);
+}

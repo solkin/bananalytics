@@ -1,0 +1,41 @@
+.bnn-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 16px;
+  border: 0;
+  border-radius: var(--bnn-radius-full);
+  background: var(--bnn-border-control);
+  transition: background-color var(--bnn-transition);
+}
+.bnn-switch.is-on {
+  background: var(--bnn-primary);
+}
+.bnn-switch:focus-visible {
+  outline-offset: 2px;
+}
+.bnn-switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.bnn-switch__handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bnn-text-inverse);
+  transition: transform 0.12s ease;
+}
+.bnn-switch.is-on .bnn-switch__handle {
+  transform: translateX(12px);
+}
+/* A finger needs more than the visible track. */
+@media (pointer: coarse) {
+  .bnn-switch::before {
+    content: '';
+    position: absolute;
+    inset: -14px -8px;
+  }
+}

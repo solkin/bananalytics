@@ -1,0 +1,12 @@
+.bnn-skeleton {
+  display: inline-block;
+  max-width: 100%;
+  border-radius: var(--bnn-radius-xs);
+  background: var(--bnn-selected);
+  animation: bnn-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes bnn-skeleton {
+  50% {
+    opacity: 0.5;
+  }
+}

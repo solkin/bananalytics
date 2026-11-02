@@ -1,0 +1,42 @@
+.bnn-checkbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  min-width: 0;
+  cursor: pointer;
+}
+.bnn-checkbox.is-disabled {
+  color: var(--bnn-text-faint);
+  cursor: default;
+}
+.bnn-checkbox__input {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+}
+.bnn-checkbox__box {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--bnn-border-control);
+  border-radius: var(--bnn-radius-xs);
+  background: var(--bnn-surface);
+  color: transparent;
+}
+.bnn-checkbox__input:checked + .bnn-checkbox__box {
+  border-color: var(--bnn-primary);
+  background: var(--bnn-primary);
+  color: var(--bnn-text-inverse);
+}
+.bnn-checkbox__input:focus-visible + .bnn-checkbox__box {
+  outline: var(--bnn-focus);
+  outline-offset: 2px;
+}
+.bnn-checkbox__label {
+  min-width: 0;
+}

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Alert, Empty, Spin } from '@/ui'
+import { EmptyState, Loading, Notice } from '@/ui'
 
 /* Tiny data-fetching helper for the new pages — loading / error / empty
    states around the existing @/api clients. */
@@ -77,7 +77,6 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncO
     return () => {
       alive = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce, key, cache])
 
   return { ...state, reload: () => setNonce((n) => n + 1) }
@@ -113,10 +112,10 @@ export function Loaded<T>({
   }, [preserveHeight, state.loading, state.data])
 
   let content: ReactNode
-  if (state.loading) content = <Spin tip="Loading…" />
-  else if (state.error) content = <Alert type="error" message="Failed to load" description={state.error} />
+  if (state.loading) content = <Loading />
+  else if (state.error) content = <Notice tone="error" title="Failed to load.">{state.error}</Notice>
   else if (state.data == null || (Array.isArray(state.data) && state.data.length === 0)) {
-    content = <Empty description={emptyText} />
+    content = <EmptyState title={emptyText} />
   } else content = children(state.data)
 
   return preserveHeight

@@ -8,11 +8,12 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { cn } from './cn'
+import { useField } from './fieldContext'
 import { IconCheck, IconChevronDown, IconClose } from './Icon'
-import { useField } from './field'
 import { Portal, useDismiss, usePopoverPosition } from './portal'
-import { cn } from './primitives'
 import { uiStrings } from './strings'
+import './Select.css'
 
 export interface SelectOption {
   label: ReactNode
@@ -26,10 +27,11 @@ export interface SelectProps extends AriaAttributes {
   value?: string | number | null
   onChange?: (value: string | number) => void
   placeholder?: string
-  size?: 'sm' | 'md' | 'lg'
+  /** `chip` is the compact filter form; its `name` reads as "Version 8.4.1". */
+  variant?: 'field' | 'chip'
+  name?: ReactNode
   disabled?: boolean
   allowClear?: boolean
-  status?: 'error'
   style?: CSSProperties
   className?: string
 }
@@ -39,10 +41,10 @@ export function Select({
   value,
   onChange,
   placeholder = uiStrings.select,
-  size = 'md',
+  variant = 'field',
+  name,
   disabled,
   allowClear,
-  status,
   style,
   className,
   ...aria
@@ -66,19 +68,19 @@ export function Select({
         [active]?.scrollIntoView({ block: 'nearest' })
   }, [open, active])
 
+  const enabledIndexes = () => options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0)
   const show = (last = false) => {
     if (!ref.current || disabled) return
     const selectedIndex = options.findIndex((o) => o.value === value && !o.disabled)
-    const enabled = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0)
+    const enabled = enabledIndexes()
     setActive(selectedIndex >= 0 ? selectedIndex : (enabled[last ? enabled.length - 1 : 0] ?? -1))
     setRect(ref.current.getBoundingClientRect())
   }
   const move = (direction: number) => {
-    const enabled = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0)
+    const enabled = enabledIndexes()
     if (!enabled.length) return
     const index = enabled.indexOf(active)
-    const next = enabled[(index + direction + enabled.length) % enabled.length]
-    setActive(next)
+    setActive(enabled[(index + direction + enabled.length) % enabled.length])
   }
   const choose = (index: number) => {
     const option = options[index]
@@ -87,16 +89,24 @@ export function Select({
     close()
     buttonRef.current?.focus()
   }
+  const typeahead = (char: string) => {
+    const search = char.toLocaleLowerCase()
+    const matches = (o: SelectOption) =>
+      !o.disabled && typeof o.label === 'string' && o.label.toLocaleLowerCase().startsWith(search)
+    const next = options.findIndex((o, i) => i > active && matches(o))
+    const first = options.findIndex(matches)
+    if (next >= 0 || first >= 0) setActive(next >= 0 ? next : first)
+  }
 
   return (
     <div
       ref={ref}
       className={cn(
         'bnn-select',
-        `bnn-select--${size}`,
+        variant === 'chip' && 'bnn-select--chip',
         open && 'is-open',
         disabled && 'is-disabled',
-        (status === 'error' || field['aria-invalid']) && 'is-error',
+        field['aria-invalid'] && 'is-error',
         className,
       )}
       style={style}
@@ -120,42 +130,25 @@ export function Select({
             e.preventDefault()
             e.stopPropagation()
             close()
-            return
-          }
-          if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
+          } else if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
             e.preventDefault()
             if (e.key === 'Enter' || e.key === ' ') {
               if (open) choose(active)
               else show()
             } else if (!open) show(e.key === 'End' || e.key === 'ArrowUp')
             else if (e.key === 'Home' || e.key === 'End') {
-              const enabled = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0)
+              const enabled = enabledIndexes()
               setActive(enabled[e.key === 'Home' ? 0 : enabled.length - 1] ?? -1)
             } else move(e.key === 'ArrowDown' ? 1 : -1)
           } else if (e.key === 'Tab') close()
-          else if (open && e.key.length === 1) {
-            const search = e.key.toLocaleLowerCase()
-            const next = options.findIndex(
-              (o, i) =>
-                i > active &&
-                !o.disabled &&
-                typeof o.label === 'string' &&
-                o.label.toLocaleLowerCase().startsWith(search),
-            )
-            const first = options.findIndex(
-              (o) =>
-                !o.disabled &&
-                typeof o.label === 'string' &&
-                o.label.toLocaleLowerCase().startsWith(search),
-            )
-            if (next >= 0 || first >= 0) setActive(next >= 0 ? next : first)
-          }
+          else if (open && e.key.length === 1) typeahead(e.key)
         }}
       >
+        {name && <span className="bnn-select__name">{name}</span>}
         <span className={cn('bnn-select__value', !selected && 'is-placeholder')}>
           {selected ? selected.label : placeholder}
         </span>
-        <IconChevronDown size={16} className="bnn-select__arrow" aria-hidden />
+        {!(allowClear && selected) && <IconChevronDown size={12} className="bnn-select__arrow" />}
       </button>
       {allowClear && selected && !disabled && (
         <button
@@ -168,7 +161,7 @@ export function Select({
             buttonRef.current?.focus()
           }}
         >
-          <IconClose size={14} aria-hidden />
+          <IconClose size={10} />
         </button>
       )}
       {open && (
@@ -180,7 +173,7 @@ export function Select({
             aria-labelledby={field['aria-labelledby']}
             aria-label={field['aria-labelledby'] ? undefined : (aria['aria-label'] ?? placeholder)}
             className="bnn-select__menu"
-            style={{ ...position, width: rect.width }}
+            style={{ ...position, minWidth: rect.width, width: variant === 'field' ? rect.width : undefined }}
             onMouseDown={(e) => e.preventDefault()}
           >
             {options.length === 0 && <div className="bnn-select__empty">{uiStrings.noOptions}</div>}
@@ -193,15 +186,14 @@ export function Select({
                 aria-disabled={o.disabled || undefined}
                 className={cn(
                   'bnn-select__option',
-                  o.value === value && 'is-selected',
                   i === active && 'is-active',
                   o.disabled && 'is-disabled',
                 )}
                 onMouseEnter={() => !o.disabled && setActive(i)}
                 onClick={() => choose(i)}
               >
-                <span>{o.label}</span>
-                {o.value === value && <IconCheck size={14} aria-hidden />}
+                <span className="bnn-select__option-label">{o.label}</span>
+                {o.value === value && <IconCheck size={14} />}
               </div>
             ))}
           </div>

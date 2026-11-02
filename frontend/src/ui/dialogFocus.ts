@@ -1,13 +1,16 @@
 const FOCUSABLE =
   'button:not(:disabled):not([hidden]), a[href]:not([hidden]), input:not(:disabled):not([hidden]):not([type="hidden"]), textarea:not(:disabled):not([hidden]), select:not(:disabled):not([hidden]), [tabindex="0"]:not([hidden])'
 
+/* Starts on a text field when the dialog has one, because that is where the
+   person is going to type; otherwise on the first control, which in a
+   confirmation is the safe one. */
 export function manageDialogFocus(dialog: HTMLElement) {
   const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const overflow = document.body.style.overflow
   document.body.style.overflow = 'hidden'
   const first =
     dialog.querySelector<HTMLElement>(
-      '.bnn-modal__body input:not(:disabled):not([hidden]):not([type="hidden"]), .bnn-modal__body textarea:not(:disabled)',
+      '.bnn-dialog__body input:not(:disabled):not([hidden]):not([type="hidden"]), .bnn-dialog__body textarea:not(:disabled)',
     ) ?? dialog.querySelector<HTMLElement>(FOCUSABLE)
   const initial = first ?? dialog
   initial.focus()
