@@ -1,0 +1,17 @@
+.acct {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bnn-surface);
+}
+.acct-back {
+  display: inline-block;
+  margin-bottom: var(--bnn-sp-4);
+  border-radius: var(--bnn-radius-xs);
+  color: var(--bnn-text-muted);
+}
+.acct-back:hover {
+  color: var(--bnn-text);
+}
+.acct-error {
+  color: var(--bnn-danger);
+}

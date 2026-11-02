@@ -1,0 +1,110 @@
+.docs {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bnn-surface);
+}
+.docs__body {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--bnn-sp-9) var(--bnn-sp-6) 64px;
+}
+.docs__toc {
+  position: sticky;
+  top: var(--bnn-sp-8);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-1);
+  width: 200px;
+}
+.docs__link {
+  display: flex;
+  align-items: center;
+  min-height: var(--bnn-h-button);
+  padding: 0 var(--bnn-sp-4);
+  border-radius: var(--bnn-radius);
+  color: var(--bnn-text-strong);
+  transition: background-color var(--bnn-transition);
+}
+.docs__link:hover {
+  background: var(--bnn-hover);
+}
+.docs__link.is-active {
+  background: var(--bnn-selected);
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.docs__main {
+  flex: 1;
+  min-width: 0;
+}
+.docs__title {
+  font-size: var(--bnn-fs-title);
+  font-weight: var(--bnn-weight-strong);
+  line-height: var(--bnn-leading-title);
+  letter-spacing: var(--bnn-tracking-title);
+}
+.docs__lead {
+  margin-top: var(--bnn-sp-3);
+  color: var(--bnn-text-muted);
+}
+.docs__main section {
+  padding-top: var(--bnn-sp-9);
+  scroll-margin-top: var(--bnn-sp-6);
+}
+.docs__main h2 {
+  margin-bottom: var(--bnn-sp-4);
+  font-size: var(--bnn-fs-large);
+  font-weight: var(--bnn-weight-strong);
+}
+.docs__main section > p,
+.docs__main section > ul,
+.docs__main .code-block {
+  margin-bottom: var(--bnn-sp-5);
+}
+.docs__main section > p,
+.docs__main section > ul {
+  color: var(--bnn-text-strong);
+  overflow-wrap: anywhere;
+}
+.docs__main ul {
+  padding-left: var(--bnn-sp-6);
+  list-style: disc;
+}
+.docs__main li {
+  margin-bottom: var(--bnn-sp-2);
+}
+.docs__main strong {
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.docs__main section code {
+  font-family: var(--bnn-font-mono);
+  font-size: var(--bnn-fs-mono);
+}
+.docs__main section > p code,
+.docs__main section > ul code {
+  padding: 1px var(--bnn-sp-2);
+  border-radius: 3px;
+  background: var(--bnn-hover);
+}
+.docs__main section > p.docs__meta {
+  color: var(--bnn-text-muted);
+}
+
+@media (max-width: 860px) {
+  .docs__body {
+    flex-direction: column;
+    gap: var(--bnn-sp-7);
+  }
+  .docs__toc {
+    position: static;
+    width: 100%;
+  }
+  .docs__main {
+    width: 100%;
+  }
+}

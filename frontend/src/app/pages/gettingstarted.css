@@ -1,0 +1,92 @@
+.gs {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px var(--bnn-sp-8);
+}
+.gs__title {
+  font-size: var(--bnn-fs-title);
+  font-weight: var(--bnn-weight-strong);
+  line-height: var(--bnn-leading-title);
+  letter-spacing: var(--bnn-tracking-title);
+}
+.gs__intro {
+  margin-top: var(--bnn-sp-3);
+  color: var(--bnn-text-muted);
+}
+.gs a {
+  border-radius: var(--bnn-radius-xs);
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.gs a:hover {
+  text-decoration: underline;
+}
+.gs a:focus-visible {
+  outline-offset: 2px;
+}
+.gs__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-9);
+  margin-top: var(--bnn-sp-9);
+}
+.gs-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: var(--bnn-sp-5);
+}
+.gs-step__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--bnn-border-control);
+  border-radius: 50%;
+  font-size: var(--bnn-fs-caption);
+  font-weight: var(--bnn-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+.gs-step__body {
+  min-width: 0;
+}
+.gs-step__title {
+  margin-top: var(--bnn-sp-1);
+  margin-bottom: var(--bnn-sp-4);
+  font-size: var(--bnn-fs-body);
+  font-weight: var(--bnn-weight-strong);
+}
+.gs-text {
+  margin-bottom: var(--bnn-sp-4);
+  color: var(--bnn-text-muted);
+}
+.gs-note {
+  margin-top: var(--bnn-sp-4);
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+}
+.gs-key {
+  margin-bottom: var(--bnn-sp-4);
+}
+.gs-key .gs-text {
+  margin-bottom: var(--bnn-sp-3);
+}
+.gs-key--action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bnn-sp-4) var(--bnn-sp-5);
+  padding: var(--bnn-sp-4) var(--bnn-sp-4) var(--bnn-sp-4) var(--bnn-sp-5);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+}
+.gs-key--action .gs-text {
+  flex: 1 1 240px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 620px) {
+  .gs {
+    padding: var(--bnn-sp-8) var(--bnn-sp-6);
+  }
+}

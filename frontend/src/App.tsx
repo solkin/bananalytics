@@ -4,10 +4,14 @@ import { Loading, ToastViewport } from '@/ui'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CommandsProvider } from './app/commands'
 import AppShell, { IndexRedirect, useShell } from './app/layout/AppShell'
+import AccountPage from './app/pages/AccountPage'
+import ApiKeysPage from './app/pages/ApiKeysPage'
 import AppsHome from './app/pages/AppsHome'
 import DevicesPage from './app/pages/DevicesPage'
+import DocsPage from './app/pages/DocsPage'
 import EventDetailPage from './app/pages/EventDetailPage'
 import EventsPage from './app/pages/EventsPage'
+import GettingStarted from './app/pages/GettingStarted'
 import InstallPage from './app/pages/InstallPage'
 import IssueDetailPage from './app/pages/IssueDetailPage'
 import IssuesPage from './app/pages/IssuesPage'
@@ -15,9 +19,11 @@ import LoginPage from './app/pages/LoginPage'
 import MappingsPage from './app/pages/MappingsPage'
 import NotFoundPage from './app/pages/NotFoundPage'
 import OverviewPage from './app/pages/OverviewPage'
+import PeoplePage from './app/pages/PeoplePage'
 import RegisterPage from './app/pages/RegisterPage'
 import ReleaseDetailPage from './app/pages/ReleaseDetailPage'
 import ReleasesPage from './app/pages/ReleasesPage'
+import SettingsPage from './app/pages/SettingsPage'
 import UiKitPage from './app/pages/UiKitPage'
 import { redirectTarget } from './app/redirect'
 
@@ -63,8 +69,11 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
       <Route path="/" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+      <Route path="/docs" element={<ProtectedRoute><DocsPage /></ProtectedRoute>} />
       <Route path="/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<IndexRedirect />} />
+        <Route path="getting-started" element={<GettingStarted />} />
         <Route path="analytics/overview" element={<OverviewPage />} />
         <Route path="analytics/events" element={<EventsPage />} />
         <Route path="analytics/events/:name" element={<EventDetailPage />} />
@@ -76,6 +85,9 @@ function AppRoutes() {
         <Route path="distribution/releases" element={<ReleasesRoute />}>
           <Route path=":versionId" element={<ReleaseDetailPage />} />
         </Route>
+        <Route path="settings/general" element={<SettingsPage />} />
+        <Route path="settings/api-keys" element={<ApiKeysPage />} />
+        <Route path="settings/people" element={<PeoplePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
