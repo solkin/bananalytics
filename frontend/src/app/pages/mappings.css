@@ -1,0 +1,14 @@
+.map-hint {
+  color: var(--bnn-text-muted);
+}
+.map-version {
+  font-weight: var(--bnn-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+.map-faint {
+  color: var(--bnn-text-faint);
+}
+.map-actions {
+  display: inline-flex;
+  gap: var(--bnn-sp-2);
+}

@@ -1,0 +1,25 @@
+.bnn-properties dt {
+  color: var(--bnn-text-faint);
+}
+.bnn-properties dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bnn-properties--list {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: var(--bnn-sp-4) var(--bnn-sp-5);
+}
+.bnn-properties--columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: var(--bnn-sp-5);
+}
+.bnn-properties--columns dt {
+  font-size: var(--bnn-fs-caption);
+}
+.bnn-properties--columns dd {
+  margin-top: var(--bnn-sp-1);
+  font-weight: var(--bnn-weight-medium);
+  font-variant-numeric: tabular-nums;
+}

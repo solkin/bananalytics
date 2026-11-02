@@ -1,0 +1,8 @@
+.bnn-sparkline {
+  display: block;
+  flex-shrink: 0;
+  stroke: var(--bnn-chart-2);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

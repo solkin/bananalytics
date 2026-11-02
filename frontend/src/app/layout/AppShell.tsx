@@ -42,13 +42,15 @@ export default function AppShell() {
   const [navOpen, setNavOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
 
-  const appState = useAsync(() => Promise.all([getApp(appId!), getMyRole(appId!)]), [appId])
+  /* Keyed so that reloading after a rename does not unmount the current screen. */
+  const appState = useAsync(() => Promise.all([getApp(appId!), getMyRole(appId!)]), [appId], { key: `app:${appId}` })
   const app = appState.data?.[0] ?? null
   const role = appState.data?.[1] ?? null
   const canSeeIssues = role != null && role !== 'tester'
   const issueCount = useAsync(
     () => (canSeeIssues ? getCrashGroups(appId!, { status: 'open', days: ISSUE_COUNT_DAYS, page: 1, pageSize: 1 }) : Promise.resolve(null)),
     [appId, canSeeIssues],
+    { key: `issue-count:${appId}:${canSeeIssues}` },
   )
 
   const base = `/apps/${appId}`

@@ -15,15 +15,7 @@ export interface Command {
   run: () => void
 }
 
-function Body({
-  commands,
-  context,
-  onClose,
-}: {
-  commands: Command[]
-  context?: ReactNode
-  onClose: () => void
-}) {
+function Body({ commands, onClose }: { commands: Command[]; onClose: () => void }) {
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -64,7 +56,6 @@ function Body({
         tabIndex={-1}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {context && <div className="bnn-palette__context">{context}</div>}
         <input
           className="bnn-palette__input"
           role="combobox"
@@ -127,19 +118,16 @@ function Body({
 export function CommandPalette({
   open,
   commands,
-  context,
   onClose,
 }: {
   open: boolean
   commands: Command[]
-  /** What the commands act on, such as the selected issue. */
-  context?: ReactNode
   onClose: () => void
 }) {
   if (!open) return null
   return (
     <Portal modal>
-      <Body commands={commands} context={context} onClose={onClose} />
+      <Body commands={commands} onClose={onClose} />
     </Portal>
   )
 }

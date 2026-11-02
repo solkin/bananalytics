@@ -23,19 +23,6 @@
 .bnn-palette:focus {
   outline: 0;
 }
-.bnn-palette__context {
-  align-self: flex-start;
-  max-width: calc(100% - 32px);
-  margin: var(--bnn-sp-5) var(--bnn-sp-6) 0;
-  padding: var(--bnn-sp-1) var(--bnn-sp-3);
-  overflow: hidden;
-  border-radius: var(--bnn-radius-xs);
-  background: var(--bnn-hover);
-  color: var(--bnn-text-muted);
-  font-size: var(--bnn-fs-caption);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 .bnn-palette__input {
   flex-shrink: 0;
   width: 100%;

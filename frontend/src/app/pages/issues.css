@@ -1,0 +1,189 @@
+.iss-sticky {
+  position: sticky;
+  top: 0;
+  z-index: var(--bnn-z-sticky);
+  background: var(--bnn-surface);
+}
+@media (max-width: 760px) {
+  .iss-sticky {
+    position: static;
+  }
+}
+.iss-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  min-height: 40px;
+  padding: var(--bnn-sp-3) var(--bnn-sp-6);
+  border-bottom: 1px solid var(--bnn-divider);
+}
+.iss-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bnn-sp-3) var(--bnn-sp-6);
+  margin-left: auto;
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+}
+.iss-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  white-space: nowrap;
+}
+.iss-metric strong {
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.iss-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--bnn-sp-4);
+  min-width: 0;
+}
+.iss-row__name {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: var(--bnn-weight-medium);
+  text-overflow: ellipsis;
+}
+.iss-row__message {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--bnn-text-faint);
+  text-overflow: ellipsis;
+}
+.iss-row__count {
+  font-weight: var(--bnn-weight-medium);
+}
+.iss-row__time {
+  color: var(--bnn-text-faint);
+}
+
+/* Detail panel */
+.iss-detail__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bnn-sp-3);
+  font-weight: var(--bnn-weight-medium);
+}
+.iss-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-8);
+}
+.iss-detail__title {
+  font-size: var(--bnn-fs-title);
+  font-weight: var(--bnn-weight-strong);
+  line-height: var(--bnn-leading-title);
+  letter-spacing: var(--bnn-tracking-title);
+  overflow-wrap: anywhere;
+}
+.iss-detail__class {
+  display: block;
+  margin-top: var(--bnn-sp-2);
+  color: var(--bnn-text-faint);
+  overflow-wrap: anywhere;
+}
+.iss-detail__message {
+  margin-top: var(--bnn-sp-4);
+  color: var(--bnn-text-strong);
+  overflow-wrap: anywhere;
+}
+.iss-detail__breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: var(--bnn-sp-8);
+}
+
+.iss-report {
+  padding-top: var(--bnn-sp-6);
+  border-top: 1px solid var(--bnn-divider);
+}
+.iss-report__head {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-2);
+  margin-bottom: var(--bnn-sp-4);
+}
+.iss-report__title {
+  flex: 1;
+  font-size: var(--bnn-fs-body);
+  font-weight: var(--bnn-weight-strong);
+}
+.iss-report__position {
+  color: var(--bnn-text-muted);
+  font-size: var(--bnn-fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+.iss-report__when {
+  margin-bottom: var(--bnn-sp-4);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+}
+.iss-crumbs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-4);
+}
+.iss-crumb {
+  display: grid;
+  grid-template-columns: 64px 88px minmax(0, 1fr);
+  gap: var(--bnn-sp-4);
+}
+.iss-crumb__meta {
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+.iss-crumb__message {
+  overflow-wrap: anywhere;
+}
+
+.iss-stack {
+  overflow: hidden;
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius);
+}
+.iss-stack__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bnn-sp-2);
+  padding: var(--bnn-sp-2);
+  border-bottom: 1px solid var(--bnn-divider);
+  background: var(--bnn-surface-subtle);
+}
+.iss-stack__actions {
+  display: flex;
+  gap: var(--bnn-sp-1);
+}
+.iss-stack__lines {
+  overflow-x: auto;
+  padding: var(--bnn-sp-4) var(--bnn-sp-5);
+  font-family: var(--bnn-font-mono);
+  font-size: var(--bnn-fs-mono);
+  line-height: var(--bnn-leading-code);
+  white-space: pre;
+  scrollbar-width: thin;
+}
+.iss-stack__line {
+  min-height: 1em;
+}
+.iss-stack__line--head {
+  font-weight: var(--bnn-weight-medium);
+}
+.iss-stack__line--app {
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.iss-stack__line--framework,
+.iss-stack__line--other {
+  color: var(--bnn-text-faint);
+}

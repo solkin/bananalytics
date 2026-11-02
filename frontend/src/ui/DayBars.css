@@ -1,0 +1,30 @@
+.bnn-daybars__bars {
+  display: flex;
+  align-items: stretch;
+  gap: var(--bnn-sp-1);
+}
+.bnn-daybars__bars .bnn-tooltip-anchor {
+  flex: 1;
+  min-width: 0;
+}
+.bnn-daybars__slot {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+}
+.bnn-daybars__bar {
+  display: block;
+  width: 100%;
+  border-radius: 1px;
+  background: var(--bnn-chart-bar);
+}
+.bnn-daybars__slot:hover .bnn-daybars__bar {
+  background: var(--bnn-chart-1);
+}
+.bnn-daybars__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--bnn-sp-3);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+}

@@ -41,3 +41,9 @@
     display: none;
   }
 }
+/* On a phone the page scrolls under the app bar, which is already sticky. */
+@media (max-width: 760px) {
+  .bnn-detail__head {
+    position: static;
+  }
+}
