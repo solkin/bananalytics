@@ -26,6 +26,7 @@ import {
   retraceCrash,
 } from '@/api/crashes'
 import { useAsync, Loaded, errorText } from '../async'
+import { copyText } from '../clipboard'
 import { useRegisterCommands } from '../commands'
 import { androidVersion, cap, countryName, fillDaily, fmtDateTime, fmtK, fromTo, relTime } from '../format'
 import { parseStackTrace, shortClassName } from '../stacktrace'
@@ -37,13 +38,6 @@ function shares(items: { name: string; count: number }[], total: number, format 
     value: item.count,
     display: `${total ? Math.round((item.count / total) * 100) : 0}%`,
   }))
-}
-
-function copy(text: string) {
-  navigator.clipboard.writeText(text).then(
-    () => toast.success('Copied to clipboard'),
-    () => toast.error('Could not copy. Select the text and copy it manually.'),
-  )
 }
 
 function StackTrace({ crash, canManage, onRetraced }: { crash: Crash; canManage: boolean; onRetraced: (c: Crash) => void }) {
@@ -83,7 +77,7 @@ function StackTrace({ crash, canManage, onRetraced }: { crash: Crash; canManage:
             {canManage && (
               <Button variant="ghost" loading={retracing} disabled={crash.version_code == null} onClick={retrace}>Retrace</Button>
             )}
-            <Button variant="ghost" onClick={() => copy(trace)}>Copy</Button>
+            <Button variant="ghost" onClick={() => void copyText(trace)}>Copy</Button>
           </span>
         </div>
         {/* Scrolls sideways, so it has to be reachable from the keyboard. */}
@@ -156,6 +150,11 @@ function CrashReport({ crash, canManage, onRetraced }: { crash: Crash; canManage
 
 export default function IssueDetailPage() {
   const { issueId = '' } = useParams()
+  /* Keyed by issue: the open dialog, the report and the tab belong to one issue. */
+  return <IssueDetail key={issueId} issueId={issueId} />
+}
+
+function IssueDetail({ issueId }: { issueId: string }) {
   const { role, days, version, changeStatus, removeIssue, close } = useIssues()
   const canManage = role === 'admin'
   const [params, setParams] = useSearchParams()
@@ -164,8 +163,7 @@ export default function IssueDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [patched, setPatched] = useState<Record<string, Crash>>({})
 
-  /* Keyed so that a reload after a status change does not blank the panel. */
-  const group = useAsync(() => getCrashGroup(issueId), [issueId], { key: `issue:${issueId}` })
+  const group = useAsync(() => getCrashGroup(issueId), [issueId])
   const analytics = useAsync(
     () => Promise.all([
       getCrashStats(issueId, { ...fromTo(days), version }),
@@ -209,10 +207,10 @@ export default function IssueDetailPage() {
           ]
         : []),
       ...(crash
-        ? [{ id: 'issue-copy', group, label: 'Copy stack trace', icon: <Icons.IconCopy size={15} />, run: () => copy(crash.stacktrace_decoded || crash.stacktrace_raw) }]
+        ? [{ id: 'issue-copy', group, label: 'Copy stack trace', icon: <Icons.IconCopy size={15} />, run: () => void copyText(crash.stacktrace_decoded || crash.stacktrace_raw) }]
         : []),
     ]
-  }, [issue, canManage, crash])
+  }, [issue, canManage, crash, changeStatus])
 
   const remove = async () => {
     if (!issue) return

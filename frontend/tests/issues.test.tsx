@@ -158,6 +158,57 @@ test('a status change keeps the list and the panel on screen while they reload',
   await act(async () => release())
 })
 
+test('deleting an issue closes the dialog and moves on to the next one', async () => {
+  localStorage.clear()
+  const changes: unknown[] = []
+  issueApi(changes)
+  const view = mount(page('/apps/app/diagnostics/issues/a'))
+  await view.render()
+  await act(async () => view.container.querySelector<HTMLButtonElement>('[aria-label="Delete issue"]')!.click())
+  const dialog = document.querySelector('[role="dialog"]')!
+  await act(async () => [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Delete')!.click())
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+  assert.match(view.container.querySelector('[data-testid="where"]')!.textContent!, /\/issues\/b\?/)
+})
+
+test('reopening an issue after a status change shows the new status', async () => {
+  localStorage.clear()
+  let status = 'open'
+  respond((url, _params, method, data) => {
+    if (url.endsWith('/apps/app/crashes')) return { items: [group('a'), group('b')], total: 2 }
+    if (url.endsWith('/crash-groups/a')) {
+      if (method === 'put') status = JSON.parse(data as string).status
+      return group('a', status)
+    }
+    if (url.endsWith('/crash-groups/b')) return group('b')
+    if (url.endsWith('/distributions')) return { models: [], os_versions: [], total: 0 }
+    if (url.endsWith('/crashes')) return { items: [], total: 0 }
+    return []
+  })
+  const view = mount(page('/apps/app/diagnostics/issues/a'))
+  await view.render()
+  await act(async () => [...view.container.querySelectorAll('button')].find((b) => b.textContent === 'Resolve')!.click())
+  await act(async () => view.container.querySelector<HTMLElement>('tbody td')!.click())
+  assert.match(view.container.querySelector('[data-testid="where"]')!.textContent!, /\/issues\/a\?/)
+  assert.match(view.container.querySelector('.iss-detail__status')!.textContent!, /Resolved/)
+})
+
+test('a page emptied by a change falls back to the last page that exists', async () => {
+  localStorage.clear()
+  const pages: unknown[] = []
+  respond((url, params) => {
+    if (url.endsWith('/apps/app/crashes')) {
+      pages.push(params.page)
+      return params.page === 2 ? { items: [], total: 25 } : { items: [group('a')], total: 25 }
+    }
+    return []
+  })
+  const view = mount(page('/apps/app/diagnostics/issues?page=2'))
+  await view.render()
+  await act(async () => {})
+  assert.equal(pages.at(-1), 1)
+})
+
 test('a viewer sees an issue but no way to change it', async () => {
   localStorage.clear()
   issueApi([])

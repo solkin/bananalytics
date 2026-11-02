@@ -4,7 +4,7 @@ import { getDeviceStats, getSessionOverview, type SessionVersionStats } from '@/
 import { useAsync, Loaded } from '../async'
 import { Distribution } from '../Distribution'
 import { useStickyFilters } from '../filters'
-import { fmtK, fromTo, shortDate, versionLabel } from '../format'
+import { dayAxis, fmtK, fromTo, shortDate, versionLabel } from '../format'
 import './analytics.css'
 
 const RANGES = [
@@ -48,6 +48,11 @@ export default function OverviewPage() {
           const latest = activity[activity.length - 1]
           const crashFree = data.crash_free[data.crash_free.length - 1]?.crash_free_rate
           const versions = byVersion(data.versions)
+          /* The API omits days without activity, and a day like that really is zero. */
+          const activityByDay = new Map(activity.map((row) => [row.date.slice(0, 10), row]))
+          const axis = dayAxis(days)
+          const line = (value: 'users' | 'sessions') =>
+            axis.map((day) => ({ label: shortDate(day), value: activityByDay.get(day)?.[value] ?? 0 }))
           return (
             <>
               <div className="an-section">
@@ -68,8 +73,8 @@ export default function OverviewPage() {
                 <LineChart
                   label={`Daily users and sessions over the last ${days} days`}
                   series={[
-                    { label: 'Users', data: activity.map((row) => ({ label: shortDate(row.date), value: row.users })) },
-                    { label: 'Sessions', data: activity.map((row) => ({ label: shortDate(row.date), value: row.sessions })) },
+                    { label: 'Users', data: line('users') },
+                    { label: 'Sessions', data: line('sessions') },
                   ]}
                 />
               </div>

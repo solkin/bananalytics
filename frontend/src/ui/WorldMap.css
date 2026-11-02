@@ -14,6 +14,25 @@
 .bnn-worldmap__shape:hover {
   stroke: var(--bnn-text);
 }
+.bnn-worldmap__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--bnn-sp-2);
+  margin-top: var(--bnn-sp-3);
+  color: var(--bnn-text-faint);
+  font-size: var(--bnn-fs-caption);
+}
+.bnn-worldmap__legend i {
+  width: 16px;
+  height: 8px;
+}
+.bnn-worldmap__legend span:first-child {
+  margin-right: var(--bnn-sp-2);
+}
+.bnn-worldmap__legend span:last-child {
+  margin-left: var(--bnn-sp-2);
+}
 .bnn-worldmap__tip {
   position: absolute;
   z-index: var(--bnn-z-sticky);

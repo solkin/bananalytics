@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
   Button,
@@ -248,8 +248,16 @@ export default function ReleasesPage() {
   /* Keyed so that a reload after an edit keeps the list and the panel on screen. */
   const state = useAsync(() => getVersions(appId!), [appId], { key: `versions:${appId}` })
   const [createOpen, setCreateOpen] = useState(false)
+  /* A new release opens once the refreshed list has it, not before. */
+  const [openWhenListed, setOpenWhenListed] = useState<string | null>(null)
   const listPath = `/apps/${appId}/distribution/releases`
   const canManage = shell.role === 'admin'
+
+  useEffect(() => {
+    if (!openWhenListed || !state.data?.some((v) => v.id === openWhenListed)) return
+    setOpenWhenListed(null)
+    navigate(`${listPath}/${openWhenListed}`)
+  }, [openWhenListed, state.data, navigate, listPath])
 
   useRegisterCommands(
     () => (canManage ? [{ id: 'release-new', group: 'Releases', label: 'New release', keys: ['C'], run: () => setCreateOpen(true) }] : []),
@@ -298,8 +306,8 @@ export default function ReleasesPage() {
           onClose={() => setCreateOpen(false)}
           onCreated={(version) => {
             setCreateOpen(false)
+            setOpenWhenListed(version.id)
             state.reload()
-            navigate(`${listPath}/${version.id}`)
           }}
         />
       )}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Button, toast } from '@/ui'
+import { Button } from '@/ui'
+import { copyText } from './clipboard'
 import './codeblock.css'
 
 /** Code to read and copy. It scrolls sideways, so it has to be focusable. */
@@ -11,12 +12,7 @@ export function CodeBlock({ code, label = 'Code' }: { code: string; label?: stri
         <Button
           variant="ghost"
           aria-label={`Copy ${label.toLowerCase()}`}
-          onClick={() => {
-            navigator.clipboard.writeText(code).then(
-              () => setCopied(true),
-              () => toast.error('Could not copy. Select the text and copy it manually.'),
-            )
-          }}
+          onClick={() => void copyText(code).then(setCopied)}
         >
           {copied ? 'Copied' : 'Copy'}
         </Button>

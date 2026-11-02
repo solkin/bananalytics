@@ -45,15 +45,19 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], opts?: AsyncO
       : { data: null, loading: true, error: null }
   })
   const [nonce, setNonce] = useState(0)
+  const loadedNonce = useRef(nonce)
 
   useEffect(() => {
     let alive = true
+    /* reload() refreshes what is on screen; only new deps mean there is nothing to show yet. */
+    const reloading = loadedNonce.current !== nonce
+    loadedNonce.current = nonce
     const entry = key ? swrCache.get(key) : undefined
     if (entry) {
       setState({ data: entry.value as T, loading: false, error: null })
       const fresh = Date.now() - entry.time < ttlMs
       if (fresh && nonce === 0) return // served from cache; reload() still forces a refetch
-    } else {
+    } else if (!reloading) {
       setState({ data: null, loading: true, error: null })
     }
     const pending = key ? (swrInflight.get(key) as Promise<T> | undefined) : undefined

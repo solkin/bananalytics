@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from './cn'
 import { Skeleton } from './Skeleton'
+import { uiStrings } from './strings'
 import './WorldMap.css'
 
 /* World choropleth. Outlines are projected at build time (see
@@ -101,6 +102,13 @@ export function WorldMap({
           <div>{hovered ? format(hovered) : noDataLabel}</div>
         </div>
       )}
+      <div className="bnn-worldmap__legend" aria-hidden>
+        <span>{uiStrings.fewer}</span>
+        {Array.from({ length: STEPS }, (_, i) => (
+          <i key={i} style={{ background: `var(--bnn-geo-${i + 1})` }} />
+        ))}
+        <span>{uiStrings.more}</span>
+      </div>
     </div>
   )
 }

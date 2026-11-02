@@ -6,6 +6,8 @@ export const uiStrings = {
   commandPalette: 'Command palette',
   commandPlaceholder: 'Type a command or search',
   confirm: 'Confirm',
+  fewer: 'Fewer',
+  more: 'More',
   showPassword: 'Show password',
   hidePassword: 'Hide password',
   show: 'Show',

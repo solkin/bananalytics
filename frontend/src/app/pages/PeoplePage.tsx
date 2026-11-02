@@ -31,6 +31,7 @@ import {
 } from '@/api/auth'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync, Loaded, errorText } from '../async'
+import { copyText } from '../clipboard'
 import { useRegisterCommands } from '../commands'
 import { cap, fmtDateTime, shortDate } from '../format'
 import './settings.css'
@@ -82,7 +83,8 @@ function InviteDialog({
     setSending(true)
     try {
       const access = await grantAccess(appId, email.trim(), String(role))
-      if (known === false) {
+      /* The hint check runs on blur, so Enter can submit before it answers. */
+      if (access.status === 'invited') {
         toast.success(smtpConfigured ? 'Invitation email sent' : 'Invitation created. Copy the link and share it manually.')
       } else {
         toast.success('Access granted')
@@ -190,9 +192,7 @@ function MemberPanel({
 
   const copyLink = async () => {
     try {
-      const url = await getInvitationLink(appId, access.id)
-      await navigator.clipboard.writeText(url)
-      toast.success('Invitation link copied')
+      await copyText(await getInvitationLink(appId, access.id), 'Invitation link copied')
     } catch (e) {
       toast.error(errorText(e, 'Failed to copy link'))
     }

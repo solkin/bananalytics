@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import {
   Button,
@@ -100,9 +100,13 @@ export default function IssuesPage() {
   const groups = useAsync(
     () => getCrashGroups(appId!, { days, version, status: status === 'all' ? undefined : status, page, pageSize: PAGE_SIZE, sortBy, sortOrder }),
     [appId, days, status, version, page, sortBy, sortOrder],
-    /* Keyed so that a reload after a status change keeps the rows on screen. */
-    { key: `issues:${appId}:${days}:${status}:${version}:${page}:${sortBy}:${sortOrder}` },
   )
+  /* A status change or a deletion can empty the last page under the reader. */
+  const lastPage = Math.max(1, Math.ceil((groups.data?.total ?? 0) / PAGE_SIZE))
+  const overshot = !groups.loading && groups.data != null && page > lastPage
+  useEffect(() => {
+    if (overshot) set({ page: lastPage > 1 ? String(lastPage) : undefined })
+  }, [overshot, lastPage])
   const stats = useAsync(() => getAppCrashStats(appId!, { ...fromTo(days), version }), [appId, days, version])
   const crashFree = useAsync(() => getCrashFreeStats(appId!, { ...fromTo(days), version }), [appId, days, version])
 
