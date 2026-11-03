@@ -18,6 +18,7 @@ import IssuesPage from './app/pages/IssuesPage'
 import LoginPage from './app/pages/LoginPage'
 import MappingsPage from './app/pages/MappingsPage'
 import NotFoundPage from './app/pages/NotFoundPage'
+import OAuthAuthorizePage from './app/pages/OAuthAuthorizePage'
 import OverviewPage from './app/pages/OverviewPage'
 import PeoplePage from './app/pages/PeoplePage'
 import RegisterPage from './app/pages/RegisterPage'
@@ -71,6 +72,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><AppsHome /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       <Route path="/docs" element={<ProtectedRoute><DocsPage /></ProtectedRoute>} />
+      <Route path="/oauth/authorize" element={<ProtectedRoute><OAuthAuthorizePage /></ProtectedRoute>} />
       <Route path="/apps/:appId" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<IndexRedirect />} />
         <Route path="getting-started" element={<GettingStarted />} />

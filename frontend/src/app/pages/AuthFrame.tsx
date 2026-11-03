@@ -9,7 +9,7 @@ export function AuthFrame({
 }: {
   title: ReactNode
   subtitle?: ReactNode
-  children: ReactNode
+  children?: ReactNode
 }) {
   return (
     <main className="auth">

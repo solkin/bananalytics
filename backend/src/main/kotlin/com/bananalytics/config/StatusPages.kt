@@ -1,5 +1,6 @@
 package com.bananalytics.config
 
+import com.bananalytics.models.OAuthErrorResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.statuspages.*
@@ -31,6 +32,13 @@ class BadRequestException(message: String)
 class PayloadTooLargeException(message: String)
     : ApiException(HttpStatusCode.PayloadTooLarge, "payload_too_large", message)
 
+/** An error of the OAuth endpoints, answered in the RFC 6749 shape. */
+class OAuthException(
+    val error: String,
+    val description: String,
+    val statusCode: HttpStatusCode = if (error == "invalid_client") HttpStatusCode.Unauthorized else HttpStatusCode.BadRequest
+) : RuntimeException(description)
+
 /**
  * Errors are encoded here rather than through content negotiation: that is
  * installed per route (see configureSerialization), and these handlers run on
@@ -43,6 +51,14 @@ fun Application.configureStatusPages() {
     install(StatusPages) {
         exception<ApiException> { call, cause ->
             call.respondError(cause.statusCode, ErrorResponse(cause.error, cause.message))
+        }
+        exception<OAuthException> { call, cause ->
+            call.response.header(HttpHeaders.CacheControl, "no-store")
+            call.respondText(
+                Json.encodeToString(OAuthErrorResponse(cause.error, cause.description)),
+                ContentType.Application.Json,
+                cause.statusCode
+            )
         }
         exception<Throwable> { call, cause ->
             call.application.environment.log.error("Unhandled exception", cause)

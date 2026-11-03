@@ -46,3 +46,46 @@
 .auth__foot a:focus-visible {
   outline-offset: 2px;
 }
+
+/* OAuth consent */
+.consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-6);
+}
+.consent__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-4);
+  padding: var(--bnn-sp-6);
+  border: 1px solid var(--bnn-border);
+  border-radius: var(--bnn-radius-lg);
+  list-style: none;
+}
+.consent__list li {
+  position: relative;
+  padding-left: var(--bnn-sp-6);
+}
+.consent__list li::before {
+  position: absolute;
+  top: 0.6em;
+  left: var(--bnn-sp-2);
+  width: 5px;
+  height: 5px;
+  border-radius: var(--bnn-radius-full);
+  background: var(--bnn-text-muted);
+  content: '';
+}
+.consent__meta {
+  color: var(--bnn-text-muted);
+  overflow-wrap: anywhere;
+}
+.consent__meta strong {
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.consent__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bnn-sp-4);
+}

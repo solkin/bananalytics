@@ -13,4 +13,8 @@
     <logger name="io.ktor" level="INFO"/>
     <logger name="org.jetbrains.exposed" level="INFO"/>
     <logger name="com.bananalytics" level="DEBUG"/>
+    <!-- The MCP SDK narrates every request (sessions, tool registration) at INFO;
+         the endpoint builds a fresh server per request, so keep only problems. -->
+    <logger name="io.modelcontextprotocol" level="WARN"/>
+    <logger name="FeatureRegistry[Tool]" level="WARN"/>
 </configuration>

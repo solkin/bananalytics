@@ -12,7 +12,9 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || error.message || 'An error occurred'
+    // OAuth endpoints answer in the RFC 6749 shape, the rest of the API with `message`.
+    const data = error.response?.data
+    const message = data?.message || data?.error_description || error.message || 'An error occurred'
     return Promise.reject(new Error(message))
   }
 )

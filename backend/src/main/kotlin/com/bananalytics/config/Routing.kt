@@ -2,6 +2,7 @@ package com.bananalytics.config
 
 import com.bananalytics.mcp.mcpRoutes
 import com.bananalytics.routes.*
+import com.bananalytics.services.OAuthService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.cors.routing.*
@@ -50,7 +51,11 @@ fun ApplicationCall.dateRange(defaultDays: Long = 14): Pair<OffsetDateTime, Offs
         (request.queryParameters["to"]?.toOffsetDateTimeOrNull() ?: now)
 }
 
-fun Application.configureRouting() {
+/**
+ * [oauth] is null when BASE_URL cannot name the MCP endpoint; the endpoint and
+ * its authorization server are then not served at all.
+ */
+fun Application.configureRouting(oauth: OAuthService? = OAuthService.fromConfig()) {
     install(CORS) {
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Get)
@@ -77,8 +82,13 @@ fun Application.configureRouting() {
             call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
         }
 
-        // Agents (authenticated by an access token)
-        mcpRoutes()
+        // Agents (authenticated by an access token) and how they obtain one
+        if (oauth != null) {
+            mcpRoutes(oauth)
+            oauthDiscoveryRoutes(oauth)
+        } else {
+            log.warn("MCP endpoint disabled: BASE_URL must be an https:// origin (or http://localhost)")
+        }
 
         route("/api/v1") {
             // Public routes
@@ -90,6 +100,9 @@ fun Application.configureRouting() {
 
             // Release publishing from CI (authenticated by an upload-scoped API key)
             releaseRoutes()
+
+            // OAuth clients registering and redeeming grants (authenticated per RFC 6749)
+            oauth?.let { oauthClientRoutes(it) }
             
             // Admin routes (authenticated by session)
             authenticated {
@@ -98,6 +111,7 @@ fun Application.configureRouting() {
                 appRoutes()
                 crashRoutes()
                 eventRoutes()
+                oauth?.let { oauthConsentRoutes(it) }
             }
         }
     }

@@ -28,7 +28,7 @@ object AppConfig {
 
     /**
      * Canonical address of the MCP endpoint, or null when [baseUrl] cannot be
-     * one. OAuth clients bind their tokens to this exact URL, so it must be
+     * the origin of one. OAuth clients bind their tokens to this exact URL, so it must be
      * public HTTPS; plain HTTP is accepted only on a loopback host, for
      * development.
      */
@@ -36,7 +36,9 @@ object AppConfig {
         val uri = runCatching { URI(baseUrl) }.getOrNull() ?: return@lazy null
         val host = uri.host?.lowercase() ?: return@lazy null
         val secure = uri.scheme == "https" || (uri.scheme == "http" && host in LOOPBACK_HOSTS)
-        if (secure && uri.query == null && uri.fragment == null) "$baseUrl/mcp" else null
+        // An origin: discovery documents are served at its root.
+        val origin = uri.path.isNullOrEmpty() && uri.query == null && uri.fragment == null && uri.userInfo == null
+        if (secure && origin) "$baseUrl/mcp" else null
     }
 
     private val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1", "[::1]")

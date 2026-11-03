@@ -7,6 +7,7 @@ import com.bananalytics.models.UserResponse
 import com.bananalytics.models.Users
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
 import java.util.*
@@ -38,9 +39,10 @@ object AccessTokenRepository {
     fun scopesFor(write: Boolean): Set<String> =
         if (write) setOf(SCOPE_READ, SCOPE_WRITE) else setOf(SCOPE_READ)
 
+    /** Personal tokens only; those of OAuth clients are managed as grants. */
     fun findByUserId(userId: UUID): List<AccessTokenResponse> = transaction {
         AccessTokens.selectAll()
-            .where { AccessTokens.userId eq userId }
+            .where { (AccessTokens.userId eq userId) and AccessTokens.grantId.isNull() }
             .orderBy(AccessTokens.createdAt, SortOrder.DESC)
             .map { it.toAccessTokenResponse() }
     }
@@ -51,7 +53,8 @@ object AccessTokenRepository {
         userId: UUID,
         name: String,
         scopes: Set<String>,
-        expiresAt: OffsetDateTime?
+        expiresAt: OffsetDateTime?,
+        grantId: UUID? = null
     ): CreatedAccessTokenResponse = transaction {
         val rawToken = Secrets.generate(TOKEN_PREFIX)
         val now = OffsetDateTime.now()
@@ -64,6 +67,7 @@ object AccessTokenRepository {
             it[AccessTokens.tokenPrefix] = rawToken.take(PREFIX_LENGTH)
             it[AccessTokens.expiresAt] = expiresAt
             it[AccessTokens.createdAt] = now
+            it[AccessTokens.grantId] = grantId
         }
 
         CreatedAccessTokenResponse(
@@ -76,7 +80,8 @@ object AccessTokenRepository {
      *  owner can still see when it was last used. */
     fun revoke(userId: UUID, tokenId: UUID): Boolean = transaction {
         val updated = AccessTokens.update({
-            (AccessTokens.id eq tokenId) and (AccessTokens.userId eq userId) and AccessTokens.revokedAt.isNull()
+            (AccessTokens.id eq tokenId) and (AccessTokens.userId eq userId) and
+                AccessTokens.grantId.isNull() and AccessTokens.revokedAt.isNull()
         }) {
             it[revokedAt] = OffsetDateTime.now()
         }
@@ -85,7 +90,9 @@ object AccessTokenRepository {
     }
 
     fun delete(userId: UUID, tokenId: UUID): Boolean = transaction {
-        val deleted = AccessTokens.deleteWhere { (AccessTokens.id eq tokenId) and (AccessTokens.userId eq userId) } > 0
+        val deleted = AccessTokens.deleteWhere {
+            (AccessTokens.id eq tokenId) and (AccessTokens.userId eq userId) and AccessTokens.grantId.isNull()
+        } > 0
         if (deleted) usage.forget(tokenId)
         deleted
     }

@@ -25,7 +25,7 @@ object TestDatabase {
     }
 
     fun reset() {
-        sql("TRUNCATE apps, users, events, event_stats_daily, device_stats_daily RESTART IDENTITY CASCADE")
+        sql("TRUNCATE apps, users, events, event_stats_daily, device_stats_daily, oauth_clients RESTART IDENTITY CASCADE")
         sql("INSERT INTO apps(id,name,package_name) VALUES ('$app','Test','test.app'),('$other','Other','other.app')")
     }
 

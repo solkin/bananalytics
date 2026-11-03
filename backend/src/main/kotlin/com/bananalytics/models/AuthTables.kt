@@ -29,6 +29,8 @@ object AccessTokens : UUIDTable("access_tokens") {
     val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
     val revokedAt = timestampWithTimeZone("revoked_at").nullable()
     val createdAt = timestampWithTimeZone("created_at")
+    /** Set for tokens an OAuth client obtained; null for personal ones. */
+    val grantId = reference("grant_id", OAuthGrants).nullable()
 }
 
 object AppAccess : UUIDTable("app_access") {
