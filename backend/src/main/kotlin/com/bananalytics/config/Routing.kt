@@ -1,5 +1,6 @@
 package com.bananalytics.config
 
+import com.bananalytics.mcp.mcpRoutes
 import com.bananalytics.routes.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -75,6 +76,9 @@ fun Application.configureRouting() {
         get("/health") {
             call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
         }
+
+        // Agents (authenticated by an access token)
+        mcpRoutes()
 
         route("/api/v1") {
             // Public routes

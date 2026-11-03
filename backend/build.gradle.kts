@@ -40,6 +40,9 @@ dependencies {
     implementation("org.postgresql:postgresql:42.7.4")
     implementation("com.zaxxer:HikariCP:6.2.1")
 
+    // Model Context Protocol server for agents
+    implementation("io.modelcontextprotocol:kotlin-sdk-server:0.16.0")
+
     // R8 Retrace for deobfuscation
     implementation("com.android.tools:r8:8.5.35")
 

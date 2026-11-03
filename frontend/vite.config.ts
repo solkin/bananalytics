@@ -15,6 +15,12 @@ export default defineConfig({
         target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
+      // The MCP endpoint checks Host against BASE_URL, so it must see the
+      // address the agent used, as it does behind nginx in production.
+      '/mcp': {
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
+        changeOrigin: false,
+      },
     },
   },
 })

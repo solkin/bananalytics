@@ -11,6 +11,7 @@ import io.ktor.server.routing.RouteSelectorEvaluation
 import io.ktor.server.routing.RouteSelector
 import io.ktor.server.routing.RoutingResolveContext
 import io.ktor.util.*
+import java.net.URI
 import java.util.*
 
 object AppConfig {
@@ -24,6 +25,21 @@ object AppConfig {
         (System.getenv("BASE_URL")?.takeIf { it.isNotBlank() } ?: "http://localhost:5173")
             .trimEnd('/')
     }
+
+    /**
+     * Canonical address of the MCP endpoint, or null when [baseUrl] cannot be
+     * one. OAuth clients bind their tokens to this exact URL, so it must be
+     * public HTTPS; plain HTTP is accepted only on a loopback host, for
+     * development.
+     */
+    val mcpResourceUrl: String? by lazy {
+        val uri = runCatching { URI(baseUrl) }.getOrNull() ?: return@lazy null
+        val host = uri.host?.lowercase() ?: return@lazy null
+        val secure = uri.scheme == "https" || (uri.scheme == "http" && host in LOOPBACK_HOSTS)
+        if (secure && uri.query == null && uri.fragment == null) "$baseUrl/mcp" else null
+    }
+
+    private val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1", "[::1]")
 
     /** Ceiling for a single uploaded APK. */
     val maxApkBytes: Long by lazy {

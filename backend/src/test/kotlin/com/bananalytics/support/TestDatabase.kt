@@ -31,6 +31,8 @@ object TestDatabase {
 
     fun sql(sql: String) = transaction { exec(sql); Unit }
 
+    fun string(sql: String): String = transaction { exec(sql) { it.next(); it.getString(1) }!! }
+
     fun count(table: String): Long = transaction { exec("SELECT COUNT(*) FROM $table") { it.next(); it.getLong(1) }!! }
 
     fun session(role: String): UUID {
