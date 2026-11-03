@@ -36,6 +36,24 @@ class TelemetryIntegrationTest {
         for (table in listOf("crashes", "crash_groups", "app_sessions")) assertEquals(0L, TestDatabase.count(table), table)
     }
 
+    @Test fun `a build with another package is rejected and writes nothing`() = testApplication {
+        api()
+        val key = ApiKeyRepository.create(app, "SDK", null).apiKey
+        val foreign = environment.copy(packageName = "test.app.clone")
+        val session = UUID.randomUUID().toString()
+        val events = client.post("/api/v1/events/submit") {
+            header("X-API-Key", key); contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(EventsSubmitRequest(session, foreign, listOf(EventData("open", time = 1L)))))
+        }
+        val crashes = client.post("/api/v1/crashes/submit") {
+            header("X-API-Key", key); contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(CrashesSubmitRequest(session, foreign, listOf(crash()))))
+        }
+        assertEquals(HttpStatusCode.BadRequest, events.status)
+        assertEquals(HttpStatusCode.BadRequest, crashes.status)
+        for (table in listOf("crashes", "app_sessions", "app_versions")) assertEquals(0L, TestDatabase.count(table))
+    }
+
     @Test fun `database failure in a later report rolls back the entire batch`() {
         val session = UUID.randomUUID().toString()
         val invalidClass = crash().copy(stacktrace = "X".repeat(513) + ": failure")
