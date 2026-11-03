@@ -108,7 +108,7 @@ fun Route.releaseRoutes() {
                         else -> {}
                     }
                 } finally {
-                    part.dispose()
+                    part.release()
                 }
             }
 

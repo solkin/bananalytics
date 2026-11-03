@@ -170,7 +170,7 @@ fun Route.appRoutes() {
                             else -> {}
                         }
                     } finally {
-                        part.dispose()
+                        part.release()
                     }
                 }
 
@@ -666,7 +666,7 @@ fun Route.appRoutes() {
                             else -> {}
                         }
                     } finally {
-                        part.dispose()
+                        part.release()
                     }
                 }
 
@@ -717,7 +717,7 @@ fun Route.appRoutes() {
                             else -> {}
                         }
                     } finally {
-                        part.dispose()
+                        part.release()
                     }
                 }
 
@@ -861,7 +861,7 @@ fun Route.appRoutes() {
                             else -> {}
                         }
                     } finally {
-                        part.dispose()
+                        part.release()
                     }
                 }
 

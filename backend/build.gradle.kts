@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "2.0.21"
-    kotlin("plugin.serialization") version "2.0.21"
-    id("io.ktor.plugin") version "3.0.3"
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.serialization") version "2.4.21"
+    id("io.ktor.plugin") version "3.5.2"
     application
 }
 
@@ -17,7 +17,7 @@ repositories {
     google()
 }
 
-val ktorVersion = "3.0.3"
+val ktorVersion = "3.5.2"
 val exposedVersion = "0.57.0"
 val logbackVersion = "1.5.15"
 
@@ -57,7 +57,7 @@ dependencies {
 
     // Testing
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.4.21")
 }
 
 ktor {

@@ -132,7 +132,7 @@ fun Route.authRoutes() {
                             else -> {}
                         }
                     } finally {
-                        part.dispose()
+                        part.release()
                     }
                 }
 

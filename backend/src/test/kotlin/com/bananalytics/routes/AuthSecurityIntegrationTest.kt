@@ -5,6 +5,7 @@ import com.bananalytics.support.TestDatabase
 import com.bananalytics.support.TestDatabase.app
 import com.bananalytics.support.api
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import org.junit.BeforeClass
@@ -58,6 +59,19 @@ class AuthSecurityIntegrationTest {
         assertNull(AppAccessRepository.getUserRole(TestDatabase.other, user))
         assertNull(InvitationRepository.findValidByToken(invitation.token))
         assertEquals(1L, TestDatabase.count("invitations"))
+    }
+
+    @Test fun `admin routes reject missing, malformed and expired sessions`() = testApplication {
+        api()
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/apps").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/apps") { cookie("session", "not-a-uuid") }.status)
+
+        val expired = TestDatabase.session("viewer")
+        SessionRepository.delete(expired)
+        val response = client.get("/api/v1/apps") { cookie("session", expired.toString()) }
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertTrue(response.headers.getAll(HttpHeaders.SetCookie).orEmpty().any { it.startsWith("session=;") })
+        assertTrue(response.bodyAsText().contains("Session expired"))
     }
 
     @Test fun `testers cannot access analytics drafts or team data even by direct URL`() = testApplication {

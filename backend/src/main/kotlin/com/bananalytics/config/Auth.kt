@@ -83,6 +83,23 @@ fun ApplicationCall.getUserOrNull(): UserResponse? {
     return attributes.getOrNull(UserKey)
 }
 
+/** Resolves the session cookie to a user before any handler below it runs. */
+private val SessionAuthentication = createRouteScopedPlugin("SessionAuthentication") {
+    onCall { call ->
+        val sessionId = call.getSessionId() ?: throw UnauthorizedException("Not authenticated")
+
+        val user = dbIO { AuthService.getUserBySession(sessionId) }
+        if (user == null) {
+            call.clearSessionCookie()
+            throw UnauthorizedException("Session expired")
+        }
+
+        call.setUser(user)
+        // Extend session on activity
+        dbIO { AuthService.extendSession(sessionId) }
+    }
+}
+
 fun Route.authenticated(build: Route.() -> Unit): Route {
     // Create a child route for authenticated endpoints
     val authenticatedRoute = createChild(object : RouteSelector() {
@@ -90,28 +107,8 @@ fun Route.authenticated(build: Route.() -> Unit): Route {
             return RouteSelectorEvaluation.Transparent
         }
     })
-    
-    authenticatedRoute.intercept(ApplicationCallPipeline.Call) {
-        val sessionId = call.getSessionId()
-        if (sessionId == null) {
-            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "unauthorized", "message" to "Not authenticated"))
-            finish()
-            return@intercept
-        }
 
-        val user = dbIO { AuthService.getUserBySession(sessionId) }
-        if (user == null) {
-            call.clearSessionCookie()
-            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "unauthorized", "message" to "Session expired"))
-            finish()
-            return@intercept
-        }
-
-        call.setUser(user)
-        // Extend session on activity
-        dbIO { AuthService.extendSession(sessionId) }
-    }
-    
+    authenticatedRoute.install(SessionAuthentication)
     authenticatedRoute.build()
     return authenticatedRoute
 }
