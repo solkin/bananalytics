@@ -317,9 +317,3 @@ fun Route.crashRoutes() {
         call.respond(result)
     }
 }
-
-private fun String.toUUIDOrNull(): UUID? = try {
-    UUID.fromString(this)
-} catch (e: IllegalArgumentException) {
-    null
-}

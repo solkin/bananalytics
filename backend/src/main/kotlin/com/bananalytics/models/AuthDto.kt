@@ -103,3 +103,32 @@ data class ChangePasswordRequest(
     @SerialName("current_password") val currentPassword: String,
     @SerialName("new_password") val newPassword: String
 )
+
+@Serializable
+data class AccessTokenResponse(
+    val id: String,
+    val name: String,
+    /** Space-separated: `mcp:read`, plus `mcp:write` when the token may change data. */
+    val scope: String,
+    @SerialName("token_prefix") val tokenPrefix: String,
+    @SerialName("expires_at") val expiresAt: String?,
+    @SerialName("last_used_at") val lastUsedAt: String?,
+    @SerialName("revoked_at") val revokedAt: String?,
+    @SerialName("created_at") val createdAt: String
+)
+
+/** Carries the one and only readable copy of a freshly created token. */
+@Serializable
+data class CreatedAccessTokenResponse(
+    val token: AccessTokenResponse,
+    @SerialName("access_token") val accessToken: String
+)
+
+@Serializable
+data class CreateAccessTokenRequest(
+    val name: String,
+    /** `read` or `write`. */
+    val access: String = "read",
+    /** Lifetime in days; null keeps the token until it is revoked. */
+    @SerialName("expires_in_days") val expiresInDays: Int? = 90
+)

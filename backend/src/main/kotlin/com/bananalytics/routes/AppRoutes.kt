@@ -1035,9 +1035,3 @@ fun Route.appRoutes() {
         }
     }
 }
-
-private fun String.toUUIDOrNull(): UUID? = try {
-    UUID.fromString(this)
-} catch (e: IllegalArgumentException) {
-    null
-}

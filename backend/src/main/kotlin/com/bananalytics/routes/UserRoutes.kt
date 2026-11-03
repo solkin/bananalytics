@@ -3,6 +3,7 @@ package com.bananalytics.routes
 import com.bananalytics.config.BadRequestException
 import com.bananalytics.config.NotFoundException
 import com.bananalytics.config.dbIO
+import com.bananalytics.config.toUUIDOrNull
 import com.bananalytics.repositories.UserRepository
 import io.ktor.http.*
 import io.ktor.server.response.*
@@ -33,10 +34,4 @@ fun Route.userRoutes() {
             call.respondBytes(avatar.bytes, ContentType.parse(avatar.contentType))
         }
     }
-}
-
-private fun String.toUUIDOrNull(): UUID? = try {
-    UUID.fromString(this)
-} catch (e: IllegalArgumentException) {
-    null
 }

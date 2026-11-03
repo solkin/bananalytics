@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
+import java.util.UUID
 
 /**
  * Run a blocking Exposed transaction off the request coroutine so slow
@@ -23,6 +24,12 @@ suspend fun <T> dbIO(block: () -> T): T = withContext(Dispatchers.IO) { block() 
 fun ApplicationCall.cacheStatsFor(seconds: Int = 60) {
     response.header(HttpHeaders.CacheControl, "private, max-age=$seconds")
     response.header(HttpHeaders.Vary, HttpHeaders.Cookie)
+}
+
+fun String.toUUIDOrNull(): UUID? = try {
+    UUID.fromString(this)
+} catch (e: IllegalArgumentException) {
+    null
 }
 
 fun String.toOffsetDateTimeOrNull(): OffsetDateTime? = try {
@@ -83,6 +90,7 @@ fun Application.configureRouting() {
             // Admin routes (authenticated by session)
             authenticated {
                 userRoutes()
+                tokenRoutes()
                 appRoutes()
                 crashRoutes()
                 eventRoutes()

@@ -4,19 +4,13 @@ import com.bananalytics.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Named API keys, many per app. Only the SHA-256 hash of a key is stored, so
- * the value is readable exactly once — in the response that created it.
- *
- * A plain digest (not bcrypt) is deliberate: keys are 192 bits of randomness,
- * so brute force is not the threat model, and the hash sits on the hot path of
- * every SDK submit.
+ * Named API keys, many per app. Only the SHA-256 hash of a key is stored (see
+ * [Secrets]), so the value is readable exactly once — in the response that
+ * created it.
  */
 object ApiKeyRepository {
 
@@ -29,12 +23,7 @@ object ApiKeyRepository {
     val SCOPES = listOf(SCOPE_SDK, SCOPE_UPLOAD)
 
     private const val PREFIX_LENGTH = 12
-    private val secureRandom = SecureRandom()
-
-    /** How stale `last_used_at` may get. Keeps ingestion from writing to the
-     *  keys table on every single request. */
-    private const val TOUCH_INTERVAL_MS = 5 * 60 * 1000L
-    private val touchedAt = ConcurrentHashMap<UUID, Long>()
+    private val usage = UsageThrottle()
 
     fun findByAppId(appId: UUID): List<ApiKeyResponse> = transaction {
         (ApiKeys leftJoin Users)
@@ -52,7 +41,7 @@ object ApiKeyRepository {
         createdBy: UUID?,
         scope: String = SCOPE_SDK
     ): CreatedApiKeyResponse = transaction {
-        val rawKey = generateKey()
+        val rawKey = Secrets.generate("bnn_")
         val now = OffsetDateTime.now()
         val creator = createdBy?.let { UserRepository.findById(it) }
 
@@ -60,7 +49,7 @@ object ApiKeyRepository {
             it[ApiKeys.appId] = appId
             it[ApiKeys.name] = name
             it[ApiKeys.scope] = scope
-            it[ApiKeys.keyHash] = sha256(rawKey)
+            it[ApiKeys.keyHash] = Secrets.sha256(rawKey)
             it[ApiKeys.keyPrefix] = rawKey.take(PREFIX_LENGTH)
             it[ApiKeys.createdBy] = createdBy
             it[ApiKeys.createdAt] = now
@@ -96,13 +85,13 @@ object ApiKeyRepository {
         }) {
             it[revokedAt] = OffsetDateTime.now()
         }
-        if (updated > 0) touchedAt.remove(keyId)
+        if (updated > 0) usage.forget(keyId)
         updated > 0
     }
 
     fun delete(appId: UUID, keyId: UUID): Boolean = transaction {
         val deleted = ApiKeys.deleteWhere { (ApiKeys.id eq keyId) and (ApiKeys.appId eq appId) } > 0
-        if (deleted) touchedAt.remove(keyId)
+        if (deleted) usage.forget(keyId)
         deleted
     }
 
@@ -112,7 +101,7 @@ object ApiKeyRepository {
         val row = (ApiKeys innerJoin Apps)
             .selectAll()
             .where {
-                (ApiKeys.keyHash eq sha256(rawKey)) and
+                (ApiKeys.keyHash eq Secrets.sha256(rawKey)) and
                     (ApiKeys.scope eq scope) and
                     ApiKeys.revokedAt.isNull()
             }
@@ -125,29 +114,11 @@ object ApiKeyRepository {
     }
 
     private fun touch(keyId: UUID) {
-        val now = System.currentTimeMillis()
-        val last = touchedAt[keyId]
-        if (last != null && now - last < TOUCH_INTERVAL_MS) return
-        touchedAt[keyId] = now
+        if (!usage.shouldTouch(keyId)) return
         ApiKeys.update({ ApiKeys.id eq keyId }) {
             it[lastUsedAt] = OffsetDateTime.now()
         }
     }
-
-    private fun generateKey(): String {
-        val bytes = ByteArray(24)
-        secureRandom.nextBytes(bytes)
-        val randomPart = Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(bytes)
-            .take(32)
-        return "bnn_$randomPart"
-    }
-
-    private fun sha256(value: String): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) }
 
     private fun ResultRow.toApiKeyResponse() = ApiKeyResponse(
         id = this[ApiKeys.id].value.toString(),

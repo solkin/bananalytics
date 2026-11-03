@@ -19,6 +19,18 @@ object Sessions : UUIDTable("sessions") {
     val createdAt = timestampWithTimeZone("created_at")
 }
 
+object AccessTokens : UUIDTable("access_tokens") {
+    val userId = reference("user_id", Users)
+    val name = varchar("name", 100)
+    val scope = varchar("scope", 100)
+    val tokenHash = varchar("token_hash", 64).uniqueIndex()
+    val tokenPrefix = varchar("token_prefix", 16)
+    val expiresAt = timestampWithTimeZone("expires_at").nullable()
+    val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
+    val revokedAt = timestampWithTimeZone("revoked_at").nullable()
+    val createdAt = timestampWithTimeZone("created_at")
+}
+
 object AppAccess : UUIDTable("app_access") {
     val appId = reference("app_id", Apps)
     val userId = reference("user_id", Users)

@@ -223,9 +223,3 @@ fun Route.eventRoutes() {
         call.respond(stats)
     }
 }
-
-private fun String.toUUIDOrNull(): UUID? = try {
-    UUID.fromString(this)
-} catch (e: IllegalArgumentException) {
-    null
-}
