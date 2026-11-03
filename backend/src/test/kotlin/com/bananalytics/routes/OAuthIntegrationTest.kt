@@ -266,6 +266,7 @@ class OAuthIntegrationTest {
             """{"redirect_uris":["https://example.com/cb#fragment"]}""",
             """{"redirect_uris":["$REDIRECT"],"token_endpoint_auth_method":"client_secret_basic"}""",
             """{"redirect_uris":["$REDIRECT"],"grant_types":["client_credentials"]}""",
+            """{not json""",
         )) {
             assertEquals(HttpStatusCode.BadRequest, register(body).status, body)
         }
@@ -328,6 +329,7 @@ class OAuthIntegrationTest {
         val unknown = token("grant_type" to "refresh_token", "refresh_token" to tokens.string("refresh_token"), "client_id" to "bnc_nobody")
         assertEquals(HttpStatusCode.Unauthorized, unknown.status)
         assertEquals("invalid_client", json(unknown.bodyAsText()).string("error"))
+        assertEquals(listOf("no-store"), unknown.headers.getAll(HttpHeaders.CacheControl))
         assertEquals("unsupported_grant_type", json(token("grant_type" to "password", "client_id" to clientId).bodyAsText()).string("error"))
         assertEquals("invalid_request", json(token("client_id" to clientId).bodyAsText()).string("error"))
         assertEquals("invalid_target", json(token("grant_type" to "refresh_token", "refresh_token" to tokens.string("refresh_token"),

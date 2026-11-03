@@ -21,6 +21,7 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **Multi-user Access** — Share apps with team members (admin/viewer/tester roles)
 - **Email Invitations** — Invite users by email, even if they're not registered yet
 - **Version Muting** — Disable crash/event collection for specific versions
+- **MCP Server for AI Agents** — Claude, Cursor, ChatGPT and other agents read crashes and analytics over MCP, signing in with OAuth or a personal access token
 - **Self-hosted** — Full control over your data
 
 ## Quick Start
@@ -92,6 +93,12 @@ reports from earlier SDK versions. Retries are deduplicated per app. Older SDKs
 remain accepted, but reports without an ID cannot be deduplicated reliably.
 Deploy the backend before distributing the updated SDK for retry protection.
 
+Migrations `018_access_tokens` and `019_oauth` add personal access tokens and
+the OAuth 2.1 server for MCP clients; they only create tables. The MCP endpoint
+(`/mcp`) and OAuth discovery (`/.well-known/oauth-*`) are served only when
+`BASE_URL` is an `https://` origin (or `http://localhost`): OAuth clients bind
+their tokens to that exact address.
+
 Frontend regressions run with `npm test` in `frontend` (Node.js 22.13+).
 
 ## Configuration
@@ -110,7 +117,7 @@ Frontend regressions run with `npm test` in `frontend` (Node.js 22.13+).
 | `SMTP_PASSWORD` | SMTP password | — |
 | `SMTP_FROM` | Sender email address | `noreply@bananalytics.local` |
 | `SMTP_FROM_NAME` | Sender display name | `Bananalytics` |
-| `BASE_URL` | Public URL for invitation links | `http://localhost:5173` |
+| `BASE_URL` | Public origin: invitation links, MCP and OAuth addresses | `http://localhost:5173` |
 
 **Note:** SMTP is optional. If not configured, invitations are created but no emails are sent — you'll need to share registration links manually.
 
@@ -193,6 +200,21 @@ curl -f -X POST https://your-server.com/api/v1/releases \
 
 Version code and name are read from the APK, and the response carries a download
 link for testers. Re-running the same build overwrites it instead of failing.
+
+## MCP for AI agents
+
+The server speaks the [Model Context Protocol](https://modelcontextprotocol.io) at
+`https://your-server.com/mcp` (stateless Streamable HTTP). Agents see exactly the
+apps their user sees, with that user's current role:
+
+```bash
+claude mcp add --transport http bananalytics https://your-server.com/mcp
+```
+
+Clients that support OAuth open a consent page and sign in; others send a
+personal access token from the Account page as `Authorization: Bearer bnp_…`.
+Tools are read-only unless the person allows changes, which then also need the
+admin role in the app. See **Docs, Connect an AI agent** in the web UI.
 
 ## Tech Stack
 

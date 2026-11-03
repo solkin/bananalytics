@@ -52,8 +52,11 @@ fun Application.configureStatusPages() {
         exception<ApiException> { call, cause ->
             call.respondError(cause.statusCode, ErrorResponse(cause.error, cause.message))
         }
+        // Ktor's own: a body that is not the JSON a route expects.
+        exception<io.ktor.server.plugins.BadRequestException> { call, _ ->
+            call.respondError(HttpStatusCode.BadRequest, ErrorResponse("bad_request", "Malformed request body"))
+        }
         exception<OAuthException> { call, cause ->
-            call.response.header(HttpHeaders.CacheControl, "no-store")
             call.respondText(
                 Json.encodeToString(OAuthErrorResponse(cause.error, cause.description)),
                 ContentType.Application.Json,

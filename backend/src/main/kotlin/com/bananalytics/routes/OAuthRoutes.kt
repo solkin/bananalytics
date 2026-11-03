@@ -2,6 +2,7 @@ package com.bananalytics.routes
 
 import com.bananalytics.config.BadRequestException
 import com.bananalytics.config.NotFoundException
+import com.bananalytics.config.OAuthException
 import com.bananalytics.config.dbIO
 import com.bananalytics.config.getUser
 import com.bananalytics.config.toUUIDOrNull
@@ -32,7 +33,12 @@ fun Route.oauthClientRoutes(oauth: OAuthService) {
     route("/oauth") {
         post("/register") {
             call.noStore()
-            call.respond(HttpStatusCode.Created, oauth.register(call.receive<ClientRegistrationRequest>()))
+            val request = try {
+                call.receive<ClientRegistrationRequest>()
+            } catch (e: io.ktor.server.plugins.BadRequestException) {
+                throw OAuthException("invalid_client_metadata", "The registration request is not valid JSON")
+            }
+            call.respond(HttpStatusCode.Created, oauth.register(request))
         }
         post("/token") {
             call.noStore()

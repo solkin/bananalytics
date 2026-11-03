@@ -69,6 +69,7 @@ class AccessTokenIntegrationTest {
             """{"name":"a","access":"admin"}""",
             """{"name":"a","expires_in_days":0}""",
             """{"name":"a","expires_in_days":366}""",
+            """{"name":""",
         )) {
             assertEquals(HttpStatusCode.BadRequest, createToken(session, body).status, body)
         }
