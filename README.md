@@ -79,9 +79,12 @@ TEST_DATABASE_PASSWORD=perf-local gradle -p backend test
 
 Migration `017_telemetry_consistency` adds stable crash report IDs and session
 metadata with daily device counters. Stop the backend during the migration and
-backfill, then start the new image. Historic session dimensions are `Unknown`:
-raw events do not retain their session ID, so assigning them would be guesswork.
-The legacy event-based device counters are retained for compatibility; the web
+backfill, then start the new image. The migration leaves historic session
+dimensions `Unknown`. To restore them, run
+`backend/scripts/backfill_session_device_info.sql` once with `psql` while the
+backend keeps running: raw events do not retain their session ID, so a session
+takes the first event of its device on the same UTC day, and sessions without
+one stay `Unknown`. The legacy event-based device counters are retained for compatibility; the web
 now uses session counts and exact inclusive timestamp filters.
 
 The updated Android SDK persists a `report_id` before delivery, including queued
