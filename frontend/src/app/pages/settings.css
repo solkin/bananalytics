@@ -36,6 +36,19 @@
 .set-panel {
   gap: var(--bnn-sp-7);
 }
+/* A link inside the muted text under a revealed secret: same look as the
+   links in Getting started. */
+.set-reveal a {
+  border-radius: var(--bnn-radius-xs);
+  color: var(--bnn-text);
+  font-weight: var(--bnn-weight-medium);
+}
+.set-reveal a:hover {
+  text-decoration: underline;
+}
+.set-reveal a:focus-visible {
+  outline-offset: 2px;
+}
 .set-two-lines {
   display: block;
   min-width: 0;

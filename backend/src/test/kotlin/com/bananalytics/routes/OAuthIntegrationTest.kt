@@ -304,9 +304,13 @@ class OAuthIntegrationTest {
         val (_, session) = person()
         val tokens = authorize(clientId, session = session)
 
+        // Activity between refreshes shows through the access tokens' own use.
+        TestDatabase.sql("UPDATE oauth_grants SET last_used_at = NOW() - INTERVAL '30 days'")
+        assertEquals(HttpStatusCode.OK, mcpStatus(tokens.string("access_token")))
         val grants = Json.parseToJsonElement(client.get("/api/v1/oauth/grants") { cookie("session", session.toString()) }.bodyAsText()).jsonArray
         val grant = grants.single().jsonObject
         assertEquals("Test Agent", grant.string("client_name"))
+        assertTrue(java.time.OffsetDateTime.parse(grant.string("last_used_at")).isAfter(java.time.OffsetDateTime.now().minusMinutes(1)))
 
         val (_, stranger) = person()
         assertEquals(HttpStatusCode.NotFound, client.delete("/api/v1/oauth/grants/${grant.string("id")}") { cookie("session", stranger.toString()) }.status)

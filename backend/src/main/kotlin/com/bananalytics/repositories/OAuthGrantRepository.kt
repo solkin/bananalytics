@@ -156,9 +156,12 @@ object OAuthGrantRepository {
     }
 
     fun findByUserId(userId: UUID): List<OAuthGrantResponse> = transaction {
-        (OAuthGrants innerJoin OAuthClients)
-            .selectAll()
+        // Access tokens are used between refreshes; the latest of either is when the client was last active.
+        val tokenUse = AccessTokens.lastUsedAt.max()
+        (OAuthGrants innerJoin OAuthClients leftJoin AccessTokens)
+            .select(OAuthGrants.columns + OAuthClients.columns + tokenUse)
             .where { OAuthGrants.userId eq userId }
+            .groupBy(OAuthGrants.id, OAuthClients.id)
             .orderBy(OAuthGrants.createdAt, SortOrder.DESC)
             .map {
                 OAuthGrantResponse(
@@ -167,7 +170,7 @@ object OAuthGrantRepository {
                     clientId = it[OAuthClients.clientId],
                     verified = it[OAuthClients.kind] == OAuthClientRepository.KIND_METADATA,
                     scope = it[OAuthGrants.scope],
-                    lastUsedAt = it[OAuthGrants.lastUsedAt]?.toString(),
+                    lastUsedAt = listOfNotNull(it[OAuthGrants.lastUsedAt], it[tokenUse]).maxOrNull()?.toString(),
                     createdAt = it[OAuthGrants.createdAt].toString()
                 )
             }

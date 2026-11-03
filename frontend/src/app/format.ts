@@ -9,6 +9,13 @@ export function shortDate(iso: string): string {
   return `${MON[d.getMonth()]} ${d.getDate()}`
 }
 
+/** A date that may be in another year: an expiry, say. */
+export function fullDate(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+}
+
 export function relTime(iso: string): string {
   const t = new Date(iso).getTime()
   if (isNaN(t)) return iso
@@ -117,4 +124,13 @@ export function androidVersion(sdk: number | string | null | undefined): string 
   if (!Number.isInteger(api)) return String(sdk)
   const release = ANDROID_RELEASES[api]
   return release ? `Android ${release} (API ${api})` : `API ${api}`
+}
+
+/** The host part of a URL, or the text itself when it is not one. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }

@@ -9,6 +9,7 @@ import {
   type AuthorizationRequest,
 } from '@/api/oauth'
 import { errorText } from '../async'
+import { hostOf } from '../format'
 import { BRAND_NAME } from '../layout/Brand'
 import { AuthFrame } from './AuthFrame'
 
@@ -146,12 +147,4 @@ export default function OAuthAuthorizePage() {
       </div>
     </AuthFrame>
   )
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
 }

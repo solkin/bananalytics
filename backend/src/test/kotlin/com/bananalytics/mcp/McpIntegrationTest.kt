@@ -199,4 +199,35 @@ class McpIntegrationTest {
         assertFalse(call(viewer, "list_crash_groups", args("app_id" to app, "page" to "2")).second)
         assertTrue(call(viewer, "no_such_tool").second)
     }
+
+    @Test fun `write tools exist only for write tokens and still need the admin role`() = testApplication {
+        api()
+        val (group, crash) = seedCrash()
+        TestDatabase.sql("INSERT INTO app_versions (app_id, version_code) VALUES ('$app', 7)")
+        val reader = token("admin")
+        val viewer = token("viewer", write = true)
+        val admin = token("admin", write = true)
+
+        fun names(result: JsonObject) = result["tools"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content }
+        assertFalse("update_crash_group_status" in names(result(reader, "tools/list")))
+        assertTrue(names(result(admin, "tools/list")).containsAll(listOf("update_crash_group_status", "retrace_crash", "mute_version")))
+        assertTrue(call(reader, "update_crash_group_status", args("group_id" to group, "status" to "resolved")).second)
+
+        assertEquals("Admin access required" to true, call(viewer, "update_crash_group_status", args("group_id" to group, "status" to "resolved")))
+        val (updated, error) = call(admin, "update_crash_group_status", args("group_id" to group, "status" to "resolved"))
+        assertFalse(error)
+        assertEquals("resolved", Json.parseToJsonElement(updated).jsonObject["status"]!!.jsonPrimitive.content)
+        assertEquals("resolved", TestDatabase.string("SELECT status FROM crash_groups WHERE id = '$group'"))
+
+        val mute = buildJsonObject {
+            put("app_id", app.toString()); put("version_code", 7); put("mute_crashes", true)
+        }
+        assertEquals("""{"version_code":7,"mute_crashes":true,"mute_events":false}""" to false, call(admin, "mute_version", mute))
+        assertEquals("Set mute_crashes, mute_events or both" to true, call(admin, "mute_version", args("app_id" to app, "version_code" to 7)))
+        assertEquals("Version 8 not found" to true, call(admin, "mute_version", buildJsonObject {
+            put("app_id", app.toString()); put("version_code", 8); put("mute_events", true)
+        }))
+        assertEquals("mute_crashes must be true or false" to true, call(admin, "mute_version", args("app_id" to app, "version_code" to 7, "mute_crashes" to "yes")))
+        assertEquals("No mapping found for version 7" to true, call(admin, "retrace_crash", args("crash_id" to crash)))
+    }
 }

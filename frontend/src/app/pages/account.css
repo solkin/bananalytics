@@ -15,3 +15,9 @@
 .acct-error {
   color: var(--bnn-danger);
 }
+.acct-token__name {
+  display: flex;
+  align-items: center;
+  gap: var(--bnn-sp-4);
+  min-width: 0;
+}

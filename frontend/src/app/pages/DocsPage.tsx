@@ -14,6 +14,7 @@ const SECTIONS: [string, string][] = [
   ['how', 'How it works'],
   ['deobfuscation', 'Deobfuscate crashes'],
   ['publish', 'Publish from CI'],
+  ['agents', 'Connect an AI agent'],
   ['key', 'Get your app key'],
 ]
 
@@ -99,6 +100,20 @@ curl --fail-with-body -X POST https://bnn.appteka.store/api/v1/releases \\
   -F mapping=@mapping.txt.gz \\
   -F release_notes="$(git log -1 --pretty=%s)" \\
   -F notify=true`
+
+/** Agents reach this very server, whatever address it is deployed at. */
+const MCP_URL = `${window.location.origin}/mcp`
+
+const CLAUDE_CODE = `claude mcp add --transport http bananalytics ${MCP_URL}`
+
+const MCP_JSON = `{
+  "mcpServers": {
+    "bananalytics": {
+      "url": "${MCP_URL}",
+      "headers": { "Authorization": "Bearer bnp_xxxxx" }
+    }
+  }
+}`
 
 export default function DocsPage() {
   const [activeId, setActiveId] = useState(() => {
@@ -233,6 +248,35 @@ export default function DocsPage() {
             </p>
             <p>
               Re-running the same build overwrites that version instead of failing, so a retried pipeline is safe. Use an <strong>upload</strong> key here. The SDK key is rejected, because it ships inside your app.
+            </p>
+          </section>
+
+          <section id="agents">
+            <h2>Connect an AI agent</h2>
+            <p>
+              Bananalytics is an MCP server, so agents such as Claude, Cursor or ChatGPT can read your crashes and analytics: rank the
+              issues of a release, fetch a deobfuscated stack trace with its breadcrumbs, and fix the code right in your repository.
+              The server address is <code>{MCP_URL}</code>.
+            </p>
+            <p>
+              <strong>Sign in through the browser.</strong> Clients that support OAuth open a page here where you approve the
+              connection. Claude Code, for example:
+            </p>
+            <CodeBlock label="Claude Code" code={CLAUDE_CODE} />
+            <p>
+              In Claude or ChatGPT on the web, add a custom connector with the same address. Connected agents are listed on
+              your <strong>Account</strong> page, where you can disconnect them.
+            </p>
+            <p>
+              <strong>Or use an access token.</strong> For clients that take a header instead, create a token on your
+              Account page and put it into the client's MCP configuration:
+            </p>
+            <CodeBlock label="MCP client configuration" code={MCP_JSON} />
+            <p>
+              An agent sees exactly the apps you see, with your current role in each. Access is read-only unless you allow
+              changes: then it can also resolve or ignore issues and mute versions, in apps where you are an admin.
+              Exception messages, breadcrumbs and event tags come from your users' devices, so the server tells agents to
+              treat them as data, never as instructions.
             </p>
           </section>
 

@@ -70,6 +70,12 @@ internal class SchemaBuilder {
             enum?.let { values -> putJsonArray("enum") { values.forEach { add(it) } } }
         })
 
+    fun boolean(name: String, description: String, required: Boolean = false) =
+        add(name, required, buildJsonObject {
+            put("type", "boolean")
+            put("description", description)
+        })
+
     fun integer(name: String, description: String, required: Boolean = false, minimum: Long? = null, maximum: Long? = null) =
         add(name, required, buildJsonObject {
             put("type", "integer")
@@ -133,6 +139,13 @@ internal class ToolArguments(private val json: JsonObject) {
             throw BadRequestException("$name must be between ${range.first} and ${range.last}")
         }
         return value
+    }
+
+    fun boolean(name: String): Boolean? {
+        val element = json[name] ?: return null
+        if (element is JsonNull) return null
+        return (element as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
+            ?: throw BadRequestException("$name must be true or false")
     }
 
     fun int(name: String, default: Int, range: IntRange): Int =

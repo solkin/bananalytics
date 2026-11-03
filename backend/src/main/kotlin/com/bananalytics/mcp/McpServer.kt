@@ -28,5 +28,7 @@ fun bananalyticsMcpServer(principal: TokenPrincipal): Server {
     server.appTools(userId)
     server.crashTools(userId)
     server.analyticsTools(userId)
+    // A read-only token never sees what it could not run.
+    if (principal.canWrite) server.writeTools(userId)
     return server
 }

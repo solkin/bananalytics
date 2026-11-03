@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 import { errorText } from '../async'
 import { IMAGE_ACCEPT, squarePng } from '../image'
 import { TopHeader } from '../layout/TopHeader'
+import { AccessTokensSection, ConnectedAppsSection } from './AgentAccess'
 import './account.css'
 import './settings.css'
 
@@ -166,6 +167,8 @@ export default function AccountPage() {
         <div className="set-page__groups">
           <Profile />
           <PasswordSection />
+          <ConnectedAppsSection />
+          <AccessTokensSection />
           <SettingsGroup title="Session">
             <SettingsRow label="Sign out" hint={`Signed in as ${user?.email ?? ''}`}>
               <Button variant="danger" onClick={() => void logout().then(() => navigate('/login'))}>Sign out</Button>
