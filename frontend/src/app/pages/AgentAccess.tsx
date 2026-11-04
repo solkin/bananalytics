@@ -26,6 +26,7 @@ import { deleteOAuthGrant, getOAuthGrants, type OAuthGrant } from '@/api/oauth'
 import { Loaded, errorText, useAsync } from '../async'
 import { fullDate, hostOf, relTime } from '../format'
 import { KeyReveal } from '../KeyReveal'
+import { SERVER_URL } from '../server'
 
 const NAME_LIMIT = 100
 const CREATE_FORM = 'create-token'
@@ -82,7 +83,7 @@ function CreateTokenDialog({ onClose, onCreated }: { onClose: () => void; onCrea
           <p className="set-muted">It is stored hashed and will never be shown again. If you lose it, create a new token.</p>
           <KeyReveal value={created} />
           <p className="set-muted set-caption">
-            Send it as <code className="bnn-mono">Authorization: Bearer …</code> to <code className="bnn-mono">{window.location.origin}/mcp</code>.{' '}
+            Send it as <code className="bnn-mono">Authorization: Bearer …</code> to <code className="bnn-mono">{SERVER_URL}/mcp</code>.{' '}
             <Link to="/docs#agents">How to connect an agent</Link>
           </p>
         </div>

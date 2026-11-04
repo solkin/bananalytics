@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/ui'
 import { CodeBlock } from '../CodeBlock'
 import { TopHeader } from '../layout/TopHeader'
+import { SERVER_URL } from '../server'
 import './docs.css'
 
 const SECTIONS: [string, string][] = [
@@ -39,7 +40,7 @@ const INIT = `import com.tomclaw.bananalytics.*
 import com.tomclaw.bananalytics.api.Environment
 
 val config = BananalyticsConfig(
-    baseUrl = "https://bnn.appteka.store",
+    baseUrl = "${SERVER_URL}",
     apiKey = "bnn_xxxxx",
 )
 
@@ -94,15 +95,14 @@ bananalytics.leaveBreadcrumb("Tapped Buy", BreadcrumbCategory.USER_ACTION)
 const PUBLISH = `# one step after the build, with an upload-scoped key in CI secrets
 gzip -9 -c app/build/outputs/mapping/release/mapping.txt > mapping.txt.gz
 
-curl --fail-with-body -X POST https://bnn.appteka.store/api/v1/releases \\
+curl --fail-with-body -X POST ${SERVER_URL}/api/v1/releases \\
   -H "X-API-Key: $BANANALYTICS_KEY" \\
   -F apk=@app/build/outputs/apk/release/app-release.apk \\
   -F mapping=@mapping.txt.gz \\
   -F release_notes="$(git log -1 --pretty=%s)" \\
   -F notify=true`
 
-/** Agents reach this very server, whatever address it is deployed at. */
-const MCP_URL = `${window.location.origin}/mcp`
+const MCP_URL = `${SERVER_URL}/mcp`
 
 const CLAUDE_CODE = `claude mcp add --transport http bananalytics ${MCP_URL}`
 
