@@ -77,4 +77,6 @@ tasks.test {
     environment("REGISTRATION_ENABLED", "false")
     environment("MAX_APK_SIZE_MB", "52")
     maxHeapSize = "1g"
+    // Same as main(): lets tests authenticate to an outbound proxy with Basic credentials.
+    systemProperty("jdk.http.auth.tunneling.disabledSchemes", "")
 }

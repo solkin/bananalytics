@@ -7,7 +7,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.IOException
+import java.net.Authenticator
 import java.net.Inet6Address
+import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
+import java.net.ProxySelector
 import java.net.InetAddress
 import java.net.URI
 import java.net.UnknownHostException
@@ -26,12 +30,14 @@ fun interface ClientMetadataSource {
 /**
  * Fetches OAuth Client ID Metadata Documents. The URL comes from an anonymous
  * request, so the fetch must not become a way into our own network: public
- * HTTPS only, no redirects, a short timeout and a small body.
+ * HTTPS only, no redirects, a short timeout and a small body. With a [proxy]
+ * the request leaves through it; the target is still checked here first.
  */
-class HttpClientMetadataSource : ClientMetadataSource {
+class HttpClientMetadataSource(proxy: OutboundProxy? = null) : ClientMetadataSource {
     private val client = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NEVER)
         .connectTimeout(TIMEOUT)
+        .apply { if (proxy != null) useProxy(proxy) }
         .build()
     private val json = Json { ignoreUnknownKeys = true }
     private val cache = ConcurrentHashMap<URI, Pair<Long, ClientMetadataDocument>>()
@@ -78,6 +84,17 @@ class HttpClientMetadataSource : ClientMetadataSource {
         } catch (e: IllegalArgumentException) {
             throw invalid("client metadata is not a valid document")
         }
+    }
+
+    private fun HttpClient.Builder.useProxy(proxy: OutboundProxy) {
+        proxy(ProxySelector.of(InetSocketAddress.createUnresolved(proxy.host, proxy.port)))
+        if (proxy.username == null) return
+        // Basic credentials for an HTTPS tunnel also need ALLOW_PROXY_TUNNEL_BASIC_AUTH (Application.kt).
+        val credentials = PasswordAuthentication(proxy.username, proxy.password.orEmpty().toCharArray())
+        authenticator(object : Authenticator() {
+            override fun getPasswordAuthentication(): PasswordAuthentication? =
+                credentials.takeIf { requestorType == RequestorType.PROXY }
+        })
     }
 
     private fun invalid(description: String) = OAuthException("invalid_client", description)

@@ -2,6 +2,7 @@ package com.bananalytics.config
 
 import com.bananalytics.models.UserResponse
 import com.bananalytics.services.AuthService
+import com.bananalytics.services.OutboundProxy
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -42,6 +43,11 @@ object AppConfig {
     }
 
     private val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1", "[::1]")
+
+    /** Where outgoing requests leave through, when the host cannot reach everything itself. */
+    val outboundProxy: OutboundProxy? by lazy {
+        System.getenv("OUTBOUND_PROXY_URL")?.takeIf { it.isNotBlank() }?.let(OutboundProxy::parse)
+    }
 
     /** Ceiling for a single uploaded APK. */
     val maxApkBytes: Long by lazy {

@@ -75,6 +75,9 @@ services:
       SMTP_FROM: ${SMTP_FROM:-noreply@bananalytics.local}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Bananalytics}
       BASE_URL: ${BASE_URL:-}
+      # HTTP CONNECT proxy for outgoing requests (OAuth client metadata), e.g.
+      # http://user:password@host:port, when this host cannot reach every client
+      OUTBOUND_PROXY_URL: ${OUTBOUND_PROXY_URL:-}
     depends_on:
       postgres:
         condition: service_healthy

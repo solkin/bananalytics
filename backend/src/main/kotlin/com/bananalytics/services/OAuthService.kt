@@ -247,7 +247,7 @@ class OAuthService(
         /** Built from BASE_URL, or null when the MCP endpoint is disabled. */
         fun fromConfig(): OAuthService? {
             val resource = AppConfig.mcpResourceUrl ?: return null
-            return OAuthService(AppConfig.baseUrl, resource, HttpClientMetadataSource())
+            return OAuthService(AppConfig.baseUrl, resource, HttpClientMetadataSource(AppConfig.outboundProxy))
         }
     }
 }

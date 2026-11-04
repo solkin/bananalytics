@@ -118,6 +118,7 @@ Frontend regressions run with `npm test` in `frontend` (Node.js 22.13+).
 | `SMTP_FROM` | Sender email address | `noreply@bananalytics.local` |
 | `SMTP_FROM_NAME` | Sender display name | `Bananalytics` |
 | `BASE_URL` | Public origin: invitation links, MCP and OAuth addresses | `http://localhost:5173` |
+| `OUTBOUND_PROXY_URL` | HTTP CONNECT proxy for fetching OAuth client metadata (`http://user:password@host:port`), if the host cannot reach e.g. claude.ai | — |
 
 **Note:** SMTP is optional. If not configured, invitations are created but no emails are sent — you'll need to share registration links manually.
 
