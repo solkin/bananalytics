@@ -40,7 +40,8 @@ object InvitationRepository {
             appId = appId,
             role = role,
             token = token,
-            expiresAt = expiresAt
+            expiresAt = expiresAt,
+            createdAt = now
         )
     }
 
@@ -141,7 +142,8 @@ object InvitationRepository {
         appId = this[Invitations.appId].value,
         role = this[Invitations.role],
         token = this[Invitations.token],
-        expiresAt = this[Invitations.expiresAt]
+        expiresAt = this[Invitations.expiresAt],
+        createdAt = this[Invitations.createdAt]
     )
 
     private fun ResultRow.toInvitationResponse() = InvitationResponse(
@@ -159,5 +161,6 @@ data class InvitationInfo(
     val appId: UUID,
     val role: String,
     val token: String,
-    val expiresAt: OffsetDateTime
+    val expiresAt: OffsetDateTime,
+    val createdAt: OffsetDateTime
 )

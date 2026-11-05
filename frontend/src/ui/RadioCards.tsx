@@ -10,22 +10,27 @@ export interface RadioOption {
   disabled?: boolean
 }
 
-/** Options as side-by-side cards, so each can explain what choosing it means. */
+/**
+ * Options as side-by-side cards, so each can explain what choosing it means.
+ * `stacked` puts them one under another, for ordered levels or longer hints.
+ */
 export function RadioCards({
   options,
   value,
   onChange,
+  stacked,
   className,
 }: {
   options: RadioOption[]
   value?: string | number
   onChange?: (value: string | number) => void
+  stacked?: boolean
   className?: string
 }) {
   const field = useField()
   const name = useId()
   return (
-    <div {...field} className={cn('bnn-radiocards', className)} role="radiogroup">
+    <div {...field} className={cn('bnn-radiocards', stacked && 'bnn-radiocards--stacked', className)} role="radiogroup">
       {options.map((o) => (
         <label
           key={String(o.value)}

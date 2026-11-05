@@ -108,7 +108,7 @@ data class ChangePasswordRequest(
 data class AccessTokenResponse(
     val id: String,
     val name: String,
-    /** Space-separated: `mcp:read`, plus `mcp:write` when the token may change data. */
+    /** Space-separated: `mcp:read`, plus `mcp:write` when the token may change data, plus `mcp:manage` for full access. */
     val scope: String,
     @SerialName("token_prefix") val tokenPrefix: String,
     @SerialName("expires_at") val expiresAt: String?,
@@ -127,7 +127,7 @@ data class CreatedAccessTokenResponse(
 @Serializable
 data class CreateAccessTokenRequest(
     val name: String,
-    /** `read` or `write`. */
+    /** `read`, `write` or `manage`; each includes the ones before it. */
     val access: String = "read",
     /** Lifetime in days; null keeps the token until it is revoked. */
     @SerialName("expires_in_days") val expiresInDays: Int? = 90

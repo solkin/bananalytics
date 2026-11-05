@@ -119,3 +119,14 @@ object DownloadTokens : UUIDTable("download_tokens") {
     val expiresAt = timestampWithTimeZone("expires_at")
     val createdAt = timestampWithTimeZone("created_at")
 }
+
+object UploadTokens : UUIDTable("upload_tokens") {
+    val tokenHash = varchar("token_hash", 64).uniqueIndex()
+    val appId = reference("app_id", Apps)
+    val versionId = reference("version_id", AppVersions)
+    val kind = varchar("kind", 16)
+    val createdBy = reference("created_by", Users)
+    val expiresAt = timestampWithTimeZone("expires_at")
+    val usedAt = timestampWithTimeZone("used_at").nullable()
+    val createdAt = timestampWithTimeZone("created_at")
+}

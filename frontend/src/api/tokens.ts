@@ -1,11 +1,12 @@
 import api from './client'
 
-export type TokenAccess = 'read' | 'write'
+/** Each level includes the ones before it. */
+export type TokenAccess = 'read' | 'write' | 'manage'
 
 export interface AccessToken {
   id: string
   name: string
-  /** Space-separated: `mcp:read`, plus `mcp:write` when changes are allowed. */
+  /** Space-separated: `mcp:read`, plus `mcp:write` when changes are allowed, plus `mcp:manage` for full access. */
   scope: string
   token_prefix: string
   expires_at: string | null

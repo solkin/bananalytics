@@ -97,8 +97,8 @@ data class AuthorizationPrompt(
     /** True when the client proved who it is by serving its metadata from its own domain. */
     val verified: Boolean,
     @SerialName("redirect_host") val redirectHost: String,
-    /** The client asked to change data too; the person decides whether it may. */
-    @SerialName("requests_write") val requestsWrite: Boolean
+    /** The most the client asked for (`read`, `write` or `manage`); the person may allow less. */
+    @SerialName("requested_access") val requestedAccess: String
 )
 
 /**
@@ -122,8 +122,8 @@ data class AuthorizationRedirect(
 data class AuthorizationDecision(
     val request: AuthorizationRequest,
     val approve: Boolean,
-    /** Off unless the person ticks it, even when the client asked for write access. */
-    @SerialName("allow_write") val allowWrite: Boolean = false
+    /** What the person allowed: `read` unless they chose more, and never more than was requested. */
+    val access: String = "read"
 )
 
 /** An agent the person connected through OAuth. */

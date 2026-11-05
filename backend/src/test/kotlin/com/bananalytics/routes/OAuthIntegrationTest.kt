@@ -76,14 +76,14 @@ class OAuthIntegrationTest {
             setBody(request.toString())
         }
 
-    private suspend fun ApplicationTestBuilder.decide(session: UUID, request: JsonObject, approve: Boolean = true, allowWrite: Boolean = false): String {
+    private suspend fun ApplicationTestBuilder.decide(session: UUID, request: JsonObject, approve: Boolean = true, access: String = "read"): String {
         val response = client.post("/api/v1/oauth/authorize") {
             cookie("session", session.toString())
             contentType(ContentType.Application.Json)
             setBody(buildJsonObject {
                 put("request", request)
                 put("approve", approve)
-                put("allow_write", allowWrite)
+                put("access", access)
             }.toString())
         }
         assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
@@ -115,8 +115,8 @@ class OAuthIntegrationTest {
     }
 
     /** Authorizes [clientId] for [session] and returns the token response. */
-    private suspend fun ApplicationTestBuilder.authorize(clientId: String, allowWrite: Boolean = false, session: UUID = person().second): JsonObject {
-        val code = query(decide(session, request(clientId), allowWrite = allowWrite))["code"]!!
+    private suspend fun ApplicationTestBuilder.authorize(clientId: String, access: String = "read", session: UUID = person().second): JsonObject {
+        val code = query(decide(session, request(clientId), access = access))["code"]!!
         val response = exchange(clientId, code)
         assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
         return json(response.bodyAsText())
@@ -137,7 +137,7 @@ class OAuthIntegrationTest {
         assertTrue(server["client_id_metadata_document_supported"]!!.jsonPrimitive.boolean)
 
         val challenge = client.post("/mcp") { header(HttpHeaders.Host, "localhost") }.headers[HttpHeaders.WWWAuthenticate]
-        assertEquals("Bearer resource_metadata=\"$ISSUER/.well-known/oauth-protected-resource/mcp\", scope=\"mcp:read mcp:write\"", challenge)
+        assertEquals("Bearer resource_metadata=\"$ISSUER/.well-known/oauth-protected-resource/mcp\", scope=\"mcp:read mcp:write mcp:manage\"", challenge)
     }
 
     @Test fun `a registered client completes the code flow and rotates its refresh token`() = testApplication {
@@ -150,7 +150,7 @@ class OAuthIntegrationTest {
         val prompt = json(check(session, onAnotherPort).bodyAsText())["prompt"]!!.jsonObject
         assertEquals("Test Agent", prompt.string("client_name"))
         assertFalse(prompt["verified"]!!.jsonPrimitive.boolean)
-        assertTrue(prompt["requests_write"]!!.jsonPrimitive.boolean)
+        assertEquals("write", prompt.string("requested_access"))
         assertEquals("127.0.0.1", prompt.string("redirect_host"))
 
         val redirect = decide(session, request(clientId))
@@ -186,16 +186,40 @@ class OAuthIntegrationTest {
         assertEquals(0L, TestDatabase.count("oauth_grants"))
     }
 
-    @Test fun `write access is granted only when the person allows it`() = testApplication {
+    @Test fun `access is granted only as far as both the person and the client go`() = testApplication {
         server()
         val clientId = registeredClient()
-        assertEquals("mcp:read mcp:write", authorize(clientId, allowWrite = true).string("scope"))
+        assertEquals("mcp:read mcp:write", authorize(clientId, access = "write").string("scope"))
 
         val (_, session) = person()
-        val readOnly = request(clientId, "scope" to "mcp:read")
-        assertFalse(json(check(session, readOnly).bodyAsText())["prompt"]!!.jsonObject["requests_write"]!!.jsonPrimitive.boolean)
-        val code = query(decide(session, readOnly, allowWrite = true))["code"]!!
-        assertEquals("mcp:read", json(exchange(clientId, code).bodyAsText()).string("scope"))
+        suspend fun granted(scope: String, access: String): String {
+            val request = request(clientId, "scope" to scope)
+            return json(exchange(clientId, query(decide(session, request, access = access))["code"]!!).bodyAsText()).string("scope")
+        }
+        suspend fun requested(scope: String): String =
+            json(check(session, request(clientId, "scope" to scope)).bodyAsText())["prompt"]!!.jsonObject.string("requested_access")
+
+        assertEquals("read", requested("mcp:read"))
+        assertEquals("mcp:read", granted("mcp:read", access = "manage"))
+        // Each level implies those below it, so asking for manage alone is asking for everything.
+        assertEquals("manage", requested("mcp:manage"))
+        assertEquals("mcp:manage mcp:read mcp:write", granted("mcp:manage", access = "manage"))
+        assertEquals("mcp:read mcp:write", granted("mcp:read mcp:write mcp:manage", access = "write"))
+        assertEquals("mcp:read", granted("mcp:manage", access = "read"))
+
+        // An unknown level is refused rather than read as some default.
+        val codes = TestDatabase.count("oauth_codes")
+        val refused = client.post("/api/v1/oauth/authorize") {
+            cookie("session", session.toString())
+            contentType(ContentType.Application.Json)
+            setBody(buildJsonObject {
+                put("request", request(clientId, "scope" to "mcp:manage"))
+                put("approve", true)
+                put("access", "admin")
+            }.toString())
+        }
+        assertEquals(HttpStatusCode.BadRequest, refused.status)
+        assertEquals(codes, TestDatabase.count("oauth_codes"))
     }
 
     @Test fun `codes are single use and bound to their verifier, client and redirect`() = testApplication {

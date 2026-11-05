@@ -58,6 +58,9 @@ class AccessTokenIntegrationTest {
         val listed = client.get("/api/v1/tokens") { cookie("session", session.toString()) }.bodyAsText()
         assertFalse(listed.contains(raw))
         assertTrue(listed.contains(raw.take(12)))
+
+        val manage = createToken(session, """{"name":"Claude","access":"manage"}""").bodyAsText()
+        assertEquals("mcp:manage mcp:read mcp:write", Json.parseToJsonElement(manage).jsonObject["token"]!!.jsonObject["scope"]!!.jsonPrimitive.content)
     }
 
     @Test fun `token creation validates its input`() = testApplication {
@@ -80,7 +83,7 @@ class AccessTokenIntegrationTest {
     @Test fun `people cannot see or touch each other's tokens`() = testApplication {
         api()
         val owner = user("owner@example.test")
-        val token = AccessTokenRepository.create(owner, "mine", AccessTokenRepository.scopesFor(false), null).token
+        val token = AccessTokenRepository.create(owner, "mine", TokenAccess.READ.scopes, null).token
         val stranger = TestDatabase.session("viewer")
         val listed = client.get("/api/v1/tokens") { cookie("session", stranger.toString()) }.bodyAsText()
         assertEquals("[]", listed)
@@ -91,7 +94,7 @@ class AccessTokenIntegrationTest {
 
     @Test fun `only live tokens authenticate`() {
         val owner = user("owner@example.test")
-        val read = AccessTokenRepository.scopesFor(false)
+        val read = TokenAccess.READ.scopes
         val live = AccessTokenRepository.create(owner, "live", read, OffsetDateTime.now().plusDays(1))
         val expired = AccessTokenRepository.create(owner, "expired", read, OffsetDateTime.now().minusSeconds(1))
         val revoked = AccessTokenRepository.create(owner, "revoked", read, null)
@@ -101,6 +104,7 @@ class AccessTokenIntegrationTest {
         val principal = AccessTokenRepository.authenticate(live.accessToken)
         assertEquals("owner@example.test", principal?.user?.email)
         assertEquals(false, principal?.canWrite)
+        assertEquals(false, principal?.canManage)
         assertNotNull(AccessTokenRepository.findByUserId(owner).single { it.name == "live" }.lastUsedAt)
         assertNull(AccessTokenRepository.authenticate(expired.accessToken))
         assertNull(AccessTokenRepository.authenticate(revoked.accessToken))
@@ -114,7 +118,7 @@ class AccessTokenIntegrationTest {
     @Test fun `bearer authentication challenges every request without a live token`() = testApplication {
         probe()
         val owner = user("owner@example.test")
-        val raw = AccessTokenRepository.create(owner, "t", AccessTokenRepository.scopesFor(false), null).accessToken
+        val raw = AccessTokenRepository.create(owner, "t", TokenAccess.READ.scopes, null).accessToken
 
         val missing = client.get("/probe")
         assertEquals(HttpStatusCode.Unauthorized, missing.status)

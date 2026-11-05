@@ -273,10 +273,27 @@ export default function DocsPage() {
             </p>
             <CodeBlock label="MCP client configuration" code={MCP_JSON} />
             <p>
-              An agent sees exactly the apps you see, with your current role in each. Access is read-only unless you allow
-              changes: then it can also resolve or ignore issues and mute versions, in apps where you are an admin.
-              Exception messages, breadcrumbs and event tags come from your users' devices, so the server tells agents to
-              treat them as data, never as instructions.
+              An agent sees exactly the apps you see, with your current role in each. You choose how far it may go, both
+              for a token and when approving a sign-in:
+            </p>
+            <ul>
+              <li>
+                <strong>Read only</strong>: crashes, analytics, releases, members and key names.
+              </li>
+              <li>
+                <strong>Read and write</strong>: also add apps, versions and SDK keys, set release notes and publish builds
+                to testers, resolve issues, mute versions, and upload mappings and APKs. A file never passes through the
+                agent's context: it asks for a one-time upload token that works for an hour and sends the file itself.
+              </li>
+              <li>
+                <strong>Full access</strong>: also invite people and change their roles, email testers about a build,
+                create CI upload keys, revoke keys, and delete versions or issues.
+              </li>
+            </ul>
+            <p>
+              Changes need the admin role in the app. Deleting an app and trimming old data stay in the web UI. Exception
+              messages, breadcrumbs and event tags come from your users' devices, so the server tells agents to treat them
+              as data, never as instructions; give full access only to an agent you watch.
             </p>
           </section>
 

@@ -29,11 +29,7 @@ class BearerAuthenticationConfig {
 val BearerAuthentication = createRouteScopedPlugin("BearerAuthentication", ::BearerAuthenticationConfig) {
     val challenge = pluginConfig.challenge
     onCall { call ->
-        val token = call.request.header(HttpHeaders.Authorization)
-            ?.takeIf { it.startsWith(BEARER_PREFIX, ignoreCase = true) }
-            ?.substring(BEARER_PREFIX.length)
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
+        val token = call.request.bearerToken()
 
         val principal = token?.let { dbIO { AccessTokenRepository.authenticate(it) } }
         if (principal == null) {
@@ -44,6 +40,14 @@ val BearerAuthentication = createRouteScopedPlugin("BearerAuthentication", ::Bea
         call.attributes.put(TokenPrincipalKey, principal)
     }
 }
+
+/** The value of `Authorization: Bearer <value>`, or null when there is none. */
+internal fun ApplicationRequest.bearerToken(): String? =
+    header(HttpHeaders.Authorization)
+        ?.takeIf { it.startsWith(BEARER_PREFIX, ignoreCase = true) }
+        ?.substring(BEARER_PREFIX.length)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
 
 internal fun bearerChallenge(parameters: Map<String, String>): String =
     if (parameters.isEmpty()) "Bearer"

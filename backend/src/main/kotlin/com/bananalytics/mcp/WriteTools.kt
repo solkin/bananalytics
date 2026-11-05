@@ -8,13 +8,9 @@ import com.bananalytics.repositories.CrashRepository
 import com.bananalytics.repositories.VersionRepository
 import com.bananalytics.services.CrashService
 import io.modelcontextprotocol.kotlin.sdk.server.Server
-import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
-
-/** Changes state that can be set back: nothing here deletes or notifies anyone. */
-private val REVERSIBLE_WRITE = ToolAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = true, openWorldHint = false)
 
 private val TRIAGE_STATUSES = listOf("open", "resolved", "ignored")
 
@@ -32,8 +28,8 @@ private data class McpVersionMute(
 )
 
 /**
- * Tools that change data. Offered only to tokens the person allowed to write,
- * and each one still requires the admin role in the app it touches.
+ * Triage. Like every tool that changes data, offered only to tokens the person
+ * allowed to write, and each one still requires the admin role in the app.
  */
 internal fun Server.writeTools(userId: UUID) {
     tool(
@@ -47,7 +43,7 @@ internal fun Server.writeTools(userId: UUID) {
         annotations = REVERSIBLE_WRITE
     ) { args ->
         val groupId = args.uuid("group_id")
-        val status = args.choice("status", TRIAGE_STATUSES) ?: throw BadRequestException("status is required")
+        val status = args.requiredChoice("status", TRIAGE_STATUSES)
         val appId = dbIO { CrashRepository.findGroupAppId(groupId) } ?: throw NotFoundException("Crash group not found")
         AppPermissions.requireAdmin(appId, userId)
         dbIO { CrashRepository.updateGroupStatus(groupId, status) }
@@ -81,13 +77,12 @@ internal fun Server.writeTools(userId: UUID) {
         annotations = REVERSIBLE_WRITE
     ) { args ->
         val appId = args.uuid("app_id")
-        val versionCode = args.long("version_code") ?: throw BadRequestException("version_code is required")
+        val versionCode = args.requiredLong("version_code")
         val muteCrashes = args.boolean("mute_crashes")
         val muteEvents = args.boolean("mute_events")
         if (muteCrashes == null && muteEvents == null) throw BadRequestException("Set mute_crashes, mute_events or both")
         AppPermissions.requireAdmin(appId, userId)
-        val version = dbIO { VersionRepository.findByAppId(appId) }.firstOrNull { it.versionCode == versionCode }
-            ?: throw NotFoundException("Version $versionCode not found")
+        val version = requireVersion(appId, versionCode)
         dbIO { VersionRepository.updateMuteSettings(appId, UUID.fromString(version.id), muteCrashes, muteEvents) }
         val updated = dbIO { VersionRepository.findById(appId, UUID.fromString(version.id)) }
             ?: throw NotFoundException("Version $versionCode not found")

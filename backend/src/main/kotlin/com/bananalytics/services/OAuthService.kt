@@ -4,7 +4,7 @@ import com.bananalytics.config.AppConfig
 import com.bananalytics.config.OAuthException
 import com.bananalytics.config.dbIO
 import com.bananalytics.models.*
-import com.bananalytics.repositories.AccessTokenRepository
+import com.bananalytics.repositories.TokenAccess
 import com.bananalytics.repositories.OAuthClient
 import com.bananalytics.repositories.OAuthClientRepository
 import com.bananalytics.repositories.OAuthGrantRepository
@@ -83,7 +83,7 @@ class OAuthService(
                     clientId = authorization.client.clientId,
                     verified = authorization.client.verified,
                     redirectHost = RedirectUris.host(authorization.redirectUri),
-                    requestsWrite = AccessTokenRepository.SCOPE_WRITE in authorization.scopes
+                    requestedAccess = TokenAccess.of(authorization.scopes).wire
                 )
             )
         }
@@ -96,7 +96,9 @@ class OAuthService(
         if (!decision.approve) {
             return AuthorizationRedirect(errorRedirect(ready.redirectUri, ready.state, "access_denied", "The person declined access"))
         }
-        val scopes = AccessTokenRepository.scopesFor(decision.allowWrite && AccessTokenRepository.SCOPE_WRITE in ready.scopes)
+        val allowed = TokenAccess.fromWire(decision.access)
+            ?: throw OAuthException("invalid_request", "access must be read, write or manage")
+        val scopes = minOf(allowed, TokenAccess.of(ready.scopes)).scopes
         val code = dbIO {
             OAuthGrantRepository.createCode(ready.client.id, userId, ready.redirectUri, scopes, ready.codeChallenge)
         }
@@ -211,16 +213,16 @@ class OAuthService(
         this[name]?.takeIf { it.isNotEmpty() } ?: throw OAuthException("invalid_request", "$name is required")
 
     companion object {
-        private val SCOPES = listOf(AccessTokenRepository.SCOPE_READ, AccessTokenRepository.SCOPE_WRITE)
+        private val SCOPES = TokenAccess.MANAGE.scopes.toList()
         private val SUPPORTED_GRANTS = listOf("authorization_code", "refresh_token")
         private const val MAX_NAME_LENGTH = 100
         private val PKCE_CHALLENGE = Regex("^[A-Za-z0-9_-]{43}$")
         private val PKCE_VERIFIER = Regex("^[A-Za-z0-9._~-]{43,128}$")
 
-        /** Unknown scopes are ignored (RFC 6749 §3.3); write implies read; nothing asked means read. */
+        /** Unknown scopes are ignored (RFC 6749 §3.3); each level implies those below; nothing asked means read. */
         fun requestedScopes(scope: String?): Set<String> {
             val requested = scope.orEmpty().split(' ').filter { it.isNotEmpty() }.toSet()
-            return AccessTokenRepository.scopesFor(AccessTokenRepository.SCOPE_WRITE in requested)
+            return TokenAccess.of(requested).scopes
         }
 
         fun s256(verifier: String): String =

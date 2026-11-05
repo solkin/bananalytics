@@ -1,4 +1,5 @@
 import api from './client'
+import type { TokenAccess } from './tokens'
 
 /** The authorization query an agent sent the browser here with, forwarded as is. */
 export type AuthorizationRequest = Record<string, string>
@@ -9,7 +10,8 @@ export interface AuthorizationPrompt {
   /** The client is identified by a metadata document on its own domain. */
   verified: boolean
   redirect_host: string
-  requests_write: boolean
+  /** The most the client asked for; the person may allow less. */
+  requested_access: TokenAccess
 }
 
 export interface AuthorizationCheck {
@@ -37,13 +39,9 @@ export async function checkAuthorization(request: AuthorizationRequest): Promise
 export async function decideAuthorization(
   request: AuthorizationRequest,
   approve: boolean,
-  allowWrite: boolean,
+  access: TokenAccess,
 ): Promise<string> {
-  const response = await api.post<{ redirect_to: string }>('/oauth/authorize', {
-    request,
-    approve,
-    allow_write: allowWrite,
-  })
+  const response = await api.post<{ redirect_to: string }>('/oauth/authorize', { request, approve, access })
   return response.data.redirect_to
 }
 

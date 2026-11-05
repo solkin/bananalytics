@@ -21,7 +21,7 @@ Lightweight self-hosted crash reporting and analytics platform for Android appli
 - **Multi-user Access** — Share apps with team members (admin/viewer/tester roles)
 - **Email Invitations** — Invite users by email, even if they're not registered yet
 - **Version Muting** — Disable crash/event collection for specific versions
-- **MCP Server for AI Agents** — Claude, Cursor, ChatGPT and other agents read crashes and analytics over MCP, signing in with OAuth or a personal access token
+- **MCP Server for AI Agents** — Claude, Cursor, ChatGPT and other agents read crashes and analytics, set up apps and ship builds over MCP, signing in with OAuth or a personal access token
 - **Self-hosted** — Full control over your data
 
 ## Quick Start
@@ -214,8 +214,10 @@ claude mcp add --transport http bananalytics https://your-server.com/mcp
 
 Clients that support OAuth open a consent page and sign in; others send a
 personal access token from the Account page as `Authorization: Bearer bnp_…`.
-Tools are read-only unless the person allows changes, which then also need the
-admin role in the app. See **Docs, Connect an AI agent** in the web UI.
+The person picks the access level: read only; read and write (apps, versions,
+SDK keys, triage, mapping and APK uploads with one-time tokens); or full access
+(members, emails to testers, upload keys, deletions). Changes also need the admin
+role in the app. See **Docs, Connect an AI agent** in the web UI.
 
 ## Tech Stack
 

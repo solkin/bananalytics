@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, Checkbox, Loading, Notice } from '@/ui'
+import { Button, Field, Loading, Notice, RadioCards } from '@/ui'
 import { useAuth } from '@/context/AuthContext'
 import {
   checkAuthorization,
@@ -8,8 +8,10 @@ import {
   type AuthorizationPrompt,
   type AuthorizationRequest,
 } from '@/api/oauth'
+import type { TokenAccess } from '@/api/tokens'
 import { errorText } from '../async'
 import { hostOf } from '../format'
+import { ACCESS_OPTIONS } from '../tokenAccess'
 import { BRAND_NAME } from '../layout/Brand'
 import { AuthFrame } from './AuthFrame'
 
@@ -48,7 +50,8 @@ export default function OAuthAuthorizePage() {
   }, [params])
 
   const [stage, setStage] = useState<Stage>({ kind: 'checking' })
-  const [allowWrite, setAllowWrite] = useState(false)
+  /* Least access unless the person picks more. */
+  const [access, setAccess] = useState<TokenAccess>('read')
   const [deciding, setDeciding] = useState<'allow' | 'deny' | null>(null)
 
   /* Leaving for a custom scheme (a desktop app) keeps this tab open, so say what happened. */
@@ -74,7 +77,7 @@ export default function OAuthAuthorizePage() {
   const decide = async (approve: boolean, prompt: AuthorizationPrompt) => {
     setDeciding(approve ? 'allow' : 'deny')
     try {
-      handBack(await decideAuthorization(request, approve, allowWrite), prompt.client_name)
+      handBack(await decideAuthorization(request, approve, access), prompt.client_name)
     } catch (e) {
       setDeciding(null)
       setStage({ kind: 'invalid', message: errorText(e, 'The request could not be completed') })
@@ -102,6 +105,8 @@ export default function OAuthAuthorizePage() {
   }
 
   const { prompt } = stage
+  /* Only up to what the client asked for. */
+  const options = ACCESS_OPTIONS.slice(0, ACCESS_OPTIONS.findIndex((o) => o.value === prompt.requested_access) + 1)
   return (
     <AuthFrame
       title={`Connect ${prompt.client_name}`}
@@ -112,10 +117,10 @@ export default function OAuthAuthorizePage() {
           <li>Read crashes, analytics and releases of the apps you can open</li>
           <li>Act with your current role in each app, never more</li>
         </ul>
-        {prompt.requests_write && (
-          <Checkbox checked={allowWrite} onChange={setAllowWrite}>
-            Also allow changes: resolve or ignore issues, mute versions
-          </Checkbox>
+        {options.length > 1 && (
+          <Field label="Access">
+            <RadioCards stacked value={access} onChange={(value) => setAccess(value as TokenAccess)} options={options} />
+          </Field>
         )}
         {prompt.verified ? (
           <p className="consent__meta">

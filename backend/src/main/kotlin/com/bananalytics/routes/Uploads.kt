@@ -2,7 +2,10 @@ package com.bananalytics.routes
 
 import com.bananalytics.config.BadRequestException
 import com.bananalytics.config.PayloadTooLargeException
+import io.ktor.http.*
 import io.ktor.http.content.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,17 +24,8 @@ private const val COPY_BUFFER_SIZE = 64 * 1024
  * Receives a part into a temp file, refusing it the moment it outgrows the
  * limit. The caller owns the file and must delete it.
  */
-internal suspend fun PartData.FileItem.receiveFile(limit: Long, what: String, suffix: String): File {
-    val target = File.createTempFile("bananalytics-", suffix)
-    try {
-        provider().copyToFile(target, limit, what)
-    } catch (e: Throwable) {
-        // Nothing owns it yet, and half an upload must not stay on the disk.
-        target.delete()
-        throw e
-    }
-    return target
-}
+internal suspend fun PartData.FileItem.receiveFile(limit: Long, what: String, suffix: String): File =
+    provider().receiveToTempFile(limit, what, suffix)
 
 /**
  * Receives a mapping part as the gzipped file that storage wants. Callers are
@@ -39,22 +33,38 @@ internal suspend fun PartData.FileItem.receiveFile(limit: Long, what: String, su
  * plain file is accepted and compressed here. Returns null for an empty part;
  * the caller owns the file and must delete it.
  */
-internal suspend fun PartData.FileItem.receiveMapping(limit: Long): File? {
-    val received = receiveFile(limit, "Mapping file", ".tmp")
+internal suspend fun PartData.FileItem.receiveMapping(limit: Long): File? =
+    receiveFile(limit, "Mapping file", ".tmp").toStoredMapping()
 
-    if (received.length() == 0L) {
-        received.delete()
+/**
+ * Receives a whole request body into a temp file, for clients that PUT a file
+ * as is (`curl -T`). The caller owns the file and must delete it.
+ */
+internal suspend fun ApplicationCall.receiveBodyFile(limit: Long, what: String, suffix: String): File {
+    request.header(HttpHeaders.ContentLength)?.toLongOrNull()?.let { declared ->
+        if (declared > limit) throw PayloadTooLargeException("$what exceeds the ${mb(limit)} MB limit")
+    }
+    return receiveChannel().receiveToTempFile(limit, what, suffix)
+}
+
+/**
+ * Turns a received mapping into the gzipped file that storage wants, taking
+ * ownership of this file. Returns null for an empty one.
+ */
+internal suspend fun File.toStoredMapping(): File? {
+    if (length() == 0L) {
+        delete()
         return null
     }
-    if (received.isGzip()) {
-        return received
+    if (isGzip()) {
+        return this
     }
 
     // Arrived as plain text, so it is compressed here and the original dropped.
     return try {
-        received.gzipToTempFile()
+        gzipToTempFile()
     } finally {
-        received.delete()
+        delete()
     }
 }
 
@@ -93,6 +103,18 @@ private fun File.imageContentType(): String? {
 
 private fun ByteArray.startsWith(vararg prefix: Int): Boolean =
     prefix.withIndex().all { (i, byte) -> this[i] == byte.toByte() }
+
+private suspend fun ByteReadChannel.receiveToTempFile(limit: Long, what: String, suffix: String): File {
+    val target = File.createTempFile("bananalytics-", suffix)
+    try {
+        copyToFile(target, limit, what)
+    } catch (e: Throwable) {
+        // Nothing owns it yet, and half an upload must not stay on the disk.
+        target.delete()
+        throw e
+    }
+    return target
+}
 
 private suspend fun ByteReadChannel.copyToFile(target: File, limit: Long, what: String): Long =
     withContext(Dispatchers.IO) {

@@ -6,23 +6,17 @@ import com.bananalytics.config.PayloadTooLargeException
 import com.bananalytics.config.UnauthorizedException
 import com.bananalytics.config.dbIO
 import com.bananalytics.models.AppResponse
-import com.bananalytics.models.AppVersionResponse
 import com.bananalytics.models.PublishReleaseResponse
 import com.bananalytics.repositories.ApiKeyRepository
-import com.bananalytics.repositories.AppAccessRepository
-import com.bananalytics.repositories.DownloadTokenRepository
 import com.bananalytics.repositories.VersionRepository
 import com.bananalytics.services.ApkManifestParser
-import com.bananalytics.services.EmailService
+import com.bananalytics.services.VersionService
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.util.*
@@ -30,13 +24,6 @@ import java.util.*
 private val logger = LoggerFactory.getLogger("ReleaseRoutes")
 
 private const val DEFAULT_LINK_HOURS = 720 // 30 days
-private const val MAX_LINK_HOURS = 8760 // a year
-
-/** Roles that hear about a new build when `notify=true`. */
-private val NOTIFY_ROLES = listOf("admin", "tester")
-
-/** Pause between notification emails, same as the UI's notify dialog uses. */
-private const val EMAIL_THROTTLE_MS = 500L
 
 /**
  * Publishing a build from CI, in one request: the APK carries its own package
@@ -120,8 +107,8 @@ fun Route.releaseRoutes() {
             if (explicitVersionCode != null && explicitVersionCode <= 0) {
                 throw BadRequestException("version_code must be positive")
             }
-            if (linkHours !in 1..MAX_LINK_HOURS) {
-                throw BadRequestException("link_expires_in_hours must be between 1 and $MAX_LINK_HOURS")
+            if (linkHours !in 1..VersionService.MAX_LINK_HOURS) {
+                throw BadRequestException("link_expires_in_hours must be between 1 and ${VersionService.MAX_LINK_HOURS}")
             }
 
             val manifest = dbIO { ApkManifestParser.read(apk) }
@@ -154,10 +141,8 @@ fun Route.releaseRoutes() {
                 )
             }
 
-            val downloadToken = dbIO {
-                DownloadTokenRepository.create(appId, UUID.fromString(version.id), linkHours)
-            }
-            val notified = if (notify) notifyTeam(appId, app, version) else 0
+            val downloadToken = dbIO { VersionService.createDownloadLink(appId, UUID.fromString(version.id), linkHours) }
+            val notified = if (notify) VersionService.notifyTeam(appId, app, version) else 0
 
             logger.info(
                 "Published release {} ({}) for app {}: {} bytes, mapping={}, published={}, notified={}",
@@ -175,7 +160,7 @@ fun Route.releaseRoutes() {
                     publishedForTesters = version.publishedForTesters,
                     hasMapping = version.hasMapping,
                     apkSize = apkSize,
-                    downloadUrl = "${AppConfig.baseUrl}/api/v1/download/${downloadToken.token}",
+                    downloadUrl = VersionService.downloadUrl(downloadToken.token),
                     expiresAt = downloadToken.expiresAt.toString(),
                     notified = notified
                 )
@@ -185,39 +170,6 @@ fun Route.releaseRoutes() {
             mappingFile?.delete()
         }
     }
-}
-
-/**
- * Notifies admins and testers. A publish that succeeded is not turned into an
- * error just because mail is unavailable — the count in the response tells the
- * caller what actually went out.
- */
-private suspend fun notifyTeam(appId: UUID, app: AppResponse, version: AppVersionResponse): Int {
-    if (!EmailService.isConfigured) {
-        logger.warn("notify=true but SMTP is not configured — published {} without notifying", version.versionCode)
-        return 0
-    }
-
-    val recipients = dbIO { AppAccessRepository.findEmailsByRoles(appId, NOTIFY_ROLES) }
-    var sent = 0
-
-    recipients.forEachIndexed { index, email ->
-        // SMTP is blocking, so it does not belong on a request thread.
-        val delivered = withContext(Dispatchers.IO) {
-            EmailService.sendNewVersionEmail(
-                toEmail = email,
-                appId = appId.toString(),
-                appName = app.name,
-                versionName = version.versionName,
-                versionCode = version.versionCode,
-                releaseNotes = version.releaseNotes
-            )
-        }
-        if (delivered) sent++
-        if (index < recipients.size - 1) delay(EMAIL_THROTTLE_MS)
-    }
-
-    return sent
 }
 
 /**

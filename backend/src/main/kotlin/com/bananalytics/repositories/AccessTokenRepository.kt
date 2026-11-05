@@ -12,6 +12,32 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
 import java.util.*
 
+/**
+ * How far an agent may go on its owner's behalf; each level includes the ones
+ * before it. Within it, the owner's role in each app still decides.
+ */
+enum class TokenAccess(val wire: String, val scopes: Set<String>) {
+    /** Crashes, analytics, releases. */
+    READ("read", setOf(AccessTokenRepository.SCOPE_READ)),
+
+    /** Changes that stay inside the app and can be set back or cleaned up. */
+    WRITE("write", READ.scopes + AccessTokenRepository.SCOPE_WRITE),
+
+    /** Also what reaches people or cannot be undone: access, emails, deletions. */
+    MANAGE("manage", WRITE.scopes + AccessTokenRepository.SCOPE_MANAGE);
+
+    companion object {
+        fun fromWire(value: String): TokenAccess? = entries.firstOrNull { it.wire == value }
+
+        /** The highest level [scopes] name, each implying those below; unknown scopes add nothing. */
+        fun of(scopes: Set<String>): TokenAccess = when {
+            AccessTokenRepository.SCOPE_MANAGE in scopes -> MANAGE
+            AccessTokenRepository.SCOPE_WRITE in scopes -> WRITE
+            else -> READ
+        }
+    }
+}
+
 /** Who an access token speaks for, and what it may do on their behalf. */
 data class TokenPrincipal(
     val user: UserResponse,
@@ -19,6 +45,7 @@ data class TokenPrincipal(
     val scopes: Set<String>
 ) {
     val canWrite: Boolean get() = AccessTokenRepository.SCOPE_WRITE in scopes
+    val canManage: Boolean get() = AccessTokenRepository.SCOPE_MANAGE in scopes
 }
 
 /**
@@ -32,12 +59,12 @@ object AccessTokenRepository {
     /** Implies [SCOPE_READ]: a token that may change data may also read it. */
     const val SCOPE_WRITE = "mcp:write"
 
+    /** Implies [SCOPE_WRITE]. */
+    const val SCOPE_MANAGE = "mcp:manage"
+
     private const val TOKEN_PREFIX = "bnp_"
     private const val PREFIX_LENGTH = 12
     private val usage = UsageThrottle()
-
-    fun scopesFor(write: Boolean): Set<String> =
-        if (write) setOf(SCOPE_READ, SCOPE_WRITE) else setOf(SCOPE_READ)
 
     /** Personal tokens only; those of OAuth clients are managed as grants. */
     fun findByUserId(userId: UUID): List<AccessTokenResponse> = transaction {

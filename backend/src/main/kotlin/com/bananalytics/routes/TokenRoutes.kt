@@ -7,6 +7,7 @@ import com.bananalytics.config.getUser
 import com.bananalytics.config.toUUIDOrNull
 import com.bananalytics.models.CreateAccessTokenRequest
 import com.bananalytics.repositories.AccessTokenRepository
+import com.bananalytics.repositories.TokenAccess
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -36,11 +37,8 @@ fun Route.tokenRoutes() {
             if (name.length > 100) {
                 throw BadRequestException("Name must be 100 characters or shorter")
             }
-            val write = when (request.access) {
-                "read" -> false
-                "write" -> true
-                else -> throw BadRequestException("Access must be 'read' or 'write'")
-            }
+            val access = TokenAccess.fromWire(request.access)
+                ?: throw BadRequestException("Access must be 'read', 'write' or 'manage'")
             val days = request.expiresInDays
             if (days != null && days !in 1..MAX_TOKEN_LIFETIME_DAYS) {
                 throw BadRequestException("Lifetime must be between 1 and $MAX_TOKEN_LIFETIME_DAYS days")
@@ -50,7 +48,7 @@ fun Route.tokenRoutes() {
                 AccessTokenRepository.create(
                     userId = userId,
                     name = name,
-                    scopes = AccessTokenRepository.scopesFor(write),
+                    scopes = access.scopes,
                     expiresAt = days?.let { OffsetDateTime.now().plusDays(it.toLong()) }
                 )
             }

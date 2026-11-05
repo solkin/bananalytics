@@ -27,10 +27,10 @@ import { Loaded, errorText, useAsync } from '../async'
 import { fullDate, hostOf, relTime } from '../format'
 import { KeyReveal } from '../KeyReveal'
 import { SERVER_URL } from '../server'
+import { ACCESS_OPTIONS, accessLabel } from '../tokenAccess'
 
 const NAME_LIMIT = 100
 const CREATE_FORM = 'create-token'
-const WRITE_SCOPE = 'mcp:write'
 const LIFETIMES = [
   { label: '30 days', value: 30 },
   { label: '90 days', value: 90 },
@@ -38,7 +38,6 @@ const LIFETIMES = [
   { label: 'No expiration', value: 0 },
 ]
 
-const accessLabel = (scope: string) => (scope.split(' ').includes(WRITE_SCOPE) ? 'Read and write' : 'Read only')
 const lastUsed = (iso: string | null) => (iso ? `used ${relTime(iso)}` : 'never used')
 
 function CreateTokenDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -92,15 +91,8 @@ function CreateTokenDialog({ onClose, onCreated }: { onClose: () => void; onCrea
           <Field label="Token name" required help="Name it after the agent or machine that uses it.">
             <Input placeholder="Cursor on my laptop" value={name} maxLength={NAME_LIMIT} onChange={(e) => setName(e.target.value)} />
           </Field>
-          <Field label="Access">
-            <RadioCards
-              value={access}
-              onChange={(value) => setAccess(value as TokenAccess)}
-              options={[
-                { label: 'Read only', hint: 'Crashes, analytics and releases.', value: 'read' },
-                { label: 'Read and write', hint: 'Also resolve issues and mute versions where you are an admin.', value: 'write' },
-              ]}
-            />
+          <Field label="Access" help="Changes need the admin role in the app.">
+            <RadioCards stacked value={access} onChange={(value) => setAccess(value as TokenAccess)} options={ACCESS_OPTIONS} />
           </Field>
           <Field label="Expires after">
             <Select options={LIFETIMES} value={days} onChange={(value) => setDays(Number(value))} />

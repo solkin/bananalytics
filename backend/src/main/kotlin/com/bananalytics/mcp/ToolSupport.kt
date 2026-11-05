@@ -2,6 +2,10 @@ package com.bananalytics.mcp
 
 import com.bananalytics.config.ApiException
 import com.bananalytics.config.BadRequestException
+import com.bananalytics.config.NotFoundException
+import com.bananalytics.config.dbIO
+import com.bananalytics.models.AppVersionResponse
+import com.bananalytics.repositories.VersionRepository
 import com.bananalytics.config.toOffsetDateTimeOrNull
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
@@ -26,6 +30,18 @@ internal val ToolJson = Json {
 }
 
 internal val READ_ONLY = ToolAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false)
+
+/** Changes state that can be set back; repeating the call changes nothing more. */
+internal val REVERSIBLE_WRITE = ToolAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = true, openWorldHint = false)
+
+/** Adds something new each time it runs, removing nothing. */
+internal val ADDITIVE_WRITE = ToolAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false)
+
+/** Reaches people outside the conversation: it may send them email. */
+internal val SENDS_EMAIL = ToolAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = true)
+
+/** Removes data or access for good. */
+internal val DESTRUCTIVE = ToolAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = false)
 
 /** Longest period one analytics call may cover. */
 private const val MAX_PERIOD_DAYS = 366L
@@ -57,6 +73,11 @@ internal fun Server.tool(
 }
 
 internal inline fun <reified T> toolResult(value: T): String = ToolJson.encodeToString(value)
+
+/** Agents name a version by its code, as it appears in the app's build file. */
+internal suspend fun requireVersion(appId: UUID, versionCode: Long): AppVersionResponse =
+    dbIO { VersionRepository.findByAppAndVersionCode(appId, versionCode) }
+        ?: throw NotFoundException("Version $versionCode not found")
 
 /** Builds a tool's input schema; every property is described for the model. */
 internal class SchemaBuilder {
@@ -122,6 +143,9 @@ internal class ToolArguments(private val json: JsonObject) {
 
     fun requiredString(name: String): String = string(name) ?: throw BadRequestException("$name is required")
 
+    fun requiredChoice(name: String, allowed: List<String>): String =
+        choice(name, allowed) ?: throw BadRequestException("$name is required")
+
     fun choice(name: String, allowed: List<String>): String? {
         val value = string(name) ?: return null
         if (value !in allowed) throw BadRequestException("$name must be one of: ${allowed.joinToString()}")
@@ -140,6 +164,9 @@ internal class ToolArguments(private val json: JsonObject) {
         }
         return value
     }
+
+    fun requiredLong(name: String, range: LongRange? = null): Long =
+        long(name, range) ?: throw BadRequestException("$name is required")
 
     fun boolean(name: String): Boolean? {
         val element = json[name] ?: return null

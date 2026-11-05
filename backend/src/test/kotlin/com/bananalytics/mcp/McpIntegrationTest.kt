@@ -20,57 +20,6 @@ class McpIntegrationTest {
     }
     @BeforeTest fun reset() = TestDatabase.reset()
 
-    private var nextId = 1
-
-    /** A token for a fresh person holding [role] in the test app. */
-    private fun token(role: String, write: Boolean = false): String {
-        val user = UUID.fromString(UserRepository.create("$role-${UUID.randomUUID()}@example.test", "unused", role).id)
-        AppAccessRepository.grantAccess(app, user, role)
-        return AccessTokenRepository.create(user, role, AccessTokenRepository.scopesFor(write), null).accessToken
-    }
-
-    private suspend fun ApplicationTestBuilder.rpc(
-        token: String?,
-        method: String,
-        params: JsonObject = JsonObject(emptyMap()),
-        configure: HttpRequestBuilder.() -> Unit = {}
-    ): HttpResponse = client.post("/mcp") {
-        token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-        // HTTP/1.1 clients always send it; the test client does not.
-        header(HttpHeaders.Host, "localhost")
-        header(HttpHeaders.Accept, "application/json, text/event-stream")
-        header("MCP-Protocol-Version", "2025-11-25")
-        contentType(ContentType.Application.Json)
-        setBody(buildJsonObject {
-            put("jsonrpc", "2.0")
-            put("id", nextId++)
-            put("method", method)
-            put("params", params)
-        }.toString())
-        configure()
-    }
-
-    private suspend fun ApplicationTestBuilder.result(token: String, method: String, params: JsonObject = JsonObject(emptyMap())): JsonObject {
-        val response = rpc(token, method, params)
-        assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
-        val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        return body["result"]?.jsonObject ?: fail("No result: $body")
-    }
-
-    /** Calls a tool; returns its text and whether it reported an error. */
-    private suspend fun ApplicationTestBuilder.call(token: String, tool: String, arguments: JsonObject = JsonObject(emptyMap())): Pair<String, Boolean> {
-        val result = result(token, "tools/call", buildJsonObject {
-            put("name", tool)
-            put("arguments", arguments)
-        })
-        val text = result["content"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content
-        return text to (result["isError"]?.jsonPrimitive?.boolean ?: false)
-    }
-
-    private fun args(vararg pairs: Pair<String, Any>) = buildJsonObject {
-        pairs.forEach { (key, value) -> if (value is Number) put(key, value) else put(key, value.toString()) }
-    }
-
     private fun seedCrash(appId: UUID = app, breadcrumbs: Int = 3, decoded: String? = "at com.example.Real.method(Real.kt:42)"): Pair<UUID, UUID> {
         val group = UUID.randomUUID()
         val crumbs = (1..breadcrumbs).joinToString(",") { """{"timestamp":$it,"message":"step $it","category":"navigation"}""" }
@@ -92,7 +41,7 @@ class McpIntegrationTest {
         assertTrue(missing.headers[HttpHeaders.WWWAuthenticate]!!.startsWith("Bearer"))
         assertEquals(HttpStatusCode.Unauthorized, rpc("bnp_wrong", "tools/list").status)
 
-        val token = token("viewer")
+        val token = mcpToken("viewer")
         assertEquals(HttpStatusCode.Forbidden, rpc(token, "tools/list") { header(HttpHeaders.Origin, "https://evil.example") }.status)
         assertEquals(HttpStatusCode.OK, rpc(token, "tools/list") { header(HttpHeaders.Origin, "http://localhost:5173") }.status)
         assertEquals(HttpStatusCode.MethodNotAllowed, client.get("/mcp") {
@@ -103,7 +52,7 @@ class McpIntegrationTest {
 
     @Test fun `initialize and tools list speak MCP without leaking API json settings`() = testApplication {
         api()
-        val token = token("viewer")
+        val token = mcpToken("viewer")
         val init = result(token, "initialize", buildJsonObject {
             put("protocolVersion", "2025-11-25")
             putJsonObject("capabilities") {}
@@ -122,7 +71,7 @@ class McpIntegrationTest {
 
         // The rest of the API keeps its own JSON settings.
         val session = TestDatabase.session("admin")
-        AccessTokenRepository.create(UUID.fromString(UserRepository.findByEmail("admin@example.test")!!.id), "n", AccessTokenRepository.scopesFor(false), null)
+        AccessTokenRepository.create(UUID.fromString(UserRepository.findByEmail("admin@example.test")!!.id), "n", TokenAccess.READ.scopes, null)
         assertTrue(client.get("/api/v1/tokens") { cookie("session", session.toString()) }.bodyAsText().contains("\"expires_at\":null"))
     }
 
@@ -130,8 +79,8 @@ class McpIntegrationTest {
         api()
         val (ownGroup, _) = seedCrash()
         val (foreignGroup, foreignCrash) = seedCrash(other)
-        val viewer = token("viewer")
-        val tester = token("tester")
+        val viewer = mcpToken("viewer")
+        val tester = mcpToken("tester")
 
         val (apps, _) = call(viewer, "list_apps")
         val listed = Json.parseToJsonElement(apps).jsonArray
@@ -157,7 +106,7 @@ class McpIntegrationTest {
     @Test fun `crash reports prefer the deobfuscated trace and keep the last breadcrumbs`() = testApplication {
         api()
         val (group, crash) = seedCrash(breadcrumbs = 120)
-        val viewer = token("viewer")
+        val viewer = mcpToken("viewer")
 
         val (latest, error) = call(viewer, "get_latest_crash", args("group_id" to group))
         assertFalse(error)
@@ -182,7 +131,7 @@ class McpIntegrationTest {
 
     @Test fun `invalid arguments come back as errors the model can correct`() = testApplication {
         api()
-        val viewer = token("viewer")
+        val viewer = mcpToken("viewer")
         val cases = listOf(
             args() to "app_id is required",
             args("app_id" to "nope") to "app_id must be a UUID",
@@ -204,9 +153,9 @@ class McpIntegrationTest {
         api()
         val (group, crash) = seedCrash()
         TestDatabase.sql("INSERT INTO app_versions (app_id, version_code) VALUES ('$app', 7)")
-        val reader = token("admin")
-        val viewer = token("viewer", write = true)
-        val admin = token("admin", write = true)
+        val reader = mcpToken("admin")
+        val viewer = mcpToken("viewer", TokenAccess.WRITE)
+        val admin = mcpToken("admin", TokenAccess.WRITE)
 
         fun names(result: JsonObject) = result["tools"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content }
         assertFalse("update_crash_group_status" in names(result(reader, "tools/list")))

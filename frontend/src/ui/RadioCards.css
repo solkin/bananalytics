@@ -3,6 +3,10 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: var(--bnn-sp-4);
 }
+.bnn-radiocards--stacked {
+  grid-template-columns: 1fr;
+  gap: var(--bnn-sp-2);
+}
 .bnn-radiocard {
   position: relative;
   display: block;

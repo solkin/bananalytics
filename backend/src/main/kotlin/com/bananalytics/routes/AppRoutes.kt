@@ -5,13 +5,15 @@ import com.bananalytics.models.*
 import com.bananalytics.repositories.ApiKeyRepository
 import com.bananalytics.repositories.AppAccessRepository
 import com.bananalytics.repositories.AppRepository
-import com.bananalytics.repositories.DownloadTokenRepository
 import com.bananalytics.repositories.DataRetentionRepository
 import com.bananalytics.repositories.CrashRepository
 import com.bananalytics.repositories.InvitationRepository
-import com.bananalytics.repositories.UserRepository
 import com.bananalytics.repositories.VersionRepository
+import com.bananalytics.services.AccessService
+import com.bananalytics.services.ApiKeyService
+import com.bananalytics.services.AppService
 import com.bananalytics.services.EmailService
+import com.bananalytics.services.VersionService
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -44,36 +46,8 @@ fun Route.appRoutes() {
             val user = call.getUser()
             val request = call.receive<CreateAppRequest>()
 
-            if (request.name.isBlank()) {
-                throw BadRequestException("Name is required")
-            }
-            if (request.packageName.isBlank()) {
-                throw BadRequestException("Package name is required")
-            }
-
-            val existing = dbIO { AppRepository.findByPackageName(request.packageName) }
-            if (existing != null) {
-                throw BadRequestException("Package name already exists")
-            }
-
-            val app = dbIO { AppRepository.create(request.name, request.packageName) }
-
-            // Grant admin access to creator
-            dbIO { AppAccessRepository.grantAccess(
-                appId = UUID.fromString(app.id),
-                userId = UUID.fromString(user.id),
-                role = "admin"
-            ) }
-
-            // Every app starts with one key so the SDK snippet works right away.
-            // This is the only response that ever carries a key value.
-            val defaultKey = dbIO { ApiKeyRepository.create(
-                appId = UUID.fromString(app.id),
-                name = "Default",
-                createdBy = UUID.fromString(user.id)
-            ) }
-
-            call.respond(HttpStatusCode.Created, app.copy(apiKey = defaultKey.apiKey))
+            val app = dbIO { AppService.create(UUID.fromString(user.id), request.name, request.packageName) }
+            call.respond(HttpStatusCode.Created, app)
         }
 
         // Get app details
@@ -98,14 +72,11 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val request = call.receive<UpdateAppRequest>()
-
-            val updated = dbIO { AppRepository.update(appId, request.name) }
-            if (!updated) {
-                throw NotFoundException("App not found")
+            val name = call.receive<UpdateAppRequest>().name
+            val app = dbIO {
+                if (name != null) AppService.rename(appId, name)
+                else AppRepository.findById(appId) ?: throw NotFoundException("App not found")
             }
-
-            val app = dbIO { AppRepository.findById(appId) }!!
             call.respond(app)
         }
 
@@ -226,18 +197,7 @@ fun Route.appRoutes() {
             call.requireAppAdmin(appId, user)
 
             val request = call.receive<CreateApiKeyRequest>()
-            val name = request.name.trim()
-            if (name.isBlank()) {
-                throw BadRequestException("Name is required")
-            }
-            if (name.length > 100) {
-                throw BadRequestException("Name must be 100 characters or shorter")
-            }
-            if (request.scope !in ApiKeyRepository.SCOPES) {
-                throw BadRequestException("Scope must be 'sdk' or 'upload'")
-            }
-
-            val created = dbIO { ApiKeyRepository.create(appId, name, UUID.fromString(user.id), request.scope) }
+            val created = dbIO { ApiKeyService.create(appId, request.name, request.scope, UUID.fromString(user.id)) }
             call.respond(HttpStatusCode.Created, created)
         }
 
@@ -251,18 +211,8 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            val name = call.receive<UpdateApiKeyRequest>().name.trim()
-            if (name.isBlank()) {
-                throw BadRequestException("Name is required")
-            }
-            if (name.length > 100) {
-                throw BadRequestException("Name must be 100 characters or shorter")
-            }
-
-            if (!dbIO { ApiKeyRepository.rename(appId, keyId, name) }) {
-                throw NotFoundException("API key not found")
-            }
-
+            val name = call.receive<UpdateApiKeyRequest>().name
+            dbIO { ApiKeyService.rename(appId, keyId, name) }
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -276,10 +226,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            if (!dbIO { ApiKeyRepository.revoke(appId, keyId) }) {
-                throw NotFoundException("Active API key not found")
-            }
-
+            dbIO { ApiKeyService.revoke(appId, keyId) }
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -310,36 +257,7 @@ fun Route.appRoutes() {
 
             call.requireAnalyticsAccess(appId, user)
 
-            // Get active access
-            val accessList = dbIO { AppAccessRepository.findByAppId(appId) }.map { access ->
-                AccessListItemResponse(
-                    id = access.id,
-                    appId = access.appId,
-                    userId = access.userId,
-                    userEmail = access.userEmail,
-                    userName = access.userName,
-                    userAvatarUrl = access.userAvatarUrl,
-                    role = access.role,
-                    status = "active",
-                    createdAt = access.createdAt
-                )
-            }
-
-            // Get pending invitations
-            val invitations = dbIO { InvitationRepository.findByAppId(appId) }.map { invitation ->
-                AccessListItemResponse(
-                    id = invitation.id,
-                    appId = invitation.appId,
-                    userId = null,
-                    userEmail = invitation.email,
-                    userName = null,
-                    role = invitation.role,
-                    status = "invited",
-                    createdAt = invitation.createdAt
-                )
-            }
-
-            call.respond(accessList + invitations)
+            call.respond(dbIO { AccessService.list(appId) })
         }
 
         // Grant access to user (or create invitation for unknown emails)
@@ -351,63 +269,8 @@ fun Route.appRoutes() {
             call.requireAppAdmin(appId, user)
 
             val request = call.receive<GrantAccessRequest>()
-
-            if (request.role !in listOf("admin", "viewer", "tester")) {
-                throw BadRequestException("Role must be 'admin', 'viewer', or 'tester'")
-            }
-
-            val targetUser = dbIO { UserRepository.findByEmail(request.email) }
-            
-            if (targetUser != null) {
-                // User exists - grant access directly
-                val existingRole = dbIO { AppAccessRepository.getUserRole(appId, UUID.fromString(targetUser.id)) }
-                if (existingRole != null) {
-                    throw BadRequestException("User already has access")
-                }
-
-                val access = dbIO { AppAccessRepository.grantAccess(
-                    appId = appId,
-                    userId = UUID.fromString(targetUser.id),
-                    role = request.role
-                ) }
-
-                call.respond(HttpStatusCode.Created, access)
-            } else {
-                // User doesn't exist - create invitation
-                val existingInvitation = dbIO { InvitationRepository.findByEmailAndApp(request.email, appId) }
-                if (existingInvitation != null) {
-                    throw BadRequestException("Invitation already sent to this email")
-                }
-
-                val app = dbIO { AppRepository.findById(appId) }
-                    ?: throw NotFoundException("App not found")
-
-                val invitation = dbIO { InvitationRepository.create(
-                    email = request.email,
-                    appId = appId,
-                    role = request.role,
-                    invitedBy = UUID.fromString(user.id)
-                ) }
-
-                // Send invitation email if SMTP is configured
-                if (EmailService.isConfigured) {
-                    dbIO { EmailService.sendInvitationEmail(
-                        toEmail = request.email,
-                        appName = app.name,
-                        role = request.role,
-                        inviteToken = invitation.token
-                    ) }
-                }
-
-                // Return invitation response (mimics access response format for UI consistency)
-                call.respond(HttpStatusCode.Created, InvitationResponse(
-                    id = invitation.id.toString(),
-                    email = invitation.email,
-                    appId = invitation.appId.toString(),
-                    role = invitation.role,
-                    createdAt = invitation.expiresAt.toString()
-                ))
-            }
+            val access = dbIO { AccessService.grant(appId, request.email, request.role, UUID.fromString(user.id)) }
+            call.respond(HttpStatusCode.Created, access)
         }
 
         // Update user access role (or invitation role)
@@ -421,32 +284,7 @@ fun Route.appRoutes() {
             call.requireAppAdmin(appId, user)
 
             val request = call.receive<UpdateAccessRequest>()
-
-            if (request.role !in listOf("admin", "viewer", "tester")) {
-                throw BadRequestException("Role must be 'admin', 'viewer', or 'tester'")
-            }
-
-            // First try to update invitation
-            val invitationUpdated = dbIO { InvitationRepository.updateRole(accessId, appId, request.role) }
-            if (invitationUpdated) {
-                call.respond(HttpStatusCode.NoContent)
-                return@put
-            }
-
-            // If not an invitation, update user access role
-            // Prevent removing the last admin
-            if (request.role != "admin") {
-                val currentRole = dbIO { AppAccessRepository.getAccessRole(appId, accessId) }
-                if (currentRole == "admin" && dbIO { AppAccessRepository.countAdmins(appId) } <= 1) {
-                    throw BadRequestException("Cannot remove the last admin")
-                }
-            }
-
-            val updated = dbIO { AppAccessRepository.updateRole(appId, accessId, request.role) }
-            if (!updated) {
-                throw NotFoundException("Access not found")
-            }
-
+            dbIO { AccessService.updateRole(appId, accessId, request.role) }
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -460,24 +298,7 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            // First try to find and delete invitation
-            val deletedInvitation = dbIO { InvitationRepository.delete(accessId, appId) }
-            if (deletedInvitation) {
-                call.respond(HttpStatusCode.NoContent)
-                return@delete
-            }
-
-            // If not an invitation, revoke the matching access record.
-            val currentRole = dbIO { AppAccessRepository.getAccessRole(appId, accessId) }
-            if (currentRole == "admin" && dbIO { AppAccessRepository.countAdmins(appId) } <= 1) {
-                throw BadRequestException("Cannot remove the last admin")
-            }
-
-            val revoked = dbIO { AppAccessRepository.revokeAccess(appId, accessId) }
-            if (!revoked) {
-                throw NotFoundException("Access not found")
-            }
-
+            dbIO { AccessService.remove(appId, accessId) }
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -670,21 +491,8 @@ fun Route.appRoutes() {
                     }
                 }
 
-                if (versionCode == null) {
-                    throw BadRequestException("Version code is required")
-                }
-
-                val existing = dbIO { VersionRepository.findByAppAndVersionCode(appId, versionCode!!) }
-                if (existing != null) {
-                    throw BadRequestException("Version $versionCode already exists")
-                }
-
-                val version = dbIO { VersionRepository.create(
-                    appId = appId,
-                    versionCode = versionCode!!,
-                    versionName = versionName,
-                    mappingFile = mappingFile
-                ) }
+                val code = versionCode ?: throw BadRequestException("Version code is required")
+                val version = dbIO { VersionService.create(appId, code, versionName, mappingFile) }
 
                 call.respond(HttpStatusCode.Created, version)
             } finally {
@@ -925,24 +733,13 @@ fun Route.appRoutes() {
 
             call.requireAppAdmin(appId, user)
 
-            // Check if APK exists
-            val apkInfo = dbIO { VersionRepository.getApkInfo(appId, versionId) }
-                ?: throw NotFoundException("Version not found")
-            if (apkInfo.first == null) {
-                throw BadRequestException("No APK uploaded for this version")
-            }
-
             val request = try {
                 call.receive<CreateDownloadTokenRequest>()
             } catch (e: Exception) {
                 CreateDownloadTokenRequest()
             }
 
-            val tokenInfo = dbIO { DownloadTokenRepository.create(
-                appId = appId,
-                versionId = versionId,
-                expiresInHours = request.expiresInHours
-            ) }
+            val tokenInfo = dbIO { VersionService.createDownloadLink(appId, versionId, request.expiresInHours) }
 
             call.respond(HttpStatusCode.Created, DownloadTokenResponse(
                 token = tokenInfo.token,

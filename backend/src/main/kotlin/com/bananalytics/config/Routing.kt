@@ -101,6 +101,9 @@ fun Application.configureRouting(oauth: OAuthService? = OAuthService.fromConfig(
             // Release publishing from CI (authenticated by an upload-scoped API key)
             releaseRoutes()
 
+            // Files agents upload (authenticated by a one-time upload token)
+            uploadRoutes()
+
             // OAuth clients registering and redeeming grants (authenticated per RFC 6749)
             oauth?.let { oauthClientRoutes(it) }
             
